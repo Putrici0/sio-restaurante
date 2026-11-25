@@ -1,0 +1,76 @@
+<header class="app-header">
+  <div class="header-bar">
+    <button
+      type="button"
+      class="hamburger-btn"
+      (click)="toggleMenu()"
+      [attr.aria-expanded]="menuAbierto()"
+      aria-label="Abrir menú"
+    >
+      ☰
+    </button>
+
+    <div class="logo-container">
+      <img class="logo" src="logo.png" />
+    </div>
+  </div>
+
+  @if (cuentaId()) {
+    <div class="atencion-bar">
+      @if (atencionActiva(); as atencion) {
+        @if (atencion.enCurso && atencion.camareroNombre) {
+          <span class="atencion-status atencion-en-curso">
+            Camarero {{ atencion.camareroNombre }} está en camino
+          </span>
+        } @else {
+          <span class="atencion-status atencion-pendiente">
+            Solicitud enviada, esperando camarero...
+          </span>
+        }
+      } @else {
+        <button
+          type="button"
+          class="atencion-btn"
+          [disabled]="solicitarAtencionCargando()"
+          (click)="solicitarAtencion()"
+        >
+          {{ solicitarAtencionCargando() ? 'Enviando...' : 'Solicitar atención' }}
+        </button>
+      }
+    </div>
+  }
+
+  @if (toast(); as t) {
+  <div class="toast-container" [class]="t.tipo">
+    {{ t.mensaje }}
+  </div>
+  }
+
+  @if (menuAbierto()) {
+    <div class="menu-panel">
+      <nav class="nav-links">
+        <a
+          [routerLink]="['/menu', tableId()]"
+          routerLinkActive="active"
+          (click)="cerrarMenu()"
+        >
+          Menú
+        </a>
+
+        <a
+          [routerLink]="['/cuenta', tableId()]"
+          routerLinkActive="active"
+          (click)="cerrarMenu()"
+        >
+          Cuenta
+        </a>
+      </nav>
+    </div>
+
+  <div
+    class="menu-overlay"
+    [class.show]="menuAbierto()"
+    (click)="cerrarMenu()"
+  ></div>
+  }
+</header>

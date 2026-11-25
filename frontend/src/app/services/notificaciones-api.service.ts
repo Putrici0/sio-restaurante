@@ -1,0 +1,93 @@
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, timeout } from 'rxjs';
+import { Notificacion } from '../models/notificacion.model';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class NotificacionesApiService {
+  private readonly http = inject(HttpClient);
+  private readonly apiUrl = `http://${window.location.hostname}:7070`;
+  private readonly requestTimeoutMs = 8000;
+
+  obtenerPendientes(): Observable<Notificacion[]> {
+    return this.http
+      .get<Notificacion[]>(`${this.apiUrl}/notificaciones/pendientes`)
+      .pipe(timeout(this.requestTimeoutMs));
+  }
+
+  marcarEnCurso(
+    id: string,
+    camareroUid: string | null,
+    camareroNombre: string,
+  ): Observable<Notificacion> {
+    return this.http
+      .post<Notificacion>(`${this.apiUrl}/notificaciones/${id}/en-curso`, {
+        camareroUid,
+        camareroNombre,
+      })
+      .pipe(timeout(this.requestTimeoutMs));
+  }
+
+  marcarComoLeida(id: string): Observable<Notificacion> {
+    return this.http
+      .post<Notificacion>(`${this.apiUrl}/notificaciones/${id}/leida`, {})
+      .pipe(timeout(this.requestTimeoutMs));
+  }
+
+  desasignarYReenviar(id: string): Observable<Notificacion> {
+    return this.http
+      .post<Notificacion>(`${this.apiUrl}/notificaciones/${id}/desasignar`, {})
+      .pipe(timeout(this.requestTimeoutMs));
+  }
+
+  solicitarAtencion(cuentaId: string): Observable<Notificacion> {
+    return this.http
+      .post<Notificacion>(`${this.apiUrl}/notificaciones/atencion/${cuentaId}`, {})
+      .pipe(timeout(this.requestTimeoutMs));
+  }
+
+  obtenerAtencionActiva(cuentaId: string): Observable<Notificacion | null> {
+    return this.http
+      .get<Notificacion | null>(`${this.apiUrl}/notificaciones/atencion/${cuentaId}`)
+      .pipe(timeout(this.requestTimeoutMs));
+  }
+
+  obtenerActivas(): Observable<Notificacion[]> {
+    return this.http
+      .get<Notificacion[]>(`${this.apiUrl}/notificaciones/activas`)
+      .pipe(timeout(this.requestTimeoutMs));
+  }
+
+  obtenerAsignacionesActivas(): Observable<Notificacion[]> {
+    return this.http
+      .get<Notificacion[]>(`${this.apiUrl}/notificaciones/asignaciones-activas`)
+      .pipe(timeout(this.requestTimeoutMs));
+  }
+
+  marcarComoCompletada(id: string): Observable<Notificacion> {
+    return this.http
+      .post<Notificacion>(`${this.apiUrl}/notificaciones/${id}/completada`, {})
+      .pipe(timeout(this.requestTimeoutMs));
+  }
+
+  asignarResponsableMesa(
+    cuentaId: string,
+    camareroUid: string | null,
+    camareroNombre: string,
+  ): Observable<Notificacion> {
+    return this.http
+      .post<Notificacion>(`${this.apiUrl}/notificaciones/asignacion/${cuentaId}/tomar`, {
+        camareroUid,
+        camareroNombre,
+      })
+      .pipe(timeout(this.requestTimeoutMs));
+  }
+
+  liberarResponsableMesa(cuentaId: string): Observable<Notificacion> {
+    return this.http
+      .post<Notificacion>(`${this.apiUrl}/notificaciones/asignacion/${cuentaId}/liberar`, {})
+      .pipe(timeout(this.requestTimeoutMs));
+  }
+}

@@ -1,0 +1,241 @@
+<app-navbar></app-navbar>
+
+<div class="historial-page">
+  <div class="historial-page__header">
+    <div>
+      <h1>Historial de Cuentas</h1>
+      <p>Explora todas las transacciones y filtra por periodo.</p>
+    </div>
+
+    <div class="historial-filtros">
+      <label for="fechaFiltro">FECHA</label>
+      <div class="historial-filtros__fila">
+        <input
+          id="fechaFiltro"
+          type="date"
+          [value]="fechaFiltro()"
+          (input)="actualizarFecha($any($event.target).value)"
+        />
+      </div>
+      <label for="mesaFiltro">MESA</label>
+      <div class="historial-filtros__fila">
+        <input
+          id="mesaFiltro"
+          type="text"
+          inputmode="numeric"
+          placeholder="Nº mesa"
+          [value]="mesaFiltro()"
+          (input)="actualizarMesa($any($event.target).value)"
+        />
+        <button type="button" (click)="aplicarFiltro()">Filtrar</button>
+      </div>
+    </div>
+  </div>
+
+  @if (error()) {
+    <p class="historial-error">{{ error() }}</p>
+  }
+
+  @if (cargando()) {
+    <p>Cargando historial...</p>
+  } @else {
+    <section class="historial-tabla">
+      <div class="historial-tabla__head">
+        <span>FECHA/HORA</span>
+        <span>MESA</span>
+        <span>IMPORTE TOTAL</span>
+        <span>VER</span>
+      </div>
+
+      <div class="historial-tabla__body">
+        @for (cuenta of cuentasPaginadas(); track cuenta.cuentaId) {
+          <div class="historial-tabla__row">
+            <span>{{ formatearFecha(cuenta.fechaHora) }}</span>
+            <span>{{ obtenerMesaResumen(cuenta) }}</span>
+            <span>{{ cuenta.importeTotal | currency:'EUR':'symbol':'1.2-2' }}</span>
+            <button type="button" class="historial-ojo" (click)="abrirDetalle(cuenta.cuentaId)">
+              👁
+            </button>
+          </div>
+        }
+
+        @if (cuentasPaginadas().length === 0) {
+          <div class="historial-tabla__empty">No hay registros</div>
+        }
+      </div>
+
+      <div class="historial-tabla__footer">
+        <span>{{ textoResumen() }}</span>
+
+        <div class="historial-paginacion">
+          <button type="button" (click)="irAPagina(paginaActual() - 1)" [disabled]="paginaActual() === 1">
+            ‹
+          </button>
+
+          <span class="historial-paginacion__actual">{{ paginaActual() }}</span>
+
+          <button
+            type="button"
+            (click)="irAPagina(paginaActual() + 1)"
+            [disabled]="paginaActual() === totalPaginas()"
+          >
+            ›
+          </button>
+        </div>
+      </div>
+    </section>
+  }
+
+  @if (mostrarDetalle()) {
+    <div class="historial-modal-overlay" (click)="cerrarDetalle()">
+      <div class="historial-modal" (click)="$event.stopPropagation()">
+        @if (cargandoDetalle()) {
+          <p>Cargando detalle...</p>
+        } @else {
+          <div class="historial-modal__header">
+            <h3>Detalle de la cuenta</h3>
+            <div class="historial-modal__acciones">
+              <button type="button" class="historial-modal__accion" (click)="descargarTique()">
+                Descargar ticket
+              </button>
+              <button type="button" class="historial-modal__accion" (click)="enviarTique()">
+                Compartir ticket
+              </button>
+              <button type="button" class="historial-modal__cerrar" (click)="cerrarDetalle()">✕</button>
+            </div>
+          </div>
+
+          <div class="historial-modal__meta">
+            <p><strong>Mesa:</strong> {{ obtenerMesaDetalle() }}</p>
+          </div>
+
+          <div class="historial-detalle-lista">
+            <div class="cuenta-general-card">
+              <div class="cuenta-general-titulo">
+                <span>Cuenta general</span>
+                <strong>{{ totalDetalle() | number:'1.2-2' }} €</strong>
+              </div>
+
+              @for (item of detalleAgrupado(); track item.platoId) {
+                <div class="detalle-item">
+                  <span>{{ item.cantidad }}x {{ item.nombre }}</span>
+                  <span>{{ item.subtotal | number:'1.2-2' }} €</span>
+                </div>
+              }
+
+              <details class="pago-acordeon-interno">
+                <summary class="pago-titulo-interno">
+                  <span>Ver pagos</span>
+                </summary>
+
+                <div class="pago-contenido">
+                  @for (pago of pagosDetalle(); track pago.clave) {
+                    <div class="pago-bloque">
+                      <h4>
+                        Pago {{ pago.numero }} - {{ pago.metodoPago }}
+                        @if (pago.fechaPago) {
+                          {{ formatearFecha(pago.fechaPago) }}
+                        }
+                      </h4>
+
+                      @for (item of pago.items; track item.platoId) {
+                        <div class="detalle-item">
+                          <span>{{ item.cantidad }}x {{ item.nombre }}</span>
+                          <span>{{ item.subtotal | number:'1.2-2' }} €</span>
+                        </div>
+                      }
+
+                      <div class="total-pago">
+                        <strong>Total pago:</strong>
+                        <strong>{{ pago.total | number:'1.2-2' }} €</strong>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </details>
+
+              @if (canceladosDetalle().length > 0) {
+                <details class="pago-acordeon-interno pago-acordeon-interno--cancelados">
+                  <summary class="pago-titulo-interno">
+                    <span>Ver cancelados</span>
+                  </summary>
+
+                  <div class="pago-contenido">
+                    @for (item of canceladosDetalle(); track item.platoId) {
+                      <div class="detalle-item detalle-item--cancelado">
+                        <span>{{ item.cantidad }}x {{ item.nombre }}</span>
+                        <span>{{ item.subtotal | number:'1.2-2' }} €</span>
+                      </div>
+                    }
+                  </div>
+                </details>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  @if (mostrarModalCorreo()) {
+    <div class="historial-correo-overlay" (click)="cerrarModalCorreo()">
+      <div class="historial-correo-modal" (click)="$event.stopPropagation()">
+        <div class="historial-correo-modal__header">
+          <h3>Enviar ticket por correo</h3>
+          <button type="button" class="historial-modal__cerrar" (click)="cerrarModalCorreo()">✕</button>
+        </div>
+
+        <p class="historial-correo-modal__texto">
+          Introduce el correo al que quieres enviar el ticket.
+        </p>
+
+        <label class="historial-correo-modal__label" for="correoTiqueHistorial">
+          Correo
+        </label>
+        <input
+          id="correoTiqueHistorial"
+          type="email"
+          class="historial-correo-modal__input"
+          [value]="correoTique()"
+          (input)="actualizarCorreoTique($any($event.target).value)"
+          [disabled]="enviandoTique()"
+          autocomplete="email"
+        />
+
+        @if (errorCorreoTique()) {
+          <p class="historial-correo-modal__error">{{ errorCorreoTique() }}</p>
+        }
+
+        <div class="historial-correo-modal__acciones">
+          <button
+            type="button"
+            class="historial-correo-modal__cancelar"
+            (click)="cerrarModalCorreo()"
+            [disabled]="enviandoTique()"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="historial-correo-modal__enviar"
+            (click)="confirmarEnvioTique()"
+            [disabled]="enviandoTique()"
+          >
+            {{ enviandoTique() ? 'Enviando...' : 'Enviar ticket' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showToast()) {
+    <div class="mobile-toast" role="status" aria-live="polite">
+      <div class="mobile-toast__card" [class.mobile-toast__card--error]="toastTipo() === 'error'">
+        <span class="mobile-toast__icon" [class.mobile-toast__icon--error]="toastTipo() === 'error'">
+          {{ toastTipo() === 'ok' ? '✓' : '!' }}
+        </span>
+        <span class="mobile-toast__text">{{ toastMessage() }}</span>
+      </div>
+    </div>
+  }
+</div>

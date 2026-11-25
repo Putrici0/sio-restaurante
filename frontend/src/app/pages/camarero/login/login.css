@@ -1,0 +1,133 @@
+:host {
+  display: block;
+  height: 100dvh;
+  width: 100vw;
+  background: linear-gradient(135deg, #dfcdab 0%, #cdc1b0 100%);
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  overflow: hidden;
+}
+
+.login-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.logo-container {
+  margin-bottom: 3rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.logo {
+  max-width: 450px;
+  width: 90vw;
+  max-height: 40vh;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 16px rgba(0,0,0,0.15));
+  transform: scale(1.5);
+  clip-path: inset(0 10% 0 10%); /* Recorta un 10% de los laterales vacíos */
+}
+
+
+.login-card {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(10px);
+  padding: 2rem 1.5rem;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  width: 85%;
+  max-width: 310px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.input-group label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #4a3f35;
+  margin-left: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.input-group input {
+  padding: 14px 20px;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  background-color: rgba(255, 255, 255, 0.8);
+  font-size: 1rem;
+  color: #333;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.input-group input:focus {
+  background-color: #fff;
+  border-color: #b92b27;
+  box-shadow: 0 0 0 4px rgba(185, 43, 39, 0.1);
+}
+
+.btn-entrar {
+  margin-top: 1rem;
+  padding: 16px;
+  border-radius: 20px;
+  border: none;
+  background: #1cb02c;
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(28, 176, 44, 0.3);
+}
+
+.btn-entrar:hover {
+  background: #169424;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(28, 176, 44, 0.4);
+}
+
+.btn-entrar:active {
+  transform: translateY(0);
+}
+
+.error-msg {
+  margin: 0;
+  color: #b42318;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.btn-entrar:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+@media (max-height: 600px) {
+  .logo-container { margin-bottom: 1rem; }
+  .logo { max-height: 15vh; }
+  .login-card { padding: 1.5rem; }
+}

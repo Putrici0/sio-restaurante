@@ -1,0 +1,483 @@
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { catchError, map, of, take } from 'rxjs';
+import {
+  CategoriaPlatoBackend,
+  CocinaTableroResponse,
+  OrdenCocinaResponse,
+  OrdenesApiService,
+} from '../../services/ordenes-api.service';
+
+type ResultadoCargaTablero = {
+  ok: boolean;
+  data: CocinaTableroResponse | null;
+};
+
+@Component({
+  selector: 'app-tablero-pedidos',
+  standalone: true,
+  imports: [CommonModule],
+  templateUrl: './tablero-pedidos.component.html',
+  styleUrls: ['./tablero-pedidos.component.css'],
+})
+export class TableroPedidos implements OnInit, OnDestroy {
+  private readonly ordenesApiService = inject(OrdenesApiService);
+
+  private intervaloRefresco?: number;
+  private intervaloReloj?: number;
+
+  private readonly pollingMs = 15000;
+  private readonly refreshAfterWriteMs = 0;
+
+  readonly cargando = signal(true);
+  readonly actualizando = signal(false);
+  readonly error = signal<string | null>(null);
+
+  readonly ordenesPendientes = signal<OrdenCocinaResponse[]>([]);
+  readonly ordenesPreparacion = signal<OrdenCocinaResponse[]>([]);
+  readonly ordenesListas = signal<OrdenCocinaResponse[]>([]);
+
+  readonly ahora = signal(Date.now());
+  readonly ordenDetalleAbiertaId = signal<string | null>(null);
+  readonly pausadoHasta = signal(0);
+
+  readonly totalOrdenes = computed(
+    () =>
+      this.ordenesPendientes().length +
+      this.ordenesPreparacion().length +
+      this.ordenesListas().length,
+  );
+
+  ngOnInit(): void {
+    this.cargarTablero(true);
+
+    this.intervaloRefresco = window.setInterval(() => {
+      if (!this.estaSincronizacionPausada()) {
+        this.cargarTablero(false);
+      }
+    }, this.pollingMs);
+
+    this.intervaloReloj = window.setInterval(() => {
+      this.ahora.set(Date.now());
+    }, 30000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.intervaloRefresco) {
+      window.clearInterval(this.intervaloRefresco);
+    }
+
+    if (this.intervaloReloj) {
+      window.clearInterval(this.intervaloReloj);
+    }
+  }
+
+  private ordenarConUrgentes(ordenes: OrdenCocinaResponse[]): OrdenCocinaResponse[] {
+    return [...ordenes].sort((a, b) => {
+      const aUrgente = !!a.urgente;
+      const bUrgente = !!b.urgente;
+
+      if (aUrgente && !bUrgente) return -1;
+      if (!aUrgente && bUrgente) return 1;
+
+      const prioridadA = a.prioridad?.total ?? 0;
+      const prioridadB = b.prioridad?.total ?? 0;
+
+      if (prioridadA !== prioridadB) {
+        return prioridadB - prioridadA;
+      }
+
+      return new Date(a.fecha).getTime() - new Date(b.fecha).getTime();
+    });
+  }
+
+  recargar(): void {
+    this.cargarTablero(true);
+  }
+
+  toggleDetalle(ordenId: string): void {
+    if (this.ordenDetalleAbiertaId() === ordenId) {
+      this.ordenDetalleAbiertaId.set(null);
+      return;
+    }
+
+    this.ordenDetalleAbiertaId.set(ordenId);
+  }
+
+  detalleAbierto(ordenId: string): boolean {
+    return this.ordenDetalleAbiertaId() === ordenId;
+  }
+
+  esUrgente(orden: OrdenCocinaResponse): boolean {
+    return !!orden.urgente;
+  }
+
+  toggleUrgente(orden: OrdenCocinaResponse): void {
+    if (this.actualizando()) return;
+
+    this.actualizando.set(true);
+    this.error.set(null);
+    this.pausarSincronizacion(this.refreshAfterWriteMs + 100);
+
+    const request$ = orden.urgente
+      ? this.ordenesApiService.desmarcarUrgente(orden.id)
+      : this.ordenesApiService.marcarUrgente(orden.id);
+
+    request$.pipe(take(1)).subscribe({
+      next: () => this.recargarConRetardo(this.refreshAfterWriteMs),
+      error: (err) => {
+        console.error(err);
+        this.error.set('No se ha podido actualizar la urgencia de la orden.');
+        this.recargarConRetardo(this.refreshAfterWriteMs);
+      },
+    });
+  }
+
+  pasarAPreparacion(ordenId: string): void {
+    if (this.actualizando()) return;
+
+    const orden = this.ordenesPendientes().find((o) => o.id === ordenId);
+    if (!orden) return;
+
+    this.actualizando.set(true);
+    this.error.set(null);
+    this.pausarSincronizacion(this.refreshAfterWriteMs + 100);
+
+    this.ordenesApiService
+      .marcarEnPreparacion(ordenId)
+      .pipe(take(1))
+      .subscribe({
+        next: () => {
+          this.recargarConRetardo(this.refreshAfterWriteMs);
+        },
+        error: (err) => {
+          console.error(err);
+          this.error.set('No se ha podido actualizar el estado de la orden.');
+          this.recargarConRetardo(this.refreshAfterWriteMs);
+        },
+      });
+  }
+
+  pasarAPendiente(ordenId: string): void {
+    if (this.actualizando()) return;
+
+    const orden =
+      this.ordenesPreparacion().find((o) => o.id === ordenId) ??
+      this.ordenesListas().find((o) => o.id === ordenId);
+
+    if (!orden) return;
+
+    this.actualizando.set(true);
+    this.error.set(null);
+    this.pausarSincronizacion(this.refreshAfterWriteMs + 100);
+
+    this.ordenesApiService
+      .marcarPendiente(ordenId)
+      .pipe(take(1))
+      .subscribe({
+        next: () => this.recargarConRetardo(this.refreshAfterWriteMs),
+        error: (err) => {
+          console.error(err);
+          this.error.set('No se ha podido actualizar el estado de la orden.');
+          this.recargarConRetardo(this.refreshAfterWriteMs);
+        },
+      });
+  }
+
+  pasarALista(ordenId: string): void {
+    if (this.actualizando()) return;
+
+    const orden = this.ordenesPreparacion().find((o) => o.id === ordenId);
+    if (!orden) return;
+
+    this.actualizando.set(true);
+    this.error.set(null);
+    this.pausarSincronizacion(this.refreshAfterWriteMs + 100);
+
+    this.ordenesApiService
+      .marcarLista(ordenId)
+      .pipe(take(1))
+      .subscribe({
+        next: () => this.recargarConRetardo(this.refreshAfterWriteMs),
+        error: (err) => {
+          console.error(err);
+          this.error.set('No se ha podido actualizar el estado de la orden.');
+          this.recargarConRetardo(this.refreshAfterWriteMs);
+        },
+      });
+  }
+
+  mesaDeOrden(orden: OrdenCocinaResponse): string {
+    const mesas = orden.pedido?.cuenta?.mesas ?? [];
+
+    if (mesas.length > 0) {
+      if (mesas.length === 1) {
+        return `Mesa ${mesas[0].id}`;
+      }
+
+      return `Mesas ${mesas.map((mesa) => mesa.id).join(', ')}`;
+    }
+
+    const mesaDesdeDetalles = this.extraerMesaDesdeTexto(orden.detalles);
+
+    if (mesaDesdeDetalles) {
+      return `Mesa ${mesaDesdeDetalles}`;
+    }
+
+    return 'Mesa sin asignar';
+  }
+
+  numeroMesaPlano(orden: OrdenCocinaResponse): string {
+    const mesas = orden.pedido?.cuenta?.mesas ?? [];
+
+    if (mesas.length > 0) {
+      return mesas.map((mesa) => String(mesa.id)).join(', ');
+    }
+
+    const mesaDesdeDetalles = this.extraerMesaDesdeTexto(orden.detalles);
+
+    if (mesaDesdeDetalles) {
+      return mesaDesdeDetalles;
+    }
+
+    return 'Sin mesa';
+  }
+
+  cuentaIdDeOrden(orden: OrdenCocinaResponse): string {
+    return orden.pedido?.cuenta?.id ?? 'Sin cuenta';
+  }
+
+  pedidoIdDeOrden(orden: OrdenCocinaResponse): string {
+    return orden.pedido?.id ?? 'Sin pedido';
+  }
+
+  categoriaCorta(categoria: CategoriaPlatoBackend): string {
+    switch (categoria) {
+      case 'Entrante':
+        return 'ENT';
+      case 'Principal':
+        return 'PPL';
+      case 'Postre':
+        return 'POS';
+      case 'Bebida':
+        return 'BEB';
+      default:
+        return categoria;
+    }
+  }
+
+  prioridadTexto(orden: OrdenCocinaResponse): string {
+    const total = orden.prioridad?.total;
+
+    if (total === undefined || total === null) {
+      return 'Sin prioridad';
+    }
+
+    return `Prioridad ${total}`;
+  }
+
+  prioridadClase(orden: OrdenCocinaResponse): string {
+    const total = orden.prioridad?.total ?? 0;
+
+    if (total >= 95) return 'priority-badge priority-badge--critical';
+    if (total >= 75) return 'priority-badge priority-badge--high';
+    if (total >= 50) return 'priority-badge priority-badge--medium';
+
+    return 'priority-badge priority-badge--normal';
+  }
+
+  motivosPrioridad(orden: OrdenCocinaResponse): string[] {
+    return orden.prioridad?.motivos ?? [];
+  }
+
+  tiempoTranscurrido(fechaIso: string): string {
+    const diffMin = this.diferenciaEnMinutos(fechaIso);
+
+    if (diffMin < 1) return '< 1 min';
+
+    if (diffMin < 60) return `${diffMin} min`;
+
+    const horas = Math.floor(diffMin / 60);
+    const minutosRestantes = diffMin % 60;
+
+    if (minutosRestantes === 0) return `${horas} h`;
+
+    return `${horas} h ${minutosRestantes} min`;
+  }
+
+  tiempoTextoTarjeta(orden: OrdenCocinaResponse): string {
+    const transcurrido = this.tiempoTranscurrido(orden.fecha);
+
+    switch (orden.ordenEstado) {
+      case 'Pendiente':
+        return `En cola · ${transcurrido}`;
+      case 'Preparación':
+        return `Preparando · ${transcurrido}`;
+      case 'Listo':
+        return `Lista · ${transcurrido}`;
+      default:
+        return transcurrido;
+    }
+  }
+
+  etaTexto(orden: OrdenCocinaResponse): string {
+    const estimado = this.tiempoObjetivoMinutos(orden);
+    const transcurrido = this.diferenciaEnMinutos(orden.fecha);
+
+    if (orden.ordenEstado === 'Listo') {
+      return `Lista desde hace ${this.tiempoTranscurrido(orden.fecha)}`;
+    }
+
+    const restantes = estimado - transcurrido;
+
+    if (restantes > 0) return `ETA ${restantes} min`;
+    if (restantes === 0) return 'ETA 0 min';
+
+    return `Retraso ${Math.abs(restantes)} min`;
+  }
+
+  etaClase(orden: OrdenCocinaResponse): string {
+    const estimado = this.tiempoObjetivoMinutos(orden);
+    const transcurrido = this.diferenciaEnMinutos(orden.fecha);
+    const restantes = estimado - transcurrido;
+
+    if (orden.ordenEstado === 'Listo') return 'eta eta--ready';
+    if (restantes <= 0) return 'eta eta--late';
+    if (restantes <= 3) return 'eta eta--warning';
+
+    return 'eta eta--ok';
+  }
+
+  fechaLarga(fechaIso?: string | null): string {
+    if (!fechaIso) return 'Sin fecha';
+
+    const fecha = new Date(fechaIso);
+
+    if (Number.isNaN(fecha.getTime())) return fechaIso;
+
+    return new Intl.DateTimeFormat('es-ES', {
+      dateStyle: 'short',
+      timeStyle: 'medium',
+    }).format(fecha);
+  }
+
+  detalleTecnico(orden: OrdenCocinaResponse): string {
+    const detalles = orden.detalles?.trim();
+    return detalles && detalles.length > 0 ? detalles : 'Sin detalles';
+  }
+
+  trackByOrdenId(_: number, orden: OrdenCocinaResponse): string {
+    return orden.id;
+  }
+
+  trackByMotivo(_: number, motivo: string): string {
+    return motivo;
+  }
+
+  private pausarSincronizacion(ms: number): void {
+    this.pausadoHasta.set(Date.now() + ms);
+  }
+
+  private estaSincronizacionPausada(): boolean {
+    return Date.now() < this.pausadoHasta();
+  }
+
+  private recargarConRetardo(ms: number): void {
+    if (ms <= 0) {
+      this.cargarTablero(false);
+      return;
+    }
+    window.setTimeout(() => this.cargarTablero(false), ms);
+  }
+
+  private diferenciaEnMinutos(fechaIso: string): number {
+    const fecha = new Date(fechaIso).getTime();
+
+    if (Number.isNaN(fecha)) return 0;
+
+    return Math.max(0, Math.floor((this.ahora() - fecha) / 60000));
+  }
+
+  private tiempoObjetivoMinutos(orden: OrdenCocinaResponse): number {
+    const etaBackend = orden.prioridad?.etaMinutos;
+    if (typeof etaBackend === 'number' && Number.isFinite(etaBackend) && etaBackend > 0) {
+      return etaBackend;
+    }
+
+    switch (orden.plato.categoria) {
+      case 'Entrante':
+        return 10;
+      case 'Principal':
+        return 18;
+      case 'Postre':
+        return 8;
+      case 'Bebida':
+        return 4;
+      default:
+        return 12;
+    }
+  }
+
+  private extraerMesaDesdeTexto(texto?: string | null): string | null {
+    if (!texto) return null;
+
+    const match = texto.match(/\bmesa\s*[:#-]?\s*(\d+)\b/i);
+
+    return match?.[1] ?? null;
+  }
+
+  private cargarTablero(mostrarLoading: boolean): void {
+    if (this.estaSincronizacionPausada()) return;
+
+    if (mostrarLoading) {
+      this.cargando.set(true);
+    }
+
+    this.ordenesApiService
+      .obtenerTableroCocina()
+      .pipe(
+        map((data) => ({ ok: true, data }) as ResultadoCargaTablero),
+        catchError((err) => {
+          console.error(err);
+          return of({ ok: false, data: null } as ResultadoCargaTablero);
+        }),
+        take(1),
+      )
+      .subscribe({
+        next: ({ ok, data }) => {
+          const pendientes = data?.pendientes ?? [];
+          const preparacion = data?.enPreparacion ?? [];
+          const listas = data?.listas ?? [];
+
+          const pendientesConUrgentes = this.ordenarConUrgentes(pendientes);
+
+          this.ordenesPendientes.set(pendientesConUrgentes);
+          this.ordenesPreparacion.set(preparacion);
+          this.ordenesListas.set(listas);
+
+          const total = pendientes.length + preparacion.length + listas.length;
+
+          if (!ok && total === 0) {
+            this.error.set('No se ha podido cargar el tablero de cocina.');
+          } else {
+            this.error.set(null);
+          }
+
+          this.cargando.set(false);
+          this.actualizando.set(false);
+
+          const abierta = this.ordenDetalleAbiertaId();
+
+          if (abierta) {
+            const sigueExistiendo = [...pendientes, ...preparacion, ...listas].some(
+              (orden) => orden.id === abierta,
+            );
+
+            if (!sigueExistiendo) {
+              this.ordenDetalleAbiertaId.set(null);
+            }
+          }
+        },
+      });
+  }
+}

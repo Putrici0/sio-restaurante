@@ -1,0 +1,166 @@
+<app-camarero-header/>
+
+<div class="layout">
+  <div class="controls-bar">
+    <div class="tabs">
+      <button [class.active]="zonaActiva() === 'interior'" (click)="cambiarZona('interior')">INTERIOR</button>
+      <button [class.active]="zonaActiva() === 'terraza'" (click)="cambiarZona('terraza')">TERRAZA</button>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><span class="dot libre"></span> Libre</div>
+      <div class="legend-item"><span class="dot ocupada"></span> Ocupado</div>
+      <div class="legend-item"><span class="dot reservada"></span> Reservado</div>
+      <div class="legend-item"><span class="dot proxima"></span> Res. Próxima</div>
+    </div>
+  </div>
+
+  <div class="assigned-summary">
+    Mis mesas asignadas: <strong>{{ misMesasAsignadas().length }}</strong>
+    @if (misMesasAsignadas().length > 0) {
+      <span>({{ misMesasAsignadasTexto() }})</span>
+    }
+  </div>
+
+  @if (error()) {
+    <div class="error-banner">{{ error() }}</div>
+  }
+  @if (avisoReservaMovil(); as aviso) {
+    <div class="error-banner">
+      <div>{{ aviso.mensaje }}</div>
+      <button class="action-btn" (click)="aceptarAvisoReservaMovil()">Aceptar</button>
+    </div>
+  }
+
+  <div class="mesas-scroll-area">
+    <div class="mesas-grid">
+      @for(mesa of mesasFiltradas(); track mesa.id) {
+        <div class="mesa-card" [ngClass]="mesa.estado.toLowerCase()" [class.alerta-reserva]="mesa.alertaReserva" (click)="abrirMesa(mesa)">
+          @if (mesa.tieneAtencion) {
+            <div class="atencion-indicator">!</div>
+          }
+          <span class="mesa-id">{{ etiquetaMesa(mesa) }}</span>
+          <span class="mesa-pax">{{ mesa.capacidad || 4 }} Pax</span>
+          <span class="mesa-owner">{{ responsableMesaCorto(mesa) }}</span>
+          @if (esMesaAgrupada(mesa)) {
+            <span class="mesa-group">{{ mesa.grupoMesaIds.length }} mesas unidas</span>
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  @if(mesaSeleccionada(); as mesaSel) {
+    <div class="modal-overlay" (click)="cerrarModal()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+
+        <p class="modal-subtitle">MESA SELECCIONADA</p>
+        <h2 class="modal-title">Mesa {{ etiquetaMesa(mesaSel) }}</h2>
+        <span class="modal-pax">{{ mesaSel.capacidad || 4 }} Pax</span>
+        @if (esMesaAgrupada(mesaSel)) {
+          <span class="modal-group">{{ mesaSel.grupoMesaIds.length }} mesas unidas</span>
+        }
+        <p class="modal-responsable">{{ responsableMesaTexto(mesaSel) }}</p>
+
+        <hr class="divider">
+
+        <div class="modal-actions">
+          <button class="action-btn"
+                  [disabled]="!mesaSel.cuentaActiva"
+                  (click)="verCuenta(mesaSel)">
+            Ver Cuenta
+          </button>
+
+          <button class="action-btn"
+                  [disabled]="!mesaSel.cuentaActiva"
+                  (click)="hacerPedido(mesaSel.id)">
+            Hacer Pedido
+          </button>
+
+          <button class="action-btn"
+                  [disabled]="!mesaSel.cuentaActiva || accionMesaId() === mesaSel.id"
+                  (click)="solicitarLiberarMesa(mesaSel.id)">
+            {{ accionMesaId() === mesaSel.id ? 'LIBERANDO...' : 'Liberar mesa' }}
+          </button>
+
+          <button class="action-btn"
+                  [disabled]="!mesaSel.cuentaActiva"
+                  (click)="toggleContrasena()">
+            Contraseña
+          </button>
+
+          @if (mostrarContrasenaModal() && mesaSel.cuentaActiva) {
+            <div class="contrasena-dropdown">
+              <span class="contrasena-label">Contraseña</span>
+              <span class="contrasena-value">{{ mesaSel.cuentaActiva.password }}</span>
+            </div>
+          }
+          @if (mostrarContrasenaModal() && !mesaSel.cuentaActiva) {
+            <div class="contrasena-dropdown">
+              <span class="contrasena-label">Sin cuenta activa</span>
+            </div>
+          }
+
+          <button class="action-btn"
+                  [disabled]="!puedeAsignarmeMesa(mesaSel)"
+                  (click)="asignarmeAtencionMesa(mesaSel)">
+            {{ accionAtencionMesaId() === mesaSel.id ? 'ASIGNANDO...' : 'Atender yo' }}
+          </button>
+
+          <button class="action-btn"
+                  [disabled]="!puedeDesasignarMesa(mesaSel)"
+                  (click)="desasignarAtencionMesa(mesaSel)">
+            {{ accionAtencionMesaId() === mesaSel.id ? 'CANCELANDO...' : 'Cancelar responsable' }}
+          </button>
+        </div>
+
+        <hr class="divider">
+
+        <button class="main-action-btn"
+                [disabled]="(mesaSel.estado !== 'libre' && mesaSel.estado !== 'reservada' && mesaSel.estado !== 'proximamente-reservada') || accionMesaId() === mesaSel.id"
+                (click)="solicitarOcuparMesa(mesaSel.id)">
+          {{ accionMesaId() === mesaSel.id ? 'OCUPANDO...' : (mesaSel.estado === 'reservada' || mesaSel.estado === 'proximamente-reservada' ? 'OCUPAR (Reserva)' : 'OCUPAR MESA') }}
+        </button>
+      </div>
+    </div>
+  }
+
+  @if (mostrarAvisoReservaModal()) {
+    <div class="modal-overlay" (click)="mostrarAvisoReservaModal.set(false)">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <p class="modal-subtitle">⚠️ AVISO RESERVA</p>
+        <h2 class="modal-title">Liberar pronto</h2>
+        <p>Esta mesa tiene una reserva en <strong>{{ avisoReservaMinutos() }} minutos</strong>.</p>
+        <p>¿Seguro que quieres sentar a nuevos clientes?</p>
+
+        <div class="modal-actions">
+          <button class="action-btn" (click)="mostrarAvisoReservaModal.set(false)">
+            Cancelar
+          </button>
+          <button class="action-btn" (click)="confirmarOcuparConAviso()">
+            Sí, ocupar mesa
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (mostrarConfirmacionLiberar()) {
+    <div class="modal-overlay" (click)="cancelarConfirmacionLiberar()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <p class="modal-subtitle">CONFIRMACION</p>
+        <h2 class="modal-title">Liberar mesa</h2>
+        <p>Se cancelaran todos los pedidos de la cuenta y la mesa quedara libre.</p>
+
+        <div class="modal-actions">
+          <button class="action-btn" [disabled]="accionMesaId() !== null" (click)="cancelarConfirmacionLiberar()">
+            Cancelar
+          </button>
+          <button class="action-btn" [disabled]="accionMesaId() !== null" (click)="confirmarLiberarMesa()">
+            {{ accionMesaId() !== null ? 'LIBERANDO...' : 'Confirmar liberacion' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

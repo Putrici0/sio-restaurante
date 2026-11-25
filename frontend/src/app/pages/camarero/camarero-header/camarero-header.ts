@@ -1,0 +1,457 @@
+import { CommonModule } from '@angular/common';
+import { Component, Input, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { RouterModule } from '@angular/router';
+import { Subscription } from 'rxjs';
+import { catchError, of, take } from 'rxjs';
+import { Notificacion } from '../../../models/notificacion.model';
+import { CamareroAuthService } from '../../../services/camarero-auth.service';
+import { NotificacionesApiService } from '../../../services/notificaciones-api.service';
+import { NotificacionesPollingService } from '../../../services/notificaciones-polling.service';
+import { OrdenesApiService } from '../../../services/ordenes-api.service';
+
+type ModoAviso = 'sonido' | 'vibracion' | 'silencio';
+
+@Component({
+  selector: 'app-camarero-header',
+  standalone: true,
+  imports: [CommonModule, RouterModule],
+  templateUrl: './camarero-header.html',
+  styleUrl: './camarero-header.css',
+})
+export class CamareroHeader implements OnInit, OnDestroy {
+  @Input() titulo = '';
+  @Input() pendientesCount = 0;
+
+  private readonly notificacionesApi = inject(NotificacionesApiService);
+  private readonly notificacionesPolling = inject(NotificacionesPollingService);
+  private readonly ordenesApi = inject(OrdenesApiService);
+  private readonly camareroAuth = inject(CamareroAuthService);
+  private readonly pollingMs = 4000;
+  private readonly modoAvisoStorageKey = 'camarero-notificaciones-modo-aviso';
+  private readonly notificacionesYaAvisadas = new Set<string>();
+  private primeraCargaNotificaciones = true;
+
+  private intervaloNotificaciones?: number;
+  private intervaloReloj?: number;
+  private notificacionesSub?: Subscription;
+
+  menuAbierto = false;
+
+  readonly panelNotificacionesAbierto = signal(false);
+  readonly notificaciones = signal<Notificacion[]>([]);
+  readonly errorNotificaciones = signal<string | null>(null);
+  readonly modoAviso = signal<ModoAviso>('sonido');
+  readonly ahora = signal(Date.now());
+  readonly asignandoNotificacionId = signal<string | null>(null);
+  readonly camareroUidActual = signal<string | null>(null);
+
+  readonly notificacionesRecoger = computed(() =>
+    this.notificaciones()
+      .filter((notificacion) => !notificacion.leida && notificacion.tipo === 'Recoger')
+      .sort((a, b) => {
+        const prioridadA = this.esAsignadaAlCamareroActual(a) ? 1 : 0;
+        const prioridadB = this.esAsignadaAlCamareroActual(b) ? 1 : 0;
+
+        if (prioridadA !== prioridadB) {
+          return prioridadB - prioridadA;
+        }
+
+        return this.fechaMs(b.fecha) - this.fechaMs(a.fecha);
+      }),
+  );
+
+  readonly notificacionesAtencion = computed(() =>
+    this.notificaciones()
+      .filter((notificacion) => !notificacion.leida && notificacion.tipo === 'Atencion')
+      .sort((a, b) => {
+        const prioridadA = this.esAsignadaAlCamareroActual(a) ? 1 : 0;
+        const prioridadB = this.esAsignadaAlCamareroActual(b) ? 1 : 0;
+
+        if (prioridadA !== prioridadB) {
+          return prioridadB - prioridadA;
+        }
+
+        return this.fechaMs(b.fecha) - this.fechaMs(a.fecha);
+      }),
+  );
+
+  readonly totalNotificaciones = computed(() =>
+    this.notificacionesRecoger().length + this.notificacionesAtencion().length
+  );
+
+  readonly totalNotificacionesCampana = computed(() =>
+    this.notificaciones().filter((notificacion) =>
+      !notificacion.leida &&
+      (!notificacion.enCurso || this.esAsignadaAlCamareroActual(notificacion))
+    ).length
+  );
+
+  readonly textoModoAviso = computed(() => {
+    switch (this.modoAviso()) {
+      case 'sonido':
+        return '🔊';
+      case 'vibracion':
+        return '📳';
+      case 'silencio':
+        return '🔕';
+    }
+  });
+
+  readonly textoModoAvisoLargo = computed(() => {
+    switch (this.modoAviso()) {
+      case 'sonido':
+        return 'Sonido y vibración';
+      case 'vibracion':
+        return 'Solo vibración';
+      case 'silencio':
+        return 'Silencio';
+    }
+  });
+
+  ngOnInit(): void {
+    this.restaurarPreferencias();
+    this.cargarPerfilCamareroActual();
+    this.notificacionesSub = this.notificacionesPolling.pendientes$.subscribe((pendientes) => {
+      this.notificaciones.set(pendientes);
+      this.errorNotificaciones.set(null);
+      if (this.primeraCargaNotificaciones) {
+        pendientes.forEach((notificacion) => this.notificacionesYaAvisadas.add(notificacion.id));
+        this.primeraCargaNotificaciones = false;
+        return;
+      }
+      this.procesarNuevas(pendientes);
+    });
+
+    this.intervaloReloj = window.setInterval(() => {
+      this.ahora.set(Date.now());
+    }, 1000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.intervaloReloj) {
+      window.clearInterval(this.intervaloReloj);
+    }
+
+    this.notificacionesSub?.unsubscribe();
+  }
+
+  toggleMenu(): void {
+    this.menuAbierto = !this.menuAbierto;
+
+    if (this.menuAbierto) {
+      this.panelNotificacionesAbierto.set(false);
+    }
+  }
+
+  togglePanelNotificaciones(): void {
+    this.panelNotificacionesAbierto.update((abierto) => !abierto);
+  }
+
+  cerrarPanelNotificaciones(): void {
+    this.panelNotificacionesAbierto.set(false);
+  }
+
+  cambiarModoAviso(): void {
+    const modoActual = this.modoAviso();
+
+    const nuevoModo: ModoAviso =
+      modoActual === 'sonido'
+        ? 'vibracion'
+        : modoActual === 'vibracion'
+          ? 'silencio'
+          : 'sonido';
+
+    this.modoAviso.set(nuevoModo);
+    localStorage.setItem(this.modoAvisoStorageKey, nuevoModo);
+
+    if (nuevoModo === 'sonido') {
+      this.reproducirSonido();
+      this.vibrar();
+    }
+
+    if (nuevoModo === 'vibracion') {
+      this.vibrar();
+    }
+  }
+
+  async marcarEnCurso(notificacion: Notificacion): Promise<void> {
+    if (this.asignandoNotificacionId()) {
+      return;
+    }
+
+    this.asignandoNotificacionId.set(notificacion.id);
+    this.errorNotificaciones.set(null);
+
+    try {
+      const perfil = await this.camareroAuth.obtenerPerfilCamareroActual();
+
+      this.notificacionesApi
+        .marcarEnCurso(notificacion.id, perfil.uid, perfil.nombreCompleto)
+        .pipe(take(1))
+        .subscribe({
+          next: (actualizada) => {
+            this.notificaciones.update((actuales) =>
+              actuales.map((item) => item.id === actualizada.id ? actualizada : item),
+            );
+            this.asignandoNotificacionId.set(null);
+          },
+          error: (err) => {
+            console.error(err);
+            this.errorNotificaciones.set('No se ha podido marcar la notificación en curso.');
+            this.asignandoNotificacionId.set(null);
+          },
+        });
+    } catch (err) {
+      console.error(err);
+      this.errorNotificaciones.set('No se ha podido identificar al camarero.');
+      this.asignandoNotificacionId.set(null);
+    }
+  }
+
+  marcarCompletada(notificacion: Notificacion): void {
+    if (this.asignandoNotificacionId()) {
+      return;
+    }
+
+    this.asignandoNotificacionId.set(notificacion.id);
+    this.errorNotificaciones.set(null);
+
+    if (notificacion.tipo === 'Recoger' && !!notificacion.ordenId) {
+      this.ordenesApi
+        .marcarEntregada(notificacion.ordenId)
+        .pipe(take(1))
+        .subscribe({
+          next: () => this.completarNotificacion(notificacion.id),
+          error: (err) => {
+            console.error(err);
+            this.errorNotificaciones.set('No se ha podido marcar el plato como entregado.');
+            this.asignandoNotificacionId.set(null);
+          },
+        });
+      return;
+    }
+
+    this.completarNotificacion(notificacion.id);
+  }
+
+  desasignarYReenviar(notificacion: Notificacion): void {
+    if (this.asignandoNotificacionId()) {
+      return;
+    }
+
+    this.asignandoNotificacionId.set(notificacion.id);
+    this.errorNotificaciones.set(null);
+
+    this.notificacionesApi
+      .desasignarYReenviar(notificacion.id)
+      .pipe(take(1))
+      .subscribe({
+        next: (actualizada) => {
+          this.notificacionesYaAvisadas.delete(actualizada.id);
+          this.notificaciones.update((actuales) =>
+            actuales.map((item) => item.id === actualizada.id ? actualizada : item),
+          );
+          this.asignandoNotificacionId.set(null);
+        },
+        error: (err) => {
+          console.error(err);
+          this.errorNotificaciones.set('No se ha podido desasignar la notificación.');
+          this.asignandoNotificacionId.set(null);
+        },
+      });
+  }
+
+  mesaTexto(notificacion: Notificacion): string {
+    const mesas = notificacion.cuenta?.mesas ?? [];
+
+    if (mesas.length === 1) {
+      return `Mesa ${mesas[0].id}`;
+    }
+
+    if (mesas.length > 1) {
+      return `Mesas ${mesas.map((mesa) => mesa.id).join(', ')}`;
+    }
+
+    if (notificacion.cuenta?.id) {
+      return `Cuenta ${notificacion.cuenta.id}`;
+    }
+
+    return 'Mesa sin identificar';
+  }
+
+  descripcionNotificacion(notificacion: Notificacion): string {
+    if (notificacion.tipo === 'Recoger') {
+      const item = this.itemTexto(notificacion);
+      return item
+        ? `Listo para recoger: ${item}.`
+        : 'Pedido listo para recoger';
+    }
+    return `${this.mesaTexto(notificacion)} solicita atención.`;
+  }
+
+  textoAsignacion(notificacion: Notificacion): string {
+    if (!notificacion.enCurso) {
+      return 'Pendiente de asignar';
+    }
+
+    return `En curso por ${notificacion.camareroNombre || 'camarero'}`;
+  }
+
+  itemTexto(notificacion: Notificacion): string {
+    const nombre = notificacion.nombreItem?.trim();
+
+    if (!nombre) {
+      return '';
+    }
+
+    const categoria = notificacion.categoriaItem?.trim();
+
+    if (!categoria) {
+      return nombre;
+    }
+
+    const tipo = categoria.toLowerCase() === 'bebida' ? 'Bebida' : 'Plato';
+
+    return `${tipo}: ${nombre}`;
+  }
+
+  tiempoTranscurrido(fechaIso: string): string {
+    const diffMs = Math.max(0, this.ahora() - this.fechaMs(fechaIso));
+    const diffMin = Math.floor(diffMs / 60000);
+
+    if (diffMin < 1) {
+      return 'Ahora';
+    }
+
+    if (diffMin < 60) {
+      return `Hace ${diffMin} min`;
+    }
+
+    const horas = Math.floor(diffMin / 60);
+    return `Hace ${horas} h`;
+  }
+
+  private completarNotificacion(notificacionId: string): void {
+    this.notificacionesApi
+      .marcarComoCompletada(notificacionId)
+      .pipe(take(1))
+      .subscribe({
+        next: (actualizada) => {
+          this.notificacionesYaAvisadas.delete(actualizada.id);
+          this.notificaciones.update((actuales) =>
+            actuales.filter((item) => item.id !== actualizada.id),
+          );
+          this.asignandoNotificacionId.set(null);
+        },
+        error: (err) => {
+          console.error(err);
+          this.errorNotificaciones.set('No se ha podido completar la notificación.');
+          this.asignandoNotificacionId.set(null);
+        },
+      });
+  }
+
+  private procesarNuevas(notificaciones: Notificacion[]): void {
+    const nuevasRelevantes = notificaciones
+      .filter((notificacion) =>
+        !notificacion.enCurso || this.esAsignadaAlCamareroActual(notificacion),
+      )
+      .filter(
+        (notificacion) => !this.notificacionesYaAvisadas.has(notificacion.id),
+      );
+
+    notificaciones.forEach((notificacion) => {
+      this.notificacionesYaAvisadas.add(notificacion.id);
+    });
+
+    if (nuevasRelevantes.length === 0) {
+      return;
+    }
+
+    if (this.modoAviso() === 'silencio') {
+      return;
+    }
+
+    if (this.modoAviso() === 'sonido') {
+      this.reproducirSonido();
+      this.vibrar();
+      return;
+    }
+
+    if (this.modoAviso() === 'vibracion') {
+      this.vibrar();
+    }
+  }
+
+  private reproducirSonido(): void {
+    try {
+      const AudioContextClass =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+
+      const audioContext = new AudioContextClass();
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
+
+      gain.gain.setValueAtTime(0.001, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.18, audioContext.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.35);
+
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.35);
+    } catch (err) {
+      console.warn('No se ha podido reproducir el sonido.', err);
+    }
+  }
+
+  private vibrar(): void {
+    if ('vibrate' in navigator) {
+      navigator.vibrate([160, 80, 160]);
+    }
+  }
+
+  private restaurarPreferencias(): void {
+    const modoGuardado = localStorage.getItem(this.modoAvisoStorageKey);
+
+    if (
+      modoGuardado === 'sonido' ||
+      modoGuardado === 'vibracion' ||
+      modoGuardado === 'silencio'
+    ) {
+      this.modoAviso.set(modoGuardado);
+    } else {
+      this.modoAviso.set('sonido');
+      localStorage.setItem(this.modoAvisoStorageKey, 'sonido');
+    }
+  }
+
+  private async cargarPerfilCamareroActual(): Promise<void> {
+    try {
+      const perfil = await this.camareroAuth.obtenerPerfilCamareroActual();
+      this.camareroUidActual.set(perfil.uid);
+    } catch (err) {
+      console.warn('No se ha podido cargar el perfil del camarero actual.', err);
+      this.camareroUidActual.set(null);
+    }
+  }
+
+  esAsignadaAlCamareroActual(notificacion: Notificacion): boolean {
+    const uidActual = this.camareroUidActual();
+    return !!uidActual && !!notificacion.enCurso && notificacion.camareroUid === uidActual;
+  }
+
+  private fechaMs(fechaIso: string | null | undefined): number {
+    if (!fechaIso) {
+      return 0;
+    }
+
+    const fecha = new Date(fechaIso).getTime();
+    return Number.isNaN(fecha) ? 0 : fecha;
+  }
+}
