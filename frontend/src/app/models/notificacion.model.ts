@@ -1,28 +1,9 @@
-export type TipoNotificacion = 'Recoger' | 'Atencion';
-
-export interface NotificacionMesa {
-  id: string | number;
-  capacidad?: number;
-}
-
-export interface NotificacionCuenta {
-  id: string;
-  mesas?: NotificacionMesa[];
-  payed?: boolean;
-  estaPagada?: boolean;
-}
-
+/** Aviso "llamar al camarero" creado por el cliente desde la página de su mesa. */
 export interface Notificacion {
   id: string;
-  cuenta?: NotificacionCuenta | null;
-  tipo: TipoNotificacion;
-  leida: boolean;
+  cuentaId: string;
+  mesaIds: string[];
   fecha: string;
-  ordenId?: string | null;
-  nombreItem?: string | null;
-  categoriaItem?: string | null;
-  enCurso?: boolean;
-  camareroUid?: string | null;
-  camareroNombre?: string | null;
-  fechaEnCurso?: string | null;
+  atendida: boolean;
+  fechaAtendida?: string | null;
 }

@@ -1,0 +1,49 @@
+<app-camarero-header />
+
+<main class="sala-pagina">
+  <p class="sh-eyebrow">Servicio en sala</p>
+  <h1>{{ titulo }}</h1>
+  <p class="sub">{{ subtitulo }}</p>
+
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+
+  @if (cargando()) {
+    <p class="vacio">Cargando…</p>
+  } @else {
+    @for (grupo of porServir(); track grupo.mesa) {
+      <section class="mesa sh-tarjeta">
+        <h2>Mesa {{ grupo.mesa }} <span class="sh-chip">{{ grupo.ordenes.length }}</span></h2>
+        @for (o of grupo.ordenes; track o.id) {
+          <div class="linea">
+            <div>
+              <strong>{{ o.plato.nombre }}</strong>
+              <small>{{ hora(o) }}@if (o.detalles) { · {{ o.detalles }} }</small>
+            </div>
+            <button type="button" class="sh-btn sh-btn--primario" [disabled]="actualizandoId() === o.id" (click)="servir(o)">
+              Servido
+            </button>
+          </div>
+        }
+      </section>
+    } @empty {
+      <p class="vacio">🌸 No hay nada pendiente de servir.</p>
+    }
+
+    @if (servidas().length > 0) {
+      <h2 class="recientes">Servido recientemente</h2>
+      <section class="sh-tarjeta lista-servidas">
+        @for (o of servidas(); track o.id) {
+          <div class="linea linea--servida">
+            <div>
+              <strong>{{ o.plato.nombre }}</strong>
+              <small>Mesa {{ mesaDe(o) }}</small>
+            </div>
+            <button type="button" class="sh-btn" [disabled]="actualizandoId() === o.id" (click)="deshacer(o)">Deshacer</button>
+          </div>
+        }
+      </section>
+    }
+  }
+</main>

@@ -1,22 +1,15 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import {
-  User,
-  browserSessionPersistence,
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-  setPersistence,
-  signInWithEmailAndPassword,
-  signOut
-} from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { firebaseAuth, firebaseDb } from '../firebase.config';
+import { firstValueFrom } from 'rxjs';
 
-interface RegistroCamareroInput {
+export type RolPersonal = 'Camarero' | 'Cocinero' | 'Gerente';
+
+export interface SesionPersonal {
+  id: string;
+  usuario: string;
   nombre: string;
-  apellido: string;
-  correo: string;
-  password: string;
+  rol: RolPersonal;
 }
 
 export interface CamareroPerfilActual {
@@ -25,122 +18,54 @@ export interface CamareroPerfilActual {
   correo: string | null;
 }
 
-const FIREBASE_TIMEOUT_MS = 12000;
+const CLAVE_SESION = 'sio-restaurante.sesion';
 
+/**
+ * Sesión del personal de sala. El login se valida contra el backend (usuarios del JSON de datos)
+ * y la sesión se guarda en sessionStorage mientras la pestaña esté abierta.
+ */
 @Injectable({ providedIn: 'root' })
 export class CamareroAuthService {
-  constructor(private router: Router) {}
+  private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
+  private readonly apiUrl = `http://${window.location.hostname}:7070`;
 
-  async iniciarSesion(correo: string, password: string): Promise<void> {
-    await this.withTimeout(setPersistence(firebaseAuth, browserSessionPersistence));
-
-    const credenciales = await this.withTimeout(
-      signInWithEmailAndPassword(firebaseAuth, correo, password)
+  async iniciarSesion(usuario: string, password: string): Promise<SesionPersonal> {
+    const sesion = await firstValueFrom(
+      this.http.post<SesionPersonal>(`${this.apiUrl}/auth/login`, { usuario, password }),
     );
-
-    const autorizado = await this.withTimeout(this.esCamarero(credenciales.user.uid));
-    if (!autorizado) {
-      await signOut(firebaseAuth);
+    // El gerente y el encargado también pueden usar la vista de sala
+    if (sesion.rol !== 'Camarero' && sesion.rol !== 'Gerente') {
       throw new Error('NO_CAMARERO');
+    }
+    sessionStorage.setItem(CLAVE_SESION, JSON.stringify(sesion));
+    return sesion;
+  }
+
+  sesionActual(): SesionPersonal | null {
+    try {
+      const raw = sessionStorage.getItem(CLAVE_SESION);
+      return raw ? (JSON.parse(raw) as SesionPersonal) : null;
+    } catch {
+      return null;
     }
   }
 
-  async registrarCamarero(data: RegistroCamareroInput): Promise<void> {
-    const credenciales = await this.withTimeout(
-      createUserWithEmailAndPassword(firebaseAuth, data.correo, data.password)
-    );
-
-    await this.withTimeout(
-      setDoc(doc(firebaseDb, 'usuarios', credenciales.user.uid), {
-        uid: credenciales.user.uid,
-        rol: 'camarero',
-        nombre: data.nombre,
-        apellido: data.apellido,
-        correo: data.correo,
-        creadoEn: new Date().toISOString(),
-      })
-    );
-  }
-
-  obtenerUsuarioActual(): User | null {
-    return firebaseAuth.currentUser;
-  }
-
-  esperarEstadoAuth(): Promise<User | null> {
-    return new Promise((resolve) => {
-      const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
-        unsubscribe();
-        resolve(user);
-      });
-    });
+  estaAutenticado(): boolean {
+    return this.sesionActual() !== null;
   }
 
   async obtenerPerfilCamareroActual(): Promise<CamareroPerfilActual> {
-    const user = firebaseAuth.currentUser ?? await this.esperarEstadoAuth();
-
-    if (!user) {
-      return {
-        uid: null,
-        nombreCompleto: 'Camarero',
-        correo: null,
-      };
-    }
-
-    const snapshot = await this.withTimeout(getDoc(doc(firebaseDb, 'usuarios', user.uid)));
-
-    if (!snapshot.exists()) {
-      return {
-        uid: user.uid,
-        nombreCompleto: user.email ?? 'Camarero',
-        correo: user.email,
-      };
-    }
-
-    const data = snapshot.data() as {
-      nombre?: string;
-      apellido?: string;
-      correo?: string;
-    };
-
-    const nombreCompleto = `${data.nombre ?? ''} ${data.apellido ?? ''}`.trim();
-
+    const sesion = this.sesionActual();
     return {
-      uid: user.uid,
-      nombreCompleto: nombreCompleto || data.correo || user.email || 'Camarero',
-      correo: data.correo ?? user.email,
+      uid: sesion?.id ?? null,
+      nombreCompleto: sesion?.nombre ?? 'Camarero',
+      correo: sesion?.usuario ?? null,
     };
   }
 
   async cerrarSesion(): Promise<void> {
-    await signOut(firebaseAuth);
+    sessionStorage.removeItem(CLAVE_SESION);
     await this.router.navigate(['/camarero/login']);
-  }
-
-  async esCamarero(uid: string): Promise<boolean> {
-    const snapshot = await this.withTimeout(getDoc(doc(firebaseDb, 'usuarios', uid)));
-    if (!snapshot.exists()) {
-      return false;
-    }
-
-    const data = snapshot.data() as { rol?: string };
-    return data.rol === 'camarero';
-  }
-
-  private async withTimeout<T>(promise: Promise<T>): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      const timeoutId = setTimeout(() => {
-        reject(new Error('FIREBASE_TIMEOUT'));
-      }, FIREBASE_TIMEOUT_MS);
-
-      promise
-        .then((value) => {
-          clearTimeout(timeoutId);
-          resolve(value);
-        })
-        .catch((error) => {
-          clearTimeout(timeoutId);
-          reject(error);
-        });
-    });
   }
 }

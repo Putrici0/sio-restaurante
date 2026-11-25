@@ -1,0 +1,24 @@
+h1 { margin: 4px 0 4px; font-size: 1.6rem; }
+.sub { margin: 0 0 18px; color: var(--sh-tinta-suave); }
+.error { color: var(--sh-error); font-weight: 600; }
+.vacio { color: var(--sh-tinta-suave); text-align: center; padding: 24px 0; }
+
+.mesa { padding: 14px 16px; margin-bottom: 14px; }
+.mesa h2 { margin: 0 0 8px; font-size: 1.15rem; display: flex; align-items: center; gap: 8px; }
+
+.linea {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--sh-sakura-100);
+}
+.linea:first-of-type { border-top: none; }
+.linea div { display: grid; }
+.linea small { color: var(--sh-tinta-suave); }
+.linea .sh-btn { min-height: 40px; padding: 6px 16px; flex-shrink: 0; }
+
+.recientes { font-size: 1rem; margin: 26px 0 8px; color: var(--sh-tinta-suave); }
+.lista-servidas { padding: 4px 16px; }
+.linea--servida strong { font-weight: 600; color: var(--sh-tinta-suave); }

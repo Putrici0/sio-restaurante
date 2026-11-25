@@ -1,27 +1,20 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Subscription, forkJoin, take, timer, of, catchError } from 'rxjs';
+import { Observable, Subscription, catchError, forkJoin, of, switchMap, timer } from 'rxjs';
 
-import { ETIQUETA_ESTADO_MESA, EstadoMesa, Mesa, ZonaMesa } from '../../../models/mesa.model';
-import { CuentaApiService } from '../../../services/cuenta-api.service';
+import { ETIQUETA_ESTADO_MESA, EstadoMesa, Mesa } from '../../../models/mesa.model';
+import { Notificacion } from '../../../models/notificacion.model';
 import { MesasApiService } from '../../../services/mesas-api.service';
 import { NotificacionesApiService } from '../../../services/notificaciones-api.service';
-import { CamareroAuthService } from '../../../services/camarero-auth.service';
 import { CamareroHeader } from '../camarero-header/camarero-header';
-import { Notificacion } from '../../../models/notificacion.model';
 
-interface ItemCobroAgrupado {
-  platoId: string;
-  nombre: string;
-  categoria: string;
-  precioUnitario: number;
-  cantidad: number;
-  subtotal: number;
-  estados: string[];
-  ordenesIds: string[];
-}
+type MesaSala = Mesa & { llamando: boolean };
 
+/**
+ * Mapa interactivo de las 15 mesas en el móvil del camarero:
+ * apertura y cierre de sesión, toma de comandas, cobro y limpieza.
+ */
 @Component({
   selector: 'app-mesas-camarero',
   standalone: true,
@@ -31,561 +24,144 @@ interface ItemCobroAgrupado {
 })
 export class MesasCamarero implements OnDestroy {
   private readonly mesasApi = inject(MesasApiService);
-  private readonly cuentaApi = inject(CuentaApiService);
   private readonly notificacionesApi = inject(NotificacionesApiService);
-  private readonly camareroAuth = inject(CamareroAuthService);
   private readonly router = inject(Router);
+  private readonly sub: Subscription;
 
-  readonly zonaActiva = signal<ZonaMesa>('interior');
-  readonly mesaSeleccionada = signal<Mesa | null>(null);
+  readonly etiquetas = ETIQUETA_ESTADO_MESA;
+  readonly estados: EstadoMesa[] = ['libre', 'ocupada', 'pendiente-cobro', 'sucia'];
   readonly mesas = signal<Mesa[]>([]);
-  readonly notificacionesAtencion = signal<Notificacion[]>([]);
-  readonly asignacionesActivas = signal<Notificacion[]>([]);
+  readonly avisos = signal<Notificacion[]>([]);
+  readonly seleccionadaId = signal<string | null>(null);
   readonly cargando = signal(true);
   readonly error = signal<string | null>(null);
-  readonly accionMesaId = signal<string | null>(null);
-  readonly accionAtencionMesaId = signal<string | null>(null);
-  readonly camareroUidActual = signal<string | null>(null);
+  readonly accionEnCurso = signal(false);
+  readonly mostrarCodigo = signal(false);
+  readonly confirmarLiberar = signal(false);
 
-  // --- ESTADO DE COBRO ---
-  readonly mostrarModalCobro = signal(false);
-  readonly cuentaCobroId = signal<string | null>(null);
-  readonly mesaCobroId = signal<string | null>(null);
-  readonly totalCuentaCobro = signal<number | null>(null);
-  readonly cargandoCobro = signal(false);
-  readonly procesandoCobro = signal(false);
-  readonly resumenCobro = signal<ItemCobroAgrupado[]>([]);
-  readonly metodoPago = signal<'EFECTIVO' | 'TARJETA'>('EFECTIVO');
-  readonly importeRecibido = signal<number | null>(null);
-  readonly eliminandoOrdenId = signal<string | null>(null);
-  readonly mostrarConfirmacionEliminar = signal(false);
-  readonly itemPendienteEliminar = signal<ItemCobroAgrupado | null>(null);
-  readonly ordenesSeleccionadas = signal<string[]>([]);
-  readonly mostrarContrasenaModal = signal(false);
-  readonly mostrarConfirmacionLiberar = signal(false);
-  readonly mesaPendienteLiberarId = signal<string | null>(null);
-
-
-
-  private pollingSub?: Subscription;
-  private readonly pollingMs = 2000;
-  private readonly pollingNotificacionesMs = 8000;
-  private ultimoRefrescoNotificaciones = 0;
-
-  readonly etiquetasEstado = ETIQUETA_ESTADO_MESA;
-
-  readonly mesasFiltradas = computed(() => {
-    const activas = this.notificacionesAtencion();
-    const idsMesasConAtencion = new Set<string>();
-
-    activas.forEach((n: Notificacion) => {
-      if (n.enCurso && n.camareroUid && n.camareroUid !== this.camareroUidActual()) return;
-      n.cuenta?.mesas?.forEach((m: any) => idsMesasConAtencion.add(m.id));
-    });
-
-    const mesasZona = this.mesas()
-      .filter((mesa) => mesa.zona === this.zonaActiva())
-      .sort((a, b) => this.compararMesaIds(a.id, b.id));
-
-    const mesasAgrupadas = new Map<string, (Mesa & { tieneAtencion: boolean })>();
-
-    for (const mesa of mesasZona) {
-      const grupoMesaIds = this.normalizarGrupoMesaIds(mesa.grupoMesaIds);
-      const clave = this.claveGrupo(grupoMesaIds);
-      if (mesasAgrupadas.has(clave)) continue;
-
-      const miembros = grupoMesaIds
-        .map((id) => mesasZona.find((mesaZona) => mesaZona.id === id))
-        .filter((value): value is Mesa => !!value)
-        .sort((a, b) => this.compararMesaIds(a.id, b.id));
-
-      const cuentaActiva = miembros.find((item) => item.cuentaActiva)?.cuentaActiva ?? null;
-      const mesaPrincipalId = miembros[0]?.id ?? mesa.id;
-
-      mesasAgrupadas.set(clave, {
-        id: mesaPrincipalId,
-        capacidad: miembros.reduce((acc, item) => acc + item.capacidad, 0),
-        zona: mesa.zona,
+  /** Mesas lógicas (las unidas se muestran como una sola). */
+  readonly mesasSala = computed<MesaSala[]>(() => {
+    const llamando = new Set(this.avisos().flatMap((a) => a.mesaIds));
+    const vistas = new Set<string>();
+    const resultado: MesaSala[] = [];
+    for (const mesa of this.mesas()) {
+      const grupo = [...mesa.grupoMesaIds].sort((a, b) => Number(a) - Number(b));
+      const clave = grupo.join('|');
+      if (vistas.has(clave)) continue;
+      vistas.add(clave);
+      const miembros = this.mesas().filter((m) => grupo.includes(m.id));
+      resultado.push({
+        ...mesa,
+        id: grupo[0],
+        grupoMesaIds: grupo,
+        capacidad: miembros.reduce((acc, m) => acc + m.capacidad, 0),
         estado: this.estadoGrupo(miembros),
-        cuentaActivaId: cuentaActiva?.id ?? null,
-        cuentaActiva,
-        grupoMesaIds,
-        mesaPrincipalId,
-        tieneAtencion: grupoMesaIds.some((id) => idsMesasConAtencion.has(id)),
+        cuentaActiva: miembros.find((m) => m.cuentaActiva)?.cuentaActiva ?? null,
+        llamando: grupo.some((id) => llamando.has(id)),
       });
     }
-
-    return Array.from(mesasAgrupadas.values()).sort((a, b) =>
-      this.compararMesaIds(a.id, b.id),
-    );
+    return resultado.sort((a, b) => Number(a.id) - Number(b.id));
   });
 
-  readonly misMesasAsignadas = computed(() =>
-    this.mesasFiltradas().filter((mesa) => {
-      const atencion = this.obtenerAsignacionResponsableDeMesa(mesa);
-      return !!atencion?.enCurso && atencion.camareroUid === this.camareroUidActual();
-    }),
-  );
+  readonly seleccionada = computed(() => this.mesasSala().find((m) => m.id === this.seleccionadaId()) ?? null);
 
-  readonly misMesasAsignadasTexto = computed(() =>
-    this.misMesasAsignadas().map((mesa) => this.etiquetaMesa(mesa)).join(', '),
-  );
-
-  readonly totalCobro = computed(() => {
-    const seleccionadas = new Set(this.ordenesSeleccionadas());
-    const total = this.resumenCobro().reduce((acc, item) => {
-      const cantidadSeleccionada = item.ordenesIds.filter((id) => seleccionadas.has(id)).length;
-      return acc + cantidadSeleccionada * item.precioUnitario;
-    }, 0);
-    return Number(total.toFixed(2));
-  });
-
-  readonly cambioCobro = computed(() => {
-    const total = this.totalCobro();
-    const recibido = this.importeRecibido();
-    if (this.metodoPago() !== 'EFECTIVO' || recibido == null) return null;
-    return Number((recibido - total).toFixed(2));
-  });
-
-  readonly faltaCobro = computed(() => {
-    const total = this.totalCobro();
-    const recibido = this.importeRecibido();
-    if (this.metodoPago() !== 'EFECTIVO' || recibido == null) return null;
-    if (recibido >= total) return 0;
-    return Number((total - recibido).toFixed(2));
-  });
-
-  readonly puedeConfirmarCobro = computed(() => {
-    const total = this.totalCobro();
-    if (total <= 0 || this.procesandoCobro() || this.eliminandoOrdenId() !== null || this.mostrarConfirmacionEliminar()) {
-      return false;
-    }
-    if (this.ordenesSeleccionadas().length === 0) return false;
-    if (this.metodoPago() === 'TARJETA') return true;
-    const recibido = this.importeRecibido();
-    return recibido != null && recibido >= total;
+  readonly resumen = computed(() => {
+    const cuenta = (e: EstadoMesa) => this.mesasSala().filter((m) => m.estado === e).length;
+    return this.estados.map((e) => ({ estado: e, total: cuenta(e) }));
   });
 
   constructor() {
-    this.cargarPerfilCamareroActual();
-    this.recargarMesas();
-    this.iniciarPolling();
+    this.sub = timer(0, 3000)
+      .pipe(
+        switchMap(() =>
+          forkJoin({
+            mesas: this.mesasApi.cargarMesasParaVista().pipe(catchError(() => of(null))),
+            avisos: this.notificacionesApi.pendientes().pipe(catchError(() => of(this.avisos()))),
+          }),
+        ),
+      )
+      .subscribe(({ mesas, avisos }) => {
+        if (mesas) {
+          this.mesas.set(mesas);
+          this.error.set(null);
+        } else if (this.mesas().length === 0) {
+          this.error.set('No se han podido cargar las mesas.');
+        }
+        this.avisos.set(avisos);
+        this.cargando.set(false);
+      });
   }
 
   ngOnDestroy(): void {
-    this.pollingSub?.unsubscribe();
+    this.sub.unsubscribe();
   }
 
-  cambiarZona(nuevaZona: ZonaMesa): void {
-    this.zonaActiva.set(nuevaZona);
-    this.mesaSeleccionada.set(null);
+  etiqueta(m: Mesa): string {
+    return m.grupoMesaIds.length > 1 ? m.grupoMesaIds.join(' + ') : m.id;
   }
 
-  abrirMesa(mesa: Mesa): void {
-    const actual = this.mesaSeleccionada();
-    if (actual && this.claveGrupo(actual.grupoMesaIds) === this.claveGrupo(mesa.grupoMesaIds)) {
-      this.mesaSeleccionada.set(null);
-      return;
-    }
-    this.mesaSeleccionada.set(mesa);
+  abrir(m: MesaSala): void {
+    this.seleccionadaId.set(m.id);
+    this.mostrarCodigo.set(false);
+    this.confirmarLiberar.set(false);
   }
 
-  cerrarModal(): void {
-    this.mesaSeleccionada.set(null);
-    this.mostrarContrasenaModal.set(false);
+  cerrar(): void {
+    this.seleccionadaId.set(null);
   }
 
-  hacerPedido(mesaId: string): void {
-    this.router.navigate(['/camarero/menu', mesaId]);
+  abrirSesion(m: Mesa): void {
+    this.accion(this.mesasApi.ocuparMesa(m.id));
   }
 
-  toggleContrasena(): void {
-    this.mostrarContrasenaModal.update(v => !v);
+  cerrarSesion(m: Mesa): void {
+    this.accion(this.mesasApi.cerrarSesion(m.id));
   }
 
-  async asignarmeAtencionMesa(mesa: Mesa): Promise<void> {
-    if (this.accionAtencionMesaId()) {
-      return;
-    }
-    if (!mesa.cuentaActiva?.id) {
-      this.error.set('La mesa debe tener una cuenta activa para asignar responsable.');
-      return;
-    }
+  reabrirSesion(m: Mesa): void {
+    this.accion(this.mesasApi.reabrirSesion(m.id));
+  }
 
+  marcarLimpia(m: Mesa): void {
+    this.accion(this.mesasApi.limpiarMesa(m.id));
+  }
+
+  liberar(m: Mesa): void {
+    this.accion(this.mesasApi.liberarMesa(m.id), true);
+  }
+
+  tomarComanda(m: Mesa): void {
+    void this.router.navigate(['/camarero/menu', m.id]);
+  }
+
+  verCuenta(m: Mesa): void {
+    void this.router.navigate(['/camarero/cuenta', m.id]);
+  }
+
+  private accion(peticion: Observable<unknown>, cerrarPanel = false): void {
+    if (this.accionEnCurso()) return;
+    this.accionEnCurso.set(true);
     this.error.set(null);
-    this.accionAtencionMesaId.set(mesa.id);
-
-    try {
-      const perfil = await this.camareroAuth.obtenerPerfilCamareroActual();
-      this.notificacionesApi
-        .asignarResponsableMesa(mesa.cuentaActiva.id, perfil.uid, perfil.nombreCompleto)
-        .pipe(take(1))
-        .subscribe({
-          next: () => {
-            forkJoin({
-              notifs: this.notificacionesApi.obtenerActivas().pipe(catchError(() => of([]))),
-              asignaciones: this.notificacionesApi.obtenerAsignacionesActivas().pipe(catchError(() => of([]))),
-            }).pipe(take(1)).subscribe({
-              next: ({ notifs, asignaciones }) => {
-                this.notificacionesAtencion.set(notifs);
-                this.asignacionesActivas.set(asignaciones);
-                this.accionAtencionMesaId.set(null);
-              },
-              error: (err) => {
-                console.error('Error refrescando atenciones:', err);
-                this.accionAtencionMesaId.set(null);
-              },
-            });
-          },
-          error: (err) => {
-            console.error('Error asignando responsable de mesa:', err);
-            this.error.set('No se ha podido asignar el responsable de esta mesa.');
-            this.accionAtencionMesaId.set(null);
-          },
-        });
-    } catch (err) {
-      console.error(err);
-      this.error.set('No se ha podido identificar al camarero actual.');
-      this.accionAtencionMesaId.set(null);
-    }
-  }
-
-  desasignarAtencionMesa(mesa: Mesa): void {
-    const asignacion = this.obtenerAsignacionResponsableDeMesa(mesa);
-    const cuentaId = asignacion?.cuenta?.id ?? mesa.cuentaActiva?.id ?? null;
-
-    if (!cuentaId || this.accionAtencionMesaId()) {
-      return;
-    }
-
-    this.error.set(null);
-    this.accionAtencionMesaId.set(mesa.id);
-
-    this.notificacionesApi
-      .liberarResponsableMesa(cuentaId)
-      .pipe(take(1))
+    peticion
+      .pipe(switchMap(() => this.mesasApi.cargarMesasParaVista()))
       .subscribe({
-        next: () => {
-          forkJoin({
-            notifs: this.notificacionesApi.obtenerActivas().pipe(catchError(() => of([]))),
-            asignaciones: this.notificacionesApi.obtenerAsignacionesActivas().pipe(catchError(() => of([]))),
-          }).pipe(take(1)).subscribe({
-            next: ({ notifs, asignaciones }) => {
-              this.notificacionesAtencion.set(notifs);
-              this.asignacionesActivas.set(asignaciones);
-              this.accionAtencionMesaId.set(null);
-            },
-            error: (err) => {
-              console.error('Error refrescando atenciones:', err);
-              this.accionAtencionMesaId.set(null);
-            },
-          });
+        next: (mesas) => {
+          this.mesas.set(mesas);
+          this.accionEnCurso.set(false);
+          this.confirmarLiberar.set(false);
+          if (cerrarPanel) this.cerrar();
         },
         error: (err) => {
-          console.error('Error desasignando atencion:', err);
-          this.error.set('No se ha podido cancelar el responsable de la mesa.');
-          this.accionAtencionMesaId.set(null);
+          this.accionEnCurso.set(false);
+          this.error.set(err?.error?.message ?? 'No se ha podido completar la acción.');
         },
       });
   }
 
-  verCuenta(mesa: Mesa): void {
-    if (!mesa.cuentaActiva) {
-      this.error.set('La mesa no tiene una cuenta activa asociada.');
-      return;
-    }
-    this.cerrarModal();
-    this.router.navigate(['/camarero/cuenta', mesa.id]);
-  }
-
-  /** Apertura explícita de sesión. Las reservas no se asignan automáticamente. */
-  solicitarOcuparMesa(mesaId: string): void {
-    this.ocuparMesaFinal(mesaId);
-  }
-
-  /** Cierre explícito de sesión: la mesa queda pendiente de cobro. */
-  cerrarSesionMesa(mesaId: string): void {
-    this.accionSimpleMesa(mesaId, this.mesasApi.cerrarSesion(mesaId), 'No se ha podido cerrar la sesión.');
-  }
-
-  reabrirSesionMesa(mesaId: string): void {
-    this.accionSimpleMesa(mesaId, this.mesasApi.reabrirSesion(mesaId), 'No se ha podido reabrir la sesión.');
-  }
-
-  marcarMesaLimpia(mesaId: string): void {
-    this.accionSimpleMesa(mesaId, this.mesasApi.limpiarMesa(mesaId), 'No se ha podido marcar la mesa como limpia.');
-  }
-
-  private accionSimpleMesa(mesaId: string, request$: import('rxjs').Observable<unknown>, mensajeError: string): void {
-    if (this.accionMesaId() !== null) return;
-    this.error.set(null);
-    this.accionMesaId.set(mesaId);
-    request$.subscribe({
-      next: () => {
-        this.recargarMesas(mesaId);
-        this.cerrarModal();
-      },
-      error: (err: any) => {
-        console.error(mensajeError, err);
-        this.accionMesaId.set(null);
-        this.error.set(err?.error?.message ?? mensajeError);
-      },
-    });
-  }
-
-  private ocuparMesaFinal(mesaId: string): void {
-    this.error.set(null);
-    this.accionMesaId.set(mesaId);
-    this.mesasApi.ocuparMesa(mesaId).subscribe({
-      next: () => {
-        this.recargarMesas(mesaId);
-        this.cerrarModal();
-      },
-      error: (err: any) => {
-        console.error('Error ocupando mesa:', err);
-        this.accionMesaId.set(null);
-        this.error.set('Error al ocupar mesa.');
-      },
-    });
-  }
-
-  solicitarLiberarMesa(mesaId: string): void {
-    if (!mesaId || this.accionMesaId() !== null) {
-      return;
-    }
-
-    this.mesaPendienteLiberarId.set(mesaId);
-    this.mostrarConfirmacionLiberar.set(true);
-  }
-
-  cancelarConfirmacionLiberar(): void {
-    this.mostrarConfirmacionLiberar.set(false);
-    this.mesaPendienteLiberarId.set(null);
-  }
-
-  confirmarLiberarMesa(): void {
-    const mesaId = this.mesaPendienteLiberarId();
-    if (!mesaId) {
-      return;
-    }
-
-    this.error.set(null);
-    this.accionMesaId.set(mesaId);
-    this.mesasApi.liberarMesa(mesaId).subscribe({
-      next: () => {
-        this.mostrarConfirmacionLiberar.set(false);
-        this.mesaPendienteLiberarId.set(null);
-        this.recargarMesas(mesaId);
-        this.cerrarModal();
-      },
-      error: (err: any) => {
-        console.error('Error liberando mesa:', err);
-        this.accionMesaId.set(null);
-        this.error.set('Error al liberar mesa.');
-      },
-    });
-  }
-
-  private iniciarPolling(): void {
-    this.pollingSub = timer(0, this.pollingMs).subscribe(() => {
-      this.recargarMesas(undefined, false);
-    });
-  }
-
-  private recargarMesas(mesaAReseleccionar?: string, mostrarLoading = true): void {
-    if (mostrarLoading) {
-      this.cargando.set(true);
-    }
-
-    const debeRefrescarNotificaciones =
-      Date.now() - this.ultimoRefrescoNotificaciones >= this.pollingNotificacionesMs ||
-      this.notificacionesAtencion().length === 0;
-
-    const notifs$ = debeRefrescarNotificaciones
-      ? this.notificacionesApi.obtenerActivas().pipe(take(1), catchError(err => { console.warn('Error notifs:', err); return of(this.notificacionesAtencion()); }))
-      : of(this.notificacionesAtencion());
-
-    const asignaciones$ = debeRefrescarNotificaciones
-      ? this.notificacionesApi.obtenerAsignacionesActivas().pipe(take(1), catchError(err => { console.warn('Error asignaciones:', err); return of(this.asignacionesActivas()); }))
-      : of(this.asignacionesActivas());
-
-    // Mesas cada 2s; notificaciones cada 8s.
-    forkJoin({
-      notifs: notifs$,
-      asignaciones: asignaciones$,
-      mesas: this.mesasApi.cargarMesasParaVista().pipe(take(1)) // Sin catchError para que falle el forkJoin si no hay mesas
-    }).subscribe({
-      next: ({ notifs, asignaciones, mesas }: { notifs: Notificacion[], asignaciones: Notificacion[], mesas: Mesa[] }) => {
-        this.error.set(null);
-        this.notificacionesAtencion.set(notifs);
-        this.asignacionesActivas.set(asignaciones);
-        if (debeRefrescarNotificaciones) {
-          this.ultimoRefrescoNotificaciones = Date.now();
-        }
-        this.mesas.set(mesas);
-        this.cargando.set(false);
-        this.accionMesaId.set(null);
-
-        if (mesaAReseleccionar) {
-          const nuevaMesa = mesas.find((m) => m.id === mesaAReseleccionar) ?? null;
-          this.mesaSeleccionada.set(nuevaMesa);
-        } else {
-          const seleccionActual = this.mesaSeleccionada();
-          if (seleccionActual) {
-            const mesaRefrescada = this.buscarMesaLogicaPorId(mesas, seleccionActual.id);
-            this.mesaSeleccionada.set(mesaRefrescada);
-          }
-        }
-      },
-      error: (err: any) => {
-        console.error('Error cargando mesas:', err);
-        this.cargando.set(false);
-        this.accionMesaId.set(null);
-        // Si ya teníamos mesas, no las borramos, solo avisamos
-        if (this.mesas().length === 0) {
-          this.error.set('No se han podido cargar las mesas. Revisa la conexión.');
-        } else {
-          // Opcional: mostrar un toast de "Error al actualizar"
-        }
-      },
-    });
-  }
-
-  etiquetaMesa(mesa: Mesa): string {
-    const ids = this.normalizarGrupoMesaIds(mesa.grupoMesaIds);
-    if (ids.length <= 1) {
-      return `M${mesa.id}`;
-    }
-
-    return ids.map((id) => `M${id}`).join(' + ');
-  }
-
-  esMesaAgrupada(mesa: Mesa): boolean {
-    return this.normalizarGrupoMesaIds(mesa.grupoMesaIds).length > 1;
-  }
-
-  responsableMesaTexto(mesa: Mesa): string {
-    const atencion = this.obtenerAsignacionResponsableDeMesa(mesa);
-    if (!atencion) {
-      return 'Sin responsable asignado';
-    }
-    if (!atencion.enCurso) {
-      return 'Sin responsable asignado';
-    }
-    const nombre = atencion.camareroNombre?.trim() || 'Camarero';
-    return `Responsable: ${nombre}`;
-  }
-
-  responsableMesaCorto(mesa: Mesa): string {
-    const atencion = this.obtenerAsignacionResponsableDeMesa(mesa);
-    if (!atencion) {
-      return 'Sin responsable';
-    }
-    if (!atencion.enCurso) {
-      return 'Sin responsable';
-    }
-    return atencion.camareroNombre?.trim() || 'Responsable asignado';
-  }
-
-  puedeAsignarmeMesa(mesa: Mesa): boolean {
-    const atencion = this.obtenerAsignacionResponsableDeMesa(mesa);
-    if (!mesa.cuentaActiva?.id || !!this.accionAtencionMesaId()) {
-      return false;
-    }
-    return !atencion || !atencion.enCurso;
-  }
-
-  puedeDesasignarMesa(mesa: Mesa): boolean {
-    const atencion = this.obtenerAsignacionResponsableDeMesa(mesa);
-    const uidActual = this.camareroUidActual();
-    if (!atencion || !atencion.enCurso || !!this.accionAtencionMesaId()) {
-      return false;
-    }
-    if (!uidActual) {
-      return false;
-    }
-    return atencion.camareroUid === uidActual;
-  }
-
-  private obtenerAtencionActivaDeMesa(mesa: Mesa): Notificacion | null {
-    const idsGrupo = new Set(this.normalizarGrupoMesaIds(mesa.grupoMesaIds));
-    const notificacion = this.notificacionesAtencion().find((n) => {
-      if (n.tipo !== 'Atencion' || n.leida) {
-        return false;
-      }
-      const mesasNotificacion = n.cuenta?.mesas ?? [];
-      return mesasNotificacion.some((m) => idsGrupo.has(String(m.id)));
-    });
-    return notificacion ?? null;
-  }
-
-  private obtenerAsignacionResponsableDeMesa(mesa: Mesa): Notificacion | null {
-    const idsGrupo = new Set(this.normalizarGrupoMesaIds(mesa.grupoMesaIds));
-    const asignacion = this.asignacionesActivas().find((n) => {
-      const mesasNotificacion = n.cuenta?.mesas ?? [];
-      return mesasNotificacion.some((m) => idsGrupo.has(String(m.id)));
-    });
-    return asignacion ?? null;
-  }
-
-  private buscarMesaLogicaPorId(mesas: Mesa[], mesaId: string): Mesa | null {
-    if (!mesaId) {
-      return null;
-    }
-
-    const mesaFisica = mesas.find((mesa) => mesa.id === mesaId);
-    if (!mesaFisica) {
-      return null;
-    }
-
-    const grupoMesaIds = this.normalizarGrupoMesaIds(mesaFisica.grupoMesaIds);
-    const miembros = grupoMesaIds
-      .map((id) => mesas.find((mesa) => mesa.id === id))
-      .filter((value): value is Mesa => !!value)
-      .sort((a, b) => this.compararMesaIds(a.id, b.id));
-
-    const cuentaActiva = miembros.find((item) => item.cuentaActiva)?.cuentaActiva ?? null;
-    const mesaPrincipalId = miembros[0]?.id ?? mesaFisica.id;
-
-    return {
-      id: mesaPrincipalId,
-      capacidad: miembros.reduce((acc, item) => acc + item.capacidad, 0),
-      zona: mesaFisica.zona,
-      estado: this.estadoGrupo(miembros),
-      cuentaActivaId: cuentaActiva?.id ?? null,
-      cuentaActiva,
-      grupoMesaIds,
-      mesaPrincipalId,
-    };
-  }
-
   private estadoGrupo(miembros: Mesa[]): EstadoMesa {
-    const prioridad: EstadoMesa[] = ['pendiente-cobro', 'ocupada', 'sucia', 'libre'];
-    for (const estado of prioridad) {
-      if (miembros.some((m) => m.estado === estado)) return estado;
+    for (const e of ['pendiente-cobro', 'ocupada', 'sucia'] as EstadoMesa[]) {
+      if (miembros.some((m) => m.estado === e)) return e;
     }
     return 'libre';
-  }
-
-  private normalizarGrupoMesaIds(grupoMesaIds: string[]): string[] {
-    return Array.from(new Set(grupoMesaIds)).sort((a, b) => this.compararMesaIds(a, b));
-  }
-
-  private claveGrupo(grupoMesaIds: string[]): string {
-    return this.normalizarGrupoMesaIds(grupoMesaIds).join('|');
-  }
-
-  private compararMesaIds(left: string, right: string): number {
-    return Number(left) - Number(right);
-  }
-
-  private async cargarPerfilCamareroActual(): Promise<void> {
-    try {
-      const perfil = await this.camareroAuth.obtenerPerfilCamareroActual();
-      this.camareroUidActual.set(perfil.uid);
-    } catch (err) {
-      console.warn('No se ha podido cargar el perfil del camarero actual.', err);
-      this.camareroUidActual.set(null);
-    }
   }
 }

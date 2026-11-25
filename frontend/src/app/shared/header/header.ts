@@ -1,10 +1,14 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive, ActivatedRoute } from '@angular/router';
-import {Subscription, catchError, of, take} from 'rxjs';
+import { CommonModule } from '@angular/common';
+import { ActivatedRoute, RouterLink, RouterLinkActive } from '@angular/router';
+import { Subscription, catchError, of, switchMap, take, timer } from 'rxjs';
 import { CuentaApiService } from '../../services/cuenta-api.service';
 import { NotificacionesApiService } from '../../services/notificaciones-api.service';
-import { CommonModule } from '@angular/common';
 
+/**
+ * Cabecera de la web del cliente en su mesa (acceso por QR): navegación
+ * Carta / Mi cuenta y el botón "Llamar al camarero".
+ */
 @Component({
   selector: 'app-header',
   standalone: true,
@@ -14,134 +18,54 @@ import { CommonModule } from '@angular/common';
 })
 export class Header implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
-  private readonly cuentaApiService = inject(CuentaApiService);
+  private readonly cuentaApi = inject(CuentaApiService);
   private readonly notificacionesApi = inject(NotificacionesApiService);
+  private sub?: Subscription;
 
-  private pollingTimer?: number;
-  private routeSub?: Subscription;
-
-  readonly tableId = signal<string>('1');
-  readonly menuAbierto = signal(false);
+  readonly mesaId = signal('');
   readonly cuentaId = signal<string | null>(null);
-  readonly solicitarAtencionCargando = signal(false);
-  readonly toast = signal<{ mensaje: string; tipo: 'success' | 'error' } | null>(null);
-  readonly atencionActiva = signal<{
-    id: string;
-    enCurso: boolean;
-    camareroNombre?: string | null;
-    leida: boolean;
-  } | null>(null);
-
-  readonly estadoAtencionTexto = signal('');
+  readonly llamadaPendiente = signal(false);
+  readonly enviando = signal(false);
+  readonly mensaje = signal<string | null>(null);
 
   ngOnInit(): void {
-    this.routeSub = this.route.params.subscribe(params => {
-      const id = params['id'];
-      if (id) {
-        this.tableId.set(id);
-        this.actualizarEstadoAtencion();
-      }
-    });
-
-    this.iniciarPolling();
+    this.mesaId.set(this.route.snapshot.paramMap.get('id') ?? '');
+    this.sub = timer(0, 6000)
+      .pipe(
+        switchMap(() => this.cuentaApi.obtenerCuentaActivaDeMesa(this.mesaId()).pipe(catchError(() => of(null)))),
+        switchMap((cuenta) => {
+          this.cuentaId.set(cuenta?.id ?? null);
+          return cuenta?.id
+            ? this.notificacionesApi.hayLlamadaPendiente(cuenta.id).pipe(catchError(() => of(false)))
+            : of(false);
+        }),
+      )
+      .subscribe((pendiente) => this.llamadaPendiente.set(pendiente));
   }
 
   ngOnDestroy(): void {
-    if (this.pollingTimer) {
-      window.clearInterval(this.pollingTimer);
-    }
-    if (this.routeSub) {
-      this.routeSub.unsubscribe();
-    }
+    this.sub?.unsubscribe();
   }
 
-  toggleMenu(): void {
-    this.menuAbierto.update(v => !v);
-    document.body.style.overflow = this.menuAbierto() ? 'hidden' : '';
-  }
-
-  cerrarMenu(): void {
-    this.menuAbierto.set(false);
-    document.body.style.overflow = '';
-  }
-
-  solicitarAtencion(): void {
+  llamarCamarero(): void {
     const cuentaId = this.cuentaId();
-    if (!cuentaId || this.solicitarAtencionCargando()) return;
-
-    this.solicitarAtencionCargando.set(true);
-    this.notificacionesApi.solicitarAtencion(cuentaId).pipe(take(1)).subscribe({
-      next: (notificacion) => {
-        this.atencionActiva.set({
-          id: notificacion.id,
-          enCurso: !!notificacion.enCurso,
-          camareroNombre: notificacion.camareroNombre,
-          leida: notificacion.leida,
-        });
-        this.solicitarAtencionCargando.set(false);
-        this.mostrarToast('Solicitud enviada correctamente', 'success');
+    if (!cuentaId || this.enviando()) return;
+    this.enviando.set(true);
+    this.notificacionesApi.llamarCamarero(cuentaId).pipe(take(1)).subscribe({
+      next: () => {
+        this.llamadaPendiente.set(true);
+        this.enviando.set(false);
+        this.avisar('Hemos avisado al camarero. Enseguida viene a tu mesa.');
       },
       error: () => {
-        this.solicitarAtencionCargando.set(false);
-        this.mostrarToast('Error al enviar la solicitud. Inténtalo de nuevo.', 'error');
+        this.enviando.set(false);
+        this.avisar('No se ha podido avisar al camarero. Inténtalo de nuevo.');
       },
     });
   }
 
-  private mostrarToast(mensaje: string, tipo: 'success' | 'error'): void {
-    this.toast.set({mensaje, tipo});
-    window.setTimeout(() => {
-      this.toast.set(null);
-    }, 5000);
-  }
-
-  private iniciarPolling(): void {
-    this.actualizarEstadoAtencion();
-    this.pollingTimer = window.setInterval(() => {
-      this.actualizarEstadoAtencion();
-    }, 4000);
-  }
-
-  private actualizarEstadoAtencion(): void {
-    const mesaId = this.tableId();
-    if (!mesaId) return;
-
-    this.cuentaApiService.obtenerCuentaActivaDeMesa(mesaId).pipe(take(1)).subscribe({
-      next: (cuenta) => {
-        if (cuenta?.id) {
-          const cuentaIdPrevia = this.cuentaId();
-          this.cuentaId.set(cuenta.id);
-
-          if (!cuentaIdPrevia || cuentaIdPrevia !== cuenta.id) {
-            this.atencionActiva.set(null);
-          }
-
-          this.notificacionesApi.obtenerAtencionActiva(cuenta.id).pipe(take(1)).subscribe({
-            next: (notificacion) => {
-              const previa = this.atencionActiva();
-
-              if (notificacion) {
-                this.atencionActiva.set({
-                  id: notificacion.id,
-                  enCurso: !!notificacion.enCurso,
-                  camareroNombre: notificacion.camareroNombre,
-                  leida: notificacion.leida,
-                });
-              } else {
-                this.atencionActiva.set(null);
-                if (previa && !previa.leida) {
-                  this.mostrarToast('El camarero ha completado tu solicitud.', 'success');
-                }
-              }
-            },
-            error: () => {},
-          });
-        } else {
-          this.cuentaId.set(null);
-          this.atencionActiva.set(null);
-        }
-      },
-      error: () => {},
-    });
+  private avisar(texto: string): void {
+    this.mensaje.set(texto);
+    window.setTimeout(() => this.mensaje.set(null), 3500);
   }
 }

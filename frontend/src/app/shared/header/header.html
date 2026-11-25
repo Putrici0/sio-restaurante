@@ -1,76 +1,30 @@
-<header class="app-header">
-  <div class="header-bar">
-    <button
-      type="button"
-      class="hamburger-btn"
-      (click)="toggleMenu()"
-      [attr.aria-expanded]="menuAbierto()"
-      aria-label="Abrir menú"
-    >
-      ☰
-    </button>
-
-    <div class="logo-container">
-      <img class="logo" src="logo.svg" alt="Sakura Hanami" />
+<header class="cab">
+  <div class="cab__fila">
+    <div class="cab__marca">
+      <img src="logo.svg" alt="" />
+      <span>
+        <strong>Sakura Hanami</strong>
+        <small>Mesa {{ mesaId() }}</small>
+      </span>
     </div>
-  </div>
 
-  @if (cuentaId()) {
-    <div class="atencion-bar">
-      @if (atencionActiva(); as atencion) {
-        @if (atencion.enCurso && atencion.camareroNombre) {
-          <span class="atencion-status atencion-en-curso">
-            Camarero {{ atencion.camareroNombre }} está en camino
-          </span>
-        } @else {
-          <span class="atencion-status atencion-pendiente">
-            Solicitud enviada, esperando camarero...
-          </span>
-        }
+    @if (cuentaId()) {
+      @if (llamadaPendiente()) {
+        <span class="cab__llamada">🔔 Camarero avisado</span>
       } @else {
-        <button
-          type="button"
-          class="atencion-btn"
-          [disabled]="solicitarAtencionCargando()"
-          (click)="solicitarAtencion()"
-        >
-          {{ solicitarAtencionCargando() ? 'Enviando...' : 'Solicitar atención' }}
+        <button type="button" class="sh-btn sh-btn--primario cab__llamar" [disabled]="enviando()" (click)="llamarCamarero()">
+          🔔 Llamar al camarero
         </button>
       }
-    </div>
-  }
-
-  @if (toast(); as t) {
-  <div class="toast-container" [class]="t.tipo">
-    {{ t.mensaje }}
+    }
   </div>
-  }
 
-  @if (menuAbierto()) {
-    <div class="menu-panel">
-      <nav class="nav-links">
-        <a
-          [routerLink]="['/menu', tableId()]"
-          routerLinkActive="active"
-          (click)="cerrarMenu()"
-        >
-          Menú
-        </a>
+  <nav class="cab__nav">
+    <a [routerLink]="['/menu', mesaId()]" routerLinkActive="activo">Carta</a>
+    <a [routerLink]="['/cuenta', mesaId()]" routerLinkActive="activo">Mis platos y cuenta</a>
+  </nav>
 
-        <a
-          [routerLink]="['/cuenta', tableId()]"
-          routerLinkActive="active"
-          (click)="cerrarMenu()"
-        >
-          Cuenta
-        </a>
-      </nav>
-    </div>
-
-  <div
-    class="menu-overlay"
-    [class.show]="menuAbierto()"
-    (click)="cerrarMenu()"
-  ></div>
+  @if (mensaje()) {
+    <div class="cab__toast" role="status">{{ mensaje() }}</div>
   }
 </header>

@@ -1,39 +1,29 @@
-<div class="login-wrapper">
-  <div class="logo-container">
-    <img src="logo.svg" alt="Sakura Hanami" class="logo" />
-  </div>
+<main class="login">
+  <section class="login__card">
+    <img src="logo.svg" alt="" class="login__logo" />
+    <p class="login__eyebrow">Personal de sala</p>
+    <h1 class="login__titulo">Sakura Hanami</h1>
 
-  <div class="login-card">
-    <form class="login-form" novalidate>
-      <div class="input-group">
-        <label for="correo">Correo</label>
-        <input
-          type="email"
-          id="correo"
-          name="correo"
-          [(ngModel)]="correo"
-          placeholder="Introducir correo..."
-          required
-        />
-      </div>
+    <form class="login__form" (ngSubmit)="iniciarSesion()" novalidate>
+      <label class="campo">
+        <span>Usuario</span>
+        <input type="text" name="usuario" autocomplete="username" [(ngModel)]="usuario" placeholder="camarero1" />
+      </label>
 
-      <div class="input-group">
-        <label for="contrasena">Contraseña</label>
-        <input
-          type="password"
-          id="contrasena"
-          name="contrasena"
-          [(ngModel)]="password"
-          placeholder="Introducir contraseña..."
-          required
-        />
-      </div>
+      <label class="campo">
+        <span>Contraseña</span>
+        <input type="password" name="password" autocomplete="current-password" [(ngModel)]="password" />
+      </label>
 
-      <p *ngIf="error" class="error-msg">{{ error }}</p>
+      @if (error()) {
+        <p class="login__error" role="alert">{{ error() }}</p>
+      }
 
-      <button type="button" (click)="iniciarSesion()" [disabled]="cargando" class="btn-entrar">
-        {{ cargando ? 'ENTRANDO...' : 'ENTRAR' }}
+      <button type="submit" class="sh-btn sh-btn--primario login__entrar" [disabled]="cargando()">
+        {{ cargando() ? 'Entrando…' : 'Entrar' }}
       </button>
     </form>
-  </div>
-</div>
+
+    <p class="login__pie">Demo: <strong>camarero1</strong> / <strong>sakura</strong> · <a routerLink="/">Volver a la web</a></p>
+  </section>
+</main>
