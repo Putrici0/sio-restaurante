@@ -63,6 +63,7 @@ class FlujoMesaJsonTest {
     @Test
     void losCambiosSePersistenEnElFicheroJson() {
         mesas.ocuparMesa("3");
+        store.guardarAhora();
 
         JsonDataStore recargado = new JsonDataStore(tmp.resolve("datos.json"));
         JsonCuentaRepository cuentas = new JsonCuentaRepository(recargado);

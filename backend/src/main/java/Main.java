@@ -127,6 +127,11 @@ public class Main {
 
             config.routes.get("/", ctx -> ctx.result("API de SIGO-RSH (Sakura Hanami) funcionando"));
             config.routes.get("/health", ctx -> ctx.result("OK"));
+            // Vuelca a disco los cambios pendientes (lo usa el script detener.py antes de apagar)
+            config.routes.post("/sistema/guardar", ctx -> {
+                store.guardarAhora();
+                ctx.result("OK");
+            });
 
             config.routes.apiBuilder(platoController.routes());
             config.routes.apiBuilder(mesaController.routes());

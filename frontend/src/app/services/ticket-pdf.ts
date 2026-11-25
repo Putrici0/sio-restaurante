@@ -115,7 +115,8 @@ export function generarTicketPdf(d: DatosTicket): jsPDF {
   texto('IMPORTE', der, { negrita: true, alinear: 'right' });
   salto();
   for (const l of cobrables) {
-    const descripcion = l.descripcion.length > 24 ? `${l.descripcion.slice(0, 23)}.` : l.descripcion;
+    const limpia = l.descripcion.replace(/\s*·\s*/g, ' - ');
+    const descripcion = limpia.length > 24 ? `${limpia.slice(0, 23)}.` : limpia;
     texto(`${String(l.cantidad).padStart(3)}  ${descripcion}`, izq);
     texto(l.importe.toFixed(2).replace('.', ','), der, { alinear: 'right' });
     salto();

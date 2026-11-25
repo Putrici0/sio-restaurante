@@ -4,8 +4,10 @@ Restaurante Sakura Hanami (buffet libre japonés, 15 mesas): carta, mesas, perso
 reservas e histórico de las últimas 3 semanas de almuerzos y cenas, más un servicio
 en curso hoy para que todas las pantallas tengan contenido.
 
-Uso:  python backend/scripts/generar_datos_demo.py
+Uso:  python backend/scripts/generar_datos_demo.py [--salida RUTA]
+      (por defecto actualiza la semilla; iniciar.py --reset lo usa para escribir data/sio-restaurante.json)
 """
+import argparse
 import hashlib
 import json
 import random
@@ -17,7 +19,10 @@ from zoneinfo import ZoneInfo
 
 ZONA = ZoneInfo("Atlantic/Canary")
 random.seed(2026)
-SALIDA = Path(__file__).resolve().parents[1] / "src" / "main" / "resources" / "datos-iniciales.json"
+_parser = argparse.ArgumentParser(description="Genera los datos de la demo de SIGO-RSH")
+_parser.add_argument("--salida", type=Path, default=None, help="fichero JSON a escribir")
+_SEMILLA = Path(__file__).resolve().parents[1] / "src" / "main" / "resources" / "datos-iniciales.json"
+SALIDA = _parser.parse_args().salida or _SEMILLA
 IMAGENES = Path(__file__).resolve().parents[2] / "frontend" / "public" / "platos"
 EMOJIS = {'Edamame': '🫛', 'Sopa de miso': '🍲', 'Gyozas de pollo': '🥟', 'Ensalada de algas wakame': '🥗', 'Harumaki': '🌯', 'Takoyaki': '🐙', 'Nigiri de salmón': '🍣', 'Nigiri de atún': '🍣', 'Maki de pepino': '🥒', 'California roll': '🍱', 'Uramaki Sakura': '🌸', 'Sashimi variado': '🐟', 'Temaki de salmón': '🍙', 'Tempura de langostinos': '🍤', 'Yakisoba': '🍜', 'Ramen tonkotsu': '🍜', 'Pollo teriyaki': '🍗', 'Yakitori': '🍢', 'Arroz frito japonés': '🍚', 'Mochi variado': '🍡', 'Dorayaki': '🥞', 'Helado de té matcha': '🍨', 'Tarta de queso japonesa': '🍰', 'Agua mineral': '💧', 'Té verde': '🍵', 'Ramune': '🫧', 'Refresco de cola': '🥤', 'Cerveza Asahi': '🍺', 'Sake': '🍶'}
 FONDOS = {"Entrante": ("#fde8ec", "#f9cfd8"), "Principal": ("#fff1e6", "#fbd9c4"),
@@ -244,5 +249,6 @@ datos = {
     "mesas": mesas, "platos": platos, "usuarios": usuarios, "reservas": reservas,
     "cuentas": cuentas, "pedidos": pedidos, "ordenes": ordenes, "notificaciones": [],
 }
+SALIDA.parent.mkdir(parents=True, exist_ok=True)
 SALIDA.write_text(json.dumps(datos, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 print(f"{SALIDA.name}: {len(cuentas)} cuentas, {len(pedidos)} pedidos, {len(ordenes)} órdenes, {len(reservas)} reservas")

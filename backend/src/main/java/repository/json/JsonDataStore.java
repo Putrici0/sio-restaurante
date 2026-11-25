@@ -19,6 +19,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Almacén de datos de la demo: todo el sistema vive en un único fichero JSON
@@ -36,11 +40,21 @@ public class JsonDataStore {
     private final ObjectMapper mapper;
     private final ObjectNode raiz;
     private final Map<String, Coleccion<?>> colecciones = new LinkedHashMap<>();
+    private static final long RETARDO_GUARDADO_MS = 300;
+    private final AtomicBoolean pendiente = new AtomicBoolean(false);
+    private final ScheduledExecutorService escritor = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "guardado-json");
+        t.setDaemon(true);
+        return t;
+    });
 
     public JsonDataStore(Path fichero) {
         this.fichero = fichero;
         this.mapper = crearMapper();
         this.raiz = cargar();
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (pendiente.get()) guardarAhora();
+        }, "guardado-json-final"));
     }
 
     public static ObjectMapper crearMapper() {
@@ -80,8 +94,20 @@ public class JsonDataStore {
         return nueva;
     }
 
+    /**
+     * Pide guardar los cambios. Las escrituras se agrupan: varios cambios seguidos
+     * (p. ej. cobrar las 25 lineas de una mesa) se vuelcan a disco una sola vez
+     * pasados unos milisegundos. Al cerrar el backend se guarda lo pendiente.
+     */
+    public void guardar() {
+        if (pendiente.compareAndSet(false, true)) {
+            escritor.schedule(this::guardarAhora, RETARDO_GUARDADO_MS, TimeUnit.MILLISECONDS);
+        }
+    }
+
     /** Guarda en disco todas las colecciones (escritura atómica: fichero temporal + renombrado). */
-    public synchronized void guardar() {
+    public synchronized void guardarAhora() {
+        pendiente.set(false);
         try {
             for (Map.Entry<String, Coleccion<?>> e : colecciones.entrySet()) {
                 raiz.set(e.getKey(), mapper.valueToTree(new ArrayList<>(e.getValue().datos.values())));

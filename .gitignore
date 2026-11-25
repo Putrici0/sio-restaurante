@@ -19,3 +19,7 @@ firebase-key.json
 
 # Datos de la demo en ejecución (se regeneran desde datos-iniciales.json)
 data/
+
+# Scripts iniciar.py / detener.py
+logs/
+.sio-procesos.json
