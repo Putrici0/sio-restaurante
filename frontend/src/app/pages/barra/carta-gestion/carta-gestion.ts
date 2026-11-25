@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Navbar } from '../../../shared/navbar/navbar';
-import { CATEGORIAS_CARTA, CategoriaPlato, ETIQUETA_CATEGORIA, PlatoApi } from '../../../models/plato.model';
+import { CATEGORIAS_CARTA, CategoriaPlato, ETIQUETA_CATEGORIA, PlatoApi, esComida } from '../../../models/plato.model';
 
 interface Borrador {
   id: string | null;
@@ -35,9 +35,13 @@ export class CartaGestion implements OnInit {
   readonly error = signal<string | null>(null);
   readonly guardando = signal(false);
 
+  readonly esComida = esComida;
+  readonly tarifas = computed(() => this.platos().filter((p) => p.categoria === 'Buffet'));
+
   readonly visibles = computed(() => {
     const f = this.filtro();
     return this.platos()
+      .filter((p) => p.categoria !== 'Buffet')
       .filter((p) => f === 'Todos' || p.categoria === f)
       .sort((a, b) =>
         this.categorias.indexOf(a.categoria) - this.categorias.indexOf(b.categoria) || a.nombre.localeCompare(b.nombre),
@@ -88,7 +92,7 @@ export class CartaGestion implements OnInit {
       nombre: b.nombre.trim(),
       categoria: b.categoria,
       descripcion: b.descripcion.trim(),
-      precio: Number(b.precio).toFixed(2),
+      precio: esComida(b.categoria) ? '0.00' : Number(b.precio).toFixed(2),
       estaActivo: b.estaActivo,
       imagen: b.imagen || '/logo.svg',
     };

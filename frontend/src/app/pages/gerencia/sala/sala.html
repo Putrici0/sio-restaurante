@@ -74,8 +74,11 @@
         } @else if (resumen(); as r) {
           <h3>Cuenta</h3>
           <ul class="lineas">
-            @for (l of lineasCobro(); track l.descripcion) {
+            @for (l of cuentaSeparada().cobrables; track l.descripcion) {
               <li><span>{{ l.cantidad }} × {{ l.descripcion }}</span><strong>{{ l.importe | number:'1.2-2' }} €</strong></li>
+            }
+            @if (cuentaSeparada().platosIncluidos > 0) {
+              <li class="incluidos"><span>{{ cuentaSeparada().platosIncluidos }} platos del buffet</span><span>incluidos</span></li>
             }
           </ul>
           <p class="total"><span>Total</span><strong>{{ r.total | number:'1.2-2' }} €</strong></p>

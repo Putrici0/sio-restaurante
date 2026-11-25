@@ -28,9 +28,20 @@ type FiltroCarta = CategoriaPlato | 'Todos' | 'MasPedidos';
       <main class="pub-main">
         <h1 class="pub-titulo">Nuestra carta</h1>
         <p class="pub-subtitulo">
-          Buffet libre a la carta. En el restaurante podrás pedir directamente desde tu móvil escaneando
-          el código QR de tu mesa. ¿Aún no tienes mesa? <a routerLink="/reservar">Reserva aquí</a>.
+          Buffet libre a la carta: pide todo lo que quieras por rondas desde el móvil de tu mesa y te lo
+          preparamos al momento. ¿Aún no tienes mesa? <a routerLink="/reservar">Reserva aquí</a>.
         </p>
+
+        <section class="tarifas" aria-label="Precios del buffet libre">
+          @for (t of tarifas(); track t.id) {
+            <div class="tarifa">
+              <span class="tarifa__turno">{{ t.nombre.replace('Buffet libre · ', '') }}</span>
+              <strong>{{ t.precio | number:'1.2-2' }} €</strong>
+              <span>por persona</span>
+            </div>
+          }
+          <p class="tarifas__nota">Comida ilimitada incluida (hasta 5 platos por persona en cada ronda). Bebidas aparte. IGIC incluido.</p>
+        </section>
 
         <div class="chips">
           <button type="button" class="chip" [class.active]="filtro() === 'Todos'" (click)="filtro.set('Todos')">Todos</button>
@@ -52,16 +63,20 @@ type FiltroCarta = CategoriaPlato | 'Todos' | 'MasPedidos';
           <section class="platos-grid">
             @for (plato of platosVisibles(); track plato.id) {
               <article class="plato-card">
-                <img [src]="plato.imagen" [alt]="plato.nombre" loading="lazy" />
+                <div class="plato-card__img">
+                  <img [src]="plato.imagen" [alt]="plato.nombre" loading="lazy" />
+                  @if (esPopular(plato.id)) { <span class="etiqueta-popular">🌸 Favorito</span> }
+                </div>
                 <div class="plato-card__body">
                   <h3 class="plato-card__nombre">{{ plato.nombre }}</h3>
                   <p class="plato-card__desc">{{ plato.descripcion }}</p>
                   <div class="plato-card__meta">
                     <span>{{ etiquetas[plato.categoria] }}</span>
-                    @if (esPopular(plato.id)) {
-                      <span class="etiqueta-popular">Más pedido</span>
+                    @if (plato.categoria === 'Bebida') {
+                      <span class="plato-card__precio">{{ plato.precio | number:'1.2-2' }} €</span>
+                    } @else {
+                      <span class="plato-card__incluido">Incluido</span>
                     }
-                    <span class="plato-card__precio">{{ plato.precio | number:'1.2-2' }} €</span>
                   </div>
                 </div>
               </article>
@@ -82,6 +97,7 @@ export class CartaPublica implements OnInit {
   readonly etiquetas = ETIQUETA_CATEGORIA;
   readonly filtro = signal<FiltroCarta>('Todos');
   readonly platos = signal<PlatoApi[]>([]);
+  readonly tarifas = signal<PlatoApi[]>([]);
   readonly masPedidosIds = signal<string[]>([]);
   readonly cargando = signal(true);
   readonly error = signal<string | null>(null);
@@ -108,7 +124,8 @@ export class CartaPublica implements OnInit {
       .pipe(take(1))
       .subscribe({
         next: (platos) => {
-          this.platos.set(platos);
+          this.tarifas.set(platos.filter((p) => p.categoria === 'Buffet'));
+          this.platos.set(platos.filter((p) => p.categoria !== 'Buffet'));
           this.cargando.set(false);
         },
         error: () => {

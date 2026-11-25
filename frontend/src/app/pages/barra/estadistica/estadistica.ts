@@ -9,6 +9,12 @@ interface Serie { etiqueta: string; valor: number; }
 interface ProductoVendido { platoId: string; nombre: string; categoria: CategoriaPlato; unidades: number; ingresos: number; }
 interface CategoriaVendida { categoria: CategoriaPlato; unidades: number; ingresos: number; }
 interface RotacionDia { fecha: string; sesiones: number; rotacion: number; }
+interface RentabilidadMesa {
+  mesa: string; capacidad: number; sesiones: number; comensales: number; ingresos: number;
+  ingresoMedioSesion: number; ingresoPorComensal: number; ingresoPorPlaza: number; ocupacionMediaMinutos: number;
+}
+interface Turno { turno: string; sesiones: number; comensales: number; ingresos: number; gastoPorComensal: number; }
+interface DiaSemana { dia: string; sesiones: number; ingresos: number; }
 
 export interface CuadroMando {
   desde: string;
@@ -33,6 +39,15 @@ export interface CuadroMando {
     numeroMesas: number;
     rotacionPorDia: RotacionDia[];
   };
+  sala: {
+    comensales: number;
+    gastoPorComensal: number;
+    porcentajeBebidas: number;
+    mesas: RentabilidadMesa[];
+    turnos: Turno[];
+    diasSemana: DiaSemana[];
+  };
+  reservas: { total: number; web: number; canceladas: number; cumplidas: number; comensales: number };
 }
 
 /** Barra de un gráfico de barras de una sola serie (alto/ancho en % del máximo). */
@@ -91,6 +106,31 @@ export class EstadisticaComponent implements OnInit {
       (v) => `${v.toFixed(2)} rot.`,
     ),
   );
+  /** Mesas ordenadas por ingresos por plaza (rentabilidad independiente del tamaño de la mesa). */
+  readonly mesasPorRentabilidad = computed(() =>
+    [...(this.datos()?.sala.mesas ?? [])].sort((a, b) => b.ingresoPorPlaza - a.ingresoPorPlaza),
+  );
+  readonly masRentables = computed(() => this.mesasPorRentabilidad().slice(0, 3));
+  readonly menosRentables = computed(() => this.mesasPorRentabilidad().slice(-3).reverse());
+  readonly barrasMesas = computed<Barra[]>(() =>
+    this.aBarras(
+      [...(this.datos()?.sala.mesas ?? [])]
+        .sort((a, b) => Number(a.mesa) - Number(b.mesa))
+        .map((m) => ({ etiqueta: `Mesa ${m.mesa} (${m.capacidad})`, valor: m.ingresos })),
+      (v) => this.euros(v),
+    ),
+  );
+  readonly barrasDiaSemana = computed<Barra[]>(() =>
+    this.aBarras(
+      (this.datos()?.sala.diasSemana ?? []).map((d) => ({ etiqueta: d.dia.slice(0, 3), valor: d.ingresos })),
+      (v) => this.euros(v),
+    ),
+  );
+  readonly pctWeb = computed(() => {
+    const r = this.datos()?.reservas;
+    return r && r.total > 0 ? Math.round((r.web / r.total) * 100) : 0;
+  });
+
   readonly franjaPico = computed(() => {
     const horas = this.datos()?.ventas.ingresosPorHora ?? [];
     return horas.length ? horas.reduce((a, b) => (b.valor > a.valor ? b : a)) : null;

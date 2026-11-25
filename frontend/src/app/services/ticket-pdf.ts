@@ -38,6 +38,14 @@ export function agruparLineas(ordenes: Array<{ nombre: string; precio: number }>
   return [...mapa.values()].sort((a, b) => Number(b.descripcion.startsWith('Buffet')) - Number(a.descripcion.startsWith('Buffet')));
 }
 
+/** Separa lo que se cobra (buffet por comensal y bebidas) de los platos incluidos en el buffet. */
+export function separarIncluidos(lineas: LineaTicket[]): { cobrables: LineaTicket[]; platosIncluidos: number } {
+  return {
+    cobrables: lineas.filter((l) => l.importe > 0),
+    platosIncluidos: lineas.filter((l) => l.importe === 0).reduce((a, l) => a + l.cantidad, 0),
+  };
+}
+
 export function numeroFactura(cuentaId: string, fechaPago: string): string {
   const fecha = new Date(fechaPago);
   let hash = 0;
@@ -47,7 +55,8 @@ export function numeroFactura(cuentaId: string, fechaPago: string): string {
 
 /** Factura simplificada del Restaurante Sakura Hanami en formato ticket (80 mm). */
 export function generarTicketPdf(d: DatosTicket): jsPDF {
-  const lineasDetalle = d.lineas.length;
+  const { cobrables, platosIncluidos } = separarIncluidos(d.lineas);
+  const lineasDetalle = cobrables.length + (platosIncluidos > 0 ? 1 : 0);
   const alto = 150 + lineasDetalle * 5 + (d.entregado ? 10 : 0);
   const pdf = new jsPDF({ unit: 'mm', format: [ANCHO, alto] });
   const izq = 5;
@@ -105,10 +114,14 @@ export function generarTicketPdf(d: DatosTicket): jsPDF {
   texto('UDS  DESCRIPCION', izq, { negrita: true });
   texto('IMPORTE', der, { negrita: true, alinear: 'right' });
   salto();
-  for (const l of d.lineas) {
+  for (const l of cobrables) {
     const descripcion = l.descripcion.length > 24 ? `${l.descripcion.slice(0, 23)}.` : l.descripcion;
     texto(`${String(l.cantidad).padStart(3)}  ${descripcion}`, izq);
     texto(l.importe.toFixed(2).replace('.', ','), der, { alinear: 'right' });
+    salto();
+  }
+  if (platosIncluidos > 0) {
+    texto(`     (${platosIncluidos} platos de buffet incl.)`, izq, { tam: 7 });
     salto();
   }
   separador();

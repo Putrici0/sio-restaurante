@@ -116,3 +116,4 @@ h3 { margin: 0; font-size: 1.05rem; }
 .reservas__hora { font-family: var(--sh-fuente-titulos); font-weight: 700; color: var(--sh-sakura-800); }
 .reservas__nombre { display: grid; font-weight: 600; }
 .reservas__nombre small { font-weight: 400; color: var(--sh-tinta-suave); }
+.lineas .incluidos { color: var(--sh-tinta-suave); font-size: 0.82rem; }

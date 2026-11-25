@@ -84,6 +84,29 @@
         </article>
       </section>
 
+      <section class="kpis kpis--secundarios">
+        <article class="kpi">
+          <span class="kpi__label">Comensales atendidos</span>
+          <span class="kpi__valor">{{ d.sala.comensales }}</span>
+          <span class="kpi__nota">en {{ d.eficiencia.sesiones }} mesas cobradas</span>
+        </article>
+        <article class="kpi">
+          <span class="kpi__label">Gasto medio por comensal</span>
+          <span class="kpi__valor">{{ euros(d.sala.gastoPorComensal) }}</span>
+          <span class="kpi__nota">buffet + bebidas</span>
+        </article>
+        <article class="kpi">
+          <span class="kpi__label">Peso de las bebidas</span>
+          <span class="kpi__valor">{{ d.sala.porcentajeBebidas | number:'1.0-1' }} %</span>
+          <span class="kpi__nota">sobre los ingresos</span>
+        </article>
+        <article class="kpi">
+          <span class="kpi__label">Reservas</span>
+          <span class="kpi__valor">{{ d.reservas.total }}</span>
+          <span class="kpi__nota">{{ pctWeb() }} % online · {{ d.reservas.canceladas }} canceladas</span>
+        </article>
+      </section>
+
       <!-- Análisis de ventas -->
       <h2 class="seccion">Análisis de ventas</h2>
       <section class="rejilla rejilla--2">
@@ -120,6 +143,62 @@
             <li class="vacio">Sin cobros en este periodo.</li>
           }
         </ul>
+      </article>
+
+      <section class="rejilla rejilla--2">
+        <article class="tarjeta">
+          <h3>Almuerzo frente a cena</h3>
+          <table>
+            <thead><tr><th>Turno</th><th>Mesas</th><th>Comensales</th><th>Ingresos</th><th>€/comensal</th></tr></thead>
+            <tbody>
+              @for (t of d.sala.turnos; track t.turno) {
+                <tr><td>{{ t.turno }}</td><td>{{ t.sesiones }}</td><td>{{ t.comensales }}</td><td>{{ euros(t.ingresos) }}</td><td>{{ euros(t.gastoPorComensal) }}</td></tr>
+              }
+            </tbody>
+          </table>
+        </article>
+        <article class="tarjeta">
+          <h3>Ingresos por día de la semana</h3>
+          <ng-container *ngTemplateOutlet="columnas; context: { $implicit: barrasDiaSemana(), titulo: 'Ingresos por día de la semana' }" />
+        </article>
+      </section>
+
+      <!-- Rentabilidad de mesas -->
+      <h2 class="seccion">Rentabilidad de las mesas</h2>
+      <section class="rejilla rejilla--2">
+        <article class="tarjeta">
+          <h3>Más rentables <small>(ingresos por plaza)</small></h3>
+          <ol class="podio">
+            @for (m of masRentables(); track m.mesa) {
+              <li><strong>Mesa {{ m.mesa }}</strong> · {{ m.capacidad }} plazas<span>{{ euros(m.ingresoPorPlaza) }}/plaza · {{ euros(m.ingresos) }}</span></li>
+            }
+          </ol>
+          <h3 class="subtitulo">Menos rentables</h3>
+          <ol class="podio podio--bajo">
+            @for (m of menosRentables(); track m.mesa) {
+              <li><strong>Mesa {{ m.mesa }}</strong> · {{ m.capacidad }} plazas<span>{{ euros(m.ingresoPorPlaza) }}/plaza · {{ m.sesiones }} usos</span></li>
+            }
+          </ol>
+        </article>
+        <article class="tarjeta">
+          <h3>Ingresos por mesa</h3>
+          <ng-container *ngTemplateOutlet="horizontales; context: { $implicit: barrasMesas() }" />
+        </article>
+      </section>
+      <article class="tarjeta">
+        <h3>Detalle por mesa</h3>
+        <table>
+          <thead><tr><th>Mesa</th><th>Plazas</th><th>Usos</th><th>Comensales</th><th>Ingresos</th><th>Ticket medio</th><th>€/comensal</th><th>Ocupación media</th></tr></thead>
+          <tbody>
+            @for (m of mesasPorRentabilidad(); track m.mesa) {
+              <tr>
+                <td>{{ m.mesa }}</td><td>{{ m.capacidad }}</td><td>{{ m.sesiones }}</td><td>{{ m.comensales }}</td>
+                <td>{{ euros(m.ingresos) }}</td><td>{{ euros(m.ingresoMedioSesion) }}</td><td>{{ euros(m.ingresoPorComensal) }}</td>
+                <td>{{ minutosATexto(m.ocupacionMediaMinutos) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </article>
 
       <!-- Análisis de carta -->

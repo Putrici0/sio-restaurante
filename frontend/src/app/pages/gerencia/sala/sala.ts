@@ -9,7 +9,7 @@ import { Reserva } from '../../../models/reserva.model';
 import { MesasApiService } from '../../../services/mesas-api.service';
 import { CuentaApiService, CuentaResumenResponse } from '../../../services/cuenta-api.service';
 import { ReservasApiService } from '../../../services/reservas-api.service';
-import { DatosTicket, agruparLineas, generarTicketPdf, nombreArchivoTicket } from '../../../services/ticket-pdf';
+import { DatosTicket, agruparLineas, generarTicketPdf, nombreArchivoTicket, separarIncluidos } from '../../../services/ticket-pdf';
 
 type MetodoPago = 'EFECTIVO' | 'TARJETA';
 
@@ -72,6 +72,8 @@ export class Sala implements OnDestroy {
         .map((o) => ({ nombre: o.plato?.nombre ?? 'Consumo', precio: Number(o.precio ?? 0) })),
     );
   });
+  readonly cuentaSeparada = computed(() => separarIncluidos(this.lineasCobro()));
+
   readonly cambio = computed(() => {
     const e = this.entregado();
     const p = this.resumen()?.pendiente ?? 0;

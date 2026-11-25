@@ -5,10 +5,21 @@
     <div>
       <p class="sh-eyebrow">Gerencia</p>
       <h1>Carta y precios</h1>
-      <p class="sub">Los platos desactivados no aparecen en la carta digital de los clientes ni de los camareros.</p>
+      <p class="sub">La comida va incluida en el buffet. Aquí se fijan los precios por comensal, el precio de las bebidas y qué platos aparecen en la carta.</p>
     </div>
     <button type="button" class="sh-btn sh-btn--primario" (click)="nuevo()">+ Nuevo plato</button>
   </header>
+
+  <section class="tarifas">
+    @for (t of tarifas(); track t.id) {
+      <article class="tarifa sh-tarjeta">
+        <span class="sh-eyebrow">{{ t.nombre.replace('Buffet libre · ', 'Buffet · ') }}</span>
+        <strong>{{ t.precio | number:'1.2-2' }} €</strong>
+        <span class="tarifa__nota">por comensal · bebidas aparte</span>
+        <button type="button" class="sh-btn editar" (click)="editar(t)">Cambiar precio</button>
+      </article>
+    }
+  </section>
 
   <div class="chips" role="group" aria-label="Filtrar por categoría">
     <button type="button" class="chip" [class.activo]="filtro() === 'Todos'" (click)="filtro.set('Todos')">Todos</button>
@@ -32,7 +43,9 @@
             <td><img [src]="p.imagen" alt="" /></td>
             <td><strong>{{ p.nombre }}</strong><small>{{ p.descripcion }}</small></td>
             <td>{{ etiquetas[p.categoria] }}</td>
-            <td class="num">{{ p.precio | number:'1.2-2' }} €</td>
+            <td class="num">
+              @if (esComida(p.categoria)) { <span class="incluido">Incluido</span> } @else { {{ p.precio | number:'1.2-2' }} € }
+            </td>
             <td>
               <button type="button" class="interruptor" [class.on]="p.estaActivo" (click)="alternarActivo(p)"
                       [attr.aria-pressed]="p.estaActivo" [attr.aria-label]="'Mostrar ' + p.nombre + ' en la carta'">
@@ -50,18 +63,34 @@
 @if (borrador(); as b) {
   <div class="velo" (click)="borrador.set(null)"></div>
   <section class="dialogo sh-tarjeta" role="dialog" aria-modal="true">
-    <h2>{{ b.id ? 'Editar plato' : 'Nuevo plato' }}</h2>
-    <label class="campo">Nombre <input [(ngModel)]="b.nombre" name="nombre" /></label>
-    <div class="fila">
-      <label class="campo">Categoría
+    <header class="dialogo__cab">
+      @if (b.imagen) { <img [src]="b.imagen" alt="" /> }
+      <div>
+        <p class="sh-eyebrow">{{ b.categoria === 'Buffet' ? 'Precio del buffet' : (b.id ? 'Editar plato' : 'Nuevo plato') }}</p>
+        <h2>{{ b.nombre || 'Sin nombre' }}</h2>
+      </div>
+      <button type="button" class="cerrar" (click)="borrador.set(null)" aria-label="Cerrar">✕</button>
+    </header>
+    @if (b.categoria !== 'Buffet') {
+      <label class="campo">Nombre <input [(ngModel)]="b.nombre" name="nombre" /></label>
+      <label class="campo">Sección de la carta
         <select [(ngModel)]="b.categoria" name="categoria">
           @for (c of categorias; track c) { <option [value]="c">{{ etiquetas[c] }}</option> }
         </select>
       </label>
-      <label class="campo">Precio (€) <input type="number" min="0" step="0.10" [(ngModel)]="b.precio" name="precio" /></label>
-    </div>
-    <label class="campo">Descripción <textarea rows="3" [(ngModel)]="b.descripcion" name="descripcion"></textarea></label>
-    <label class="check"><input type="checkbox" [(ngModel)]="b.estaActivo" name="activo" /> Visible en la carta</label>
+    }
+    @if (esComida(b.categoria)) {
+      <p class="info">Incluido en el precio del buffet libre: no tiene precio propio.</p>
+    } @else {
+      <label class="campo">{{ b.categoria === 'Buffet' ? 'Precio por comensal' : 'Precio' }}
+        <span class="precio"><input type="number" min="0" step="0.10" [(ngModel)]="b.precio" name="precio" /><span>€</span></span>
+      </label>
+    }
+    @if (b.categoria !== 'Buffet') {
+      <label class="campo">Descripción <textarea rows="3" [(ngModel)]="b.descripcion" name="descripcion"></textarea></label>
+      <label class="check"><input type="checkbox" [(ngModel)]="b.estaActivo" name="activo" /> Visible en la carta</label>
+    }
+    @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
     <div class="acciones">
       <button type="button" class="sh-btn" (click)="borrador.set(null)">Cancelar</button>
       <button type="button" class="sh-btn sh-btn--primario" [disabled]="guardando()" (click)="guardarBorrador()">Guardar</button>
