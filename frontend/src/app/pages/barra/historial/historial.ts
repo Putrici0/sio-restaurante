@@ -39,7 +39,6 @@ interface PagoDetalleAgrupado {
 })
 export class HistorialComponent {
   private readonly cuentaApi = inject(CuentaApiService);
-  private readonly apiUrl = `http://${window.location.hostname}:7070`;
   private toastTimeoutRef?: number;
 
   readonly cargando = signal(true);
@@ -58,10 +57,6 @@ export class HistorialComponent {
   readonly ordenesDetalle = signal<OrdenCuentaResponse[]>([]);
   readonly totalDetalle = signal<number>(0);
 
-  readonly mostrarModalCorreo = signal(false);
-  readonly correoTique = signal('');
-  readonly errorCorreoTique = signal<string | null>(null);
-  readonly enviandoTique = signal(false);
   readonly showToast = signal(false);
   readonly toastMessage = signal('');
   readonly toastTipo = signal<'ok' | 'error'>('ok');
@@ -193,66 +188,6 @@ export class HistorialComponent {
     const pdf = this.construirPdfTique();
     pdf.save(this.obtenerNombreArchivoTique());
   }
-  enviarTique(): void {
-    this.correoTique.set('');
-    this.errorCorreoTique.set(null);
-    this.mostrarModalCorreo.set(true);
-  }
-  actualizarCorreoTique(valor: string): void {
-    this.correoTique.set(valor);
-    this.errorCorreoTique.set(null);
-  }
-  cerrarModalCorreo(): void {
-    if (this.enviandoTique()) {
-      return;
-    }
-    this.mostrarModalCorreo.set(false);
-    this.correoTique.set('');
-    this.errorCorreoTique.set(null);
-  }
-  confirmarEnvioTique(): void {
-    const correo = this.correoTique().trim();
-    if (!correo) {
-      this.errorCorreoTique.set('Introduce un correo.');
-      return;
-    }
-    if (!this.esCorreoValido(correo)) {
-      this.errorCorreoTique.set('Correo no válido.');
-      return;
-    }
-    this.enviandoTique.set(true);
-    this.errorCorreoTique.set(null);
-    const pdf = this.construirPdfTique();
-    const pdfBase64 = pdf.output('datauristring');
-    fetch(`${this.apiUrl}/tiques/enviar`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        correo,
-        nombreArchivo: this.obtenerNombreArchivoTique(),
-        pdfBase64,
-      }),
-    })
-      .then(async (respuesta) => {
-        if (!respuesta.ok) {
-          const error = await respuesta.json().catch(() => null);
-          throw new Error(error?.error ?? error?.message ?? 'No se pudo enviar el ticket');
-        }
-        return respuesta.json();
-      })
-      .then(() => {
-        this.enviandoTique.set(false);
-        this.cerrarModalCorreo();
-        this.mostrarToast(`Ticket enviado correctamente a ${correo}`, 'ok');
-      })
-      .catch((error) => {
-        console.error('Error enviando ticket:', error);
-        this.enviandoTique.set(false);
-        this.errorCorreoTique.set(error.message ?? 'No se pudo enviar el ticket');
-      });
-  }
   private construirPdfTique(): jsPDF {
     const pdf = new jsPDF();
     const margenIzq = 14;
@@ -291,7 +226,7 @@ export class HistorialComponent {
       pdf.text(`${importe.toFixed(2)} €`, margenDer, y, { align: 'right' });
       y += 7;
     };
-    escribirTexto('RESTAURANTE EJEMPLO', margenIzq, 8, {
+    escribirTexto('RESTAURANTE SAKURA HANAMI', margenIzq, 8, {
       negrita: true,
       tamano: 15,
     });
@@ -348,17 +283,12 @@ export class HistorialComponent {
     const fecha = new Date().toISOString().slice(0, 10);
     return `ticket-mesa-${mesa}-${fecha}.pdf`;
   }
-  private esCorreoValido(correo: string): boolean {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo);
-  }
-
   cerrarDetalle(): void {
     this.mostrarDetalle.set(false);
     this.cargandoDetalle.set(false);
     this.cuentaDetalle.set(null);
     this.ordenesDetalle.set([]);
     this.totalDetalle.set(0);
-    this.cerrarModalCorreo();
     if (this.toastTimeoutRef) {
       window.clearTimeout(this.toastTimeoutRef);
     }

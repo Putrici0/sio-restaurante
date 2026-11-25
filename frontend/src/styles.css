@@ -1,14 +1,15 @@
 :root {
-  /* Paleta de Figma */
-  --bg-main: #DBCCB4;
-  --bg-header: #CEA98C;
-  --text-dark: #3a2a1a;
+  /* Paleta Sakura Hanami */
+  --bg-main: #dcb3bd;
+  --bg-header: #d08a9c;
+  --text-dark: #3b1922;
   --text-light: #ffffff;
 
-  /* Estados de Mesas */
-  --color-libre: #4caf50;
-  --color-ocupada: #c0392b;
-  --color-reservada: #8e44ad;
+  /* Estados de Mesas (SIGO-RSH) */
+  --color-libre: #6fbf73;
+  --color-ocupada: #d6456b;
+  --color-pendiente-cobro: #e9a23b;
+  --color-sucia: #9c8b7e;
 
   /* Tipografía y Espaciado */
   --font-family: 'Segoe UI', system-ui, sans-serif;
@@ -39,7 +40,7 @@ html, body{
   margin: 0;
 }
 .vista-cocina {
-  background-color: #D6C2A1; /* Color beige de Figma */
+  background-color: #d7a0ae; /* Color beige de Figma */
   min-height: 100vh;         /* Ocupa todo el alto de la ventana */
   width: 100%;               /* Ocupa todo el ancho */
   margin: 0;                 /* Asegura que no haya margen */
@@ -50,7 +51,7 @@ html, body{
 
 /* 2. NAVBAR SUPERIOR */
 .navbar {
-  background-color: #D9B382; /* Tono café claro del header */
+  background-color: #db8097; /* Tono café claro del header */
   height: 60px;
   display: flex;
   align-items: center;
@@ -62,7 +63,7 @@ html, body{
 
 .nav-links a {
   text-decoration: none;
-  color: #4B3F2F;
+  color: #4c2e36;
   font-weight: 600;
   margin: 0 20px;
   font-size: 0.9rem;
@@ -86,7 +87,7 @@ html, body{
 }
 
 .columna {
-  background-color: #E7DECC; /* Color crema de la columna */
+  background-color: #e8cbd2; /* Color crema de la columna */
   border-radius: 20px;
   padding: 15px;
   display: flex;

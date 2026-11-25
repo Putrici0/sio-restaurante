@@ -47,6 +47,9 @@ public class PedidoApplicationService {
         if (cuenta.payed()) {
             throw new IllegalArgumentException("No se puede crear un pedido en una cuenta pagada");
         }
+        if (cuenta.cobroSolicitado()) {
+            throw new IllegalArgumentException("La sesión de la mesa está cerrada y pendiente de cobro");
+        }
 
         Pedido nuevoPedido = new Pedido(
                 null,
@@ -73,6 +76,9 @@ public class PedidoApplicationService {
 
         if (cuenta.payed()) {
             throw new IllegalArgumentException("No se puede crear un pedido en una cuenta pagada");
+        }
+        if (cuenta.cobroSolicitado()) {
+            throw new IllegalArgumentException("La sesión de la mesa está cerrada y pendiente de cobro");
         }
 
         Pedido pedido = new Pedido(null, cuenta, PedidoEstado.Pendiente, Instant.now());
@@ -104,7 +110,6 @@ public class PedidoApplicationService {
                             OrdenEstado.Pendiente,
                             Instant.now(),
                             detalles,
-                            false,
                             false,
                             java.util.Optional.empty(),
                             java.util.Optional.empty()

@@ -1,0 +1,44 @@
+.hero {
+  text-align: center;
+  padding: clamp(48px, 10vw, 110px) 20px clamp(40px, 8vw, 80px);
+  background:
+    radial-gradient(circle at 15% 20%, rgba(238, 143, 165, 0.35), transparent 40%),
+    radial-gradient(circle at 85% 30%, rgba(249, 207, 216, 0.6), transparent 45%),
+    linear-gradient(180deg, #fff 0%, #fde8ec 100%);
+}
+.hero__petalos { font-size: 1.4rem; letter-spacing: 0.6em; opacity: 0.8; }
+.hero__eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.8rem;
+  color: #8e2a43;
+  font-weight: 700;
+  margin: 14px 0 6px;
+}
+.hero__titulo {
+  font-family: 'Noto Serif JP', Georgia, serif;
+  font-size: clamp(2.6rem, 8vw, 4.6rem);
+  margin: 0;
+  color: #2b2024;
+}
+.hero__texto {
+  max-width: 640px;
+  margin: 18px auto 28px;
+  line-height: 1.7;
+  color: #6b5a60;
+}
+.hero__acciones { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+}
+.info-card {
+  background: #fffdfb;
+  border: 1px solid #fde8ec;
+  border-radius: 20px;
+  padding: 22px;
+}
+.info-card h2 { font-size: 1.1rem; margin: 0 0 8px; }
+.info-card p { margin: 0; color: #6b5a60; line-height: 1.6; }

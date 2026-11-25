@@ -1,7 +1,7 @@
 :host {
   display: block;
   min-height: 100dvh;
-  background: #f4ede3;
+  background: #f4e3e7;
   font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -18,7 +18,7 @@
   max-width: 420px;
   background: #ffffff;
   border-radius: 8px;
-  border: 1px solid #e7ddd0;
+  border: 1px solid #e8cfd5;
   padding: 24px;
   box-sizing: border-box;
 }
@@ -26,7 +26,7 @@
 h1 {
   margin: 0 0 20px;
   font-size: 1.35rem;
-  color: #33261b;
+  color: #341a21;
 }
 
 .registro-form {
@@ -41,12 +41,12 @@ h1 {
 
 .input-group label {
   font-size: 0.9rem;
-  color: #3f3327;
+  color: #40262d;
   font-weight: 600;
 }
 
 .input-group input {
-  border: 1px solid #d6c9ba;
+  border: 1px solid #d7b9c1;
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 0.95rem;

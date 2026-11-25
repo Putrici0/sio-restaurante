@@ -62,7 +62,6 @@ public class FirestoreOrdenRepository extends AbstractFirestoreRepository<Orden>
                 toEnum(OrdenEstado.class, data.get("ordenEstado"), OrdenEstado.Pendiente),
                 toInstant(data.get("fecha")),
                 getString(data, "detalles"),
-                getBoolean(data, "urgente", false),
                 getBoolean(data, "pagada", false),
                 Optional.ofNullable(toInstant(data.get("fechaPago"))),
                 Optional.ofNullable(metodoPago)
@@ -77,7 +76,6 @@ public class FirestoreOrdenRepository extends AbstractFirestoreRepository<Orden>
         map.put("ordenEstado", orden.ordenEstado().name());
         map.put("fecha", toTimestamp(orden.fecha()));
         map.put("detalles", orden.detalles());
-        map.put("urgente", orden.urgente());
         map.put("pagada", orden.pagada());
         map.put("fechaPago", orden.fechaPago().map(this::toTimestamp).orElse(null));
         map.put("metodoPago", orden.metodoPago().map(Enum::name).orElse(null));
@@ -108,7 +106,6 @@ public class FirestoreOrdenRepository extends AbstractFirestoreRepository<Orden>
                 orden.ordenEstado(),
                 orden.fecha(),
                 orden.detalles(),
-                orden.urgente(),
                 orden.pagada(),
                 orden.fechaPago(),
                 orden.metodoPago()

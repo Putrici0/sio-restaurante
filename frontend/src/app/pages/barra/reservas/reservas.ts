@@ -1,11 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Output, signal, inject, OnInit, OnDestroy, computed } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
 import { ReservasApiService } from '../../../services/reservas-api.service';
-import { MesasApiService } from '../../../services/mesas-api.service';
-import { Reserva } from '../../../models/reserva.model';
+import { EstadoReserva, Reserva } from '../../../models/reserva.model';
 import { Subscription } from 'rxjs';
-import { MESAS_LAYOUT } from '../../../data/mesas-layout';
 
 @Component({
   selector: 'app-reservas',
@@ -16,7 +13,6 @@ import { MESAS_LAYOUT } from '../../../data/mesas-layout';
 })
 export class Reservas implements OnInit, OnDestroy {
   private readonly reservasApi = inject(ReservasApiService);
-  private readonly mesasApi = inject(MesasApiService);
   private subscription: Subscription | null = null;
 
   @Output() cerrar = new EventEmitter<void>();
@@ -47,20 +43,25 @@ export class Reservas implements OnInit, OnDestroy {
 
   readonly nuevoNombre = signal('');
   readonly nuevoTelefono = signal('');
+  readonly nuevoEmail = signal('');
   readonly nuevaNota = signal('');
   readonly nuevaFecha = signal(this.getLocalHoy());
   readonly nuevaHora = signal(this.getHoraActualRedondeada());
   readonly nuevosComensales = signal(4);
-  readonly nuevaZona = signal<'Interior' | 'Terraza' | 'Cualquiera'>('Interior');
 
   readonly reservaAEditar = signal<Reserva | null>(null);
   readonly errorReserva = signal<string | null>(null);
   readonly mostrarConfirmarBorrado = signal(false);
   readonly reservaIdBorrar = signal<string | null>(null);
 
-  readonly mesasDisponiblesZona = computed(() => {
-    if (this.nuevaZona() === 'Cualquiera') return MESAS_LAYOUT;
-    return MESAS_LAYOUT.filter((m) => m.zona.toLowerCase() === this.nuevaZona().toLowerCase());
+  /** Resumen del dia para planificar la ocupacion (comensales confirmados y pendientes). */
+  readonly resumenDia = computed(() => {
+    const activas = this.reservasFiltradas().filter((r) => r.estado === 'Confirmado' || r.estado === 'Pendiente');
+    return {
+      reservas: activas.length,
+      comensales: activas.reduce((acc, r) => acc + (r.comensales || 0), 0),
+      pendientes: activas.filter((r) => r.estado === 'Pendiente').length,
+    };
   });
 
   ngOnInit(): void {
@@ -104,11 +105,11 @@ export class Reservas implements OnInit, OnDestroy {
     this.reservaAEditar.set(reserva);
     this.nuevoNombre.set(reserva.nombre);
     this.nuevoTelefono.set(reserva.telefono);
+    this.nuevoEmail.set(reserva.email ?? '');
     this.nuevaNota.set(reserva.nota || '');
     this.nuevaFecha.set(reserva.fecha);
     this.nuevaHora.set(reserva.hora);
     this.nuevosComensales.set(reserva.comensales);
-    this.nuevaZona.set(reserva.zona || 'Interior');
     this.cambiarVista('crear');
   }
 
@@ -178,26 +179,38 @@ export class Reservas implements OnInit, OnDestroy {
     if (this.nuevosComensales() > 1) this.nuevosComensales.update((c) => c - 1);
   }
 
-  seleccionarZona(zona: 'Interior' | 'Terraza' | 'Cualquiera'): void {
-    this.nuevaZona.set(zona);
-  }
-
   async confirmarReserva(): Promise<void> {
+    const nombre = this.nuevoNombre().trim();
+    const telefono = this.nuevoTelefono().trim();
+    const email = this.nuevoEmail().trim();
+    if (!nombre) {
+      this.errorReserva.set('Indica el nombre del cliente.');
+      return;
+    }
+    if (!telefono && !email) {
+      this.errorReserva.set('Indica un teléfono o un correo de contacto.');
+      return;
+    }
+    if (!this.nuevaFecha() || !this.nuevaHora()) {
+      this.errorReserva.set('Indica la fecha y la hora de la reserva.');
+      return;
+    }
+
+    const edicion = this.reservaAEditar();
     const reservaData: Omit<Reserva, 'id'> = {
-      nombre: this.nuevoNombre(),
-      telefono: this.nuevoTelefono(),
+      nombre,
+      telefono,
+      email,
       nota: this.nuevaNota(),
       fecha: this.nuevaFecha(),
       hora: this.nuevaHora(),
       comensales: this.nuevosComensales(),
-      zona: this.nuevaZona(),
-      mesasIds: [],
-      estado: this.reservaAEditar()?.estado || 'Confirmado',
+      estado: edicion?.estado || 'Confirmado',
+      origen: edicion?.origen ?? 'personal',
     };
 
     try {
       this.errorReserva.set(null);
-      const edicion = this.reservaAEditar();
       if (edicion?.id) {
         await this.reservasApi.actualizarReserva(edicion.id, reservaData);
       } else {
@@ -208,6 +221,7 @@ export class Reservas implements OnInit, OnDestroy {
       this.cambiarVista('lista');
     } catch (error) {
       console.error('Error al guardar reserva:', error);
+      this.errorReserva.set('No se ha podido guardar la reserva.');
     }
   }
 
@@ -230,37 +244,32 @@ export class Reservas implements OnInit, OnDestroy {
   }
 
   async cancelarReserva(id: string): Promise<void> {
+    await this.cambiarEstado(id, 'Cancelado');
+  }
+
+  /** El cliente ha llegado: la reserva se da por cumplida (el personal le abre una mesa). */
+  async marcarLlegada(id: string): Promise<void> {
+    await this.cambiarEstado(id, 'Finalizado');
+  }
+
+  private async cambiarEstado(id: string, estado: EstadoReserva): Promise<void> {
     try {
-      const reserva = this.todasLasReservas().find((r) => r.id === id);
-      const mesasIds = reserva?.mesasIds ?? [];
-      if (mesasIds.length > 1) {
-        try {
-          await firstValueFrom(this.mesasApi.separarMesa(mesasIds[0]));
-        } catch {
-          // Si ya están separadas o no se puede, continuamos con la cancelación.
-        }
-      }
-      await this.reservasApi.actualizarEstado(id, 'Cancelado');
-      await this.reservasApi.actualizarReserva(id, { mesasIds: [] });
+      await this.reservasApi.actualizarEstado(id, estado);
     } catch (error) {
       console.error('Error:', error);
     }
   }
 
   async confirmarEstadoReserva(id: string): Promise<void> {
-    try {
-      await this.reservasApi.actualizarEstado(id, 'Confirmado');
-    } catch (error) {
-      console.error('Error:', error);
-    }
+    await this.cambiarEstado(id, 'Confirmado');
   }
 
   private resetForm(): void {
     this.nuevoNombre.set('');
     this.nuevoTelefono.set('');
+    this.nuevoEmail.set('');
     this.nuevaNota.set('');
     this.nuevosComensales.set(4);
-    this.nuevaZona.set('Interior');
     this.errorReserva.set(null);
   }
 

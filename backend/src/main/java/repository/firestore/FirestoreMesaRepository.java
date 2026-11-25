@@ -27,7 +27,8 @@ public class FirestoreMesaRepository extends AbstractFirestoreRepository<Mesa> i
         return new Mesa(
                 id,
                 ((Long) data.getOrDefault("capacidad", 0L)).intValue(),
-                mesasUnidas
+                mesasUnidas,
+                Boolean.TRUE.equals(data.get("sucia"))
         );
     }
 
@@ -36,6 +37,7 @@ public class FirestoreMesaRepository extends AbstractFirestoreRepository<Mesa> i
         Map<String, Object> map = new HashMap<>();
         map.put("capacidad", mesa.capacidad());
         map.put("mesasUnidas", mesa.mesasUnidas());
+        map.put("sucia", mesa.sucia());
         return map;
     }
 
@@ -46,7 +48,7 @@ public class FirestoreMesaRepository extends AbstractFirestoreRepository<Mesa> i
 
     @Override
     protected Mesa createWithId(Mesa mesa, String id) {
-        return new Mesa(id, mesa.capacidad(), mesa.mesasUnidas());
+        return new Mesa(id, mesa.capacidad(), mesa.mesasUnidas(), mesa.sucia());
     }
 
     @Override

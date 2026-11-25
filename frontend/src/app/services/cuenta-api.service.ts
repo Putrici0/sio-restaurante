@@ -6,6 +6,7 @@ import { catchError } from 'rxjs/operators';
 export interface CuentaActivaResponse {
   id: string;
   payed: boolean;
+  cobroSolicitado?: boolean;
   fechaCreacion: string;
   fechaPago?: string | null;
   password: string;
@@ -43,7 +44,6 @@ export interface OrdenCuentaResponse {
   fechaPago?: string | null;
   metodoPago?: 'EFECTIVO' | 'TARJETA' | null;
   detalles: string;
-  urgente?: boolean;
   pedido: {
     id: string;
   };
@@ -190,17 +190,4 @@ export class CuentaApiService {
     );
   }
 
-  marcarOrdenUrgente(ordenId: string): Observable<OrdenCuentaResponse> {
-    return this.http.post<OrdenCuentaResponse>(
-      `${this.apiUrl}/ordenes/${ordenId}/urgente`,
-      {},
-    );
-  }
-
-  desmarcarOrdenUrgente(ordenId: string): Observable<OrdenCuentaResponse> {
-    return this.http.post<OrdenCuentaResponse>(
-      `${this.apiUrl}/ordenes/${ordenId}/no-urgente`,
-      {},
-    );
-  }
 }

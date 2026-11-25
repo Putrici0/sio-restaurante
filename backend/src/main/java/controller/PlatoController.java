@@ -4,6 +4,7 @@ import dto.PlatoRequest;
 import io.javalin.apibuilder.EndpointGroup;
 import model.Plato;
 import service.PlatoService;
+import service.PlatosMasPedidosService;
 import util.ApiError;
 
 import java.util.Optional;
@@ -13,9 +14,11 @@ import static io.javalin.apibuilder.ApiBuilder.*;
 public class PlatoController {
 
     private final PlatoService service;
+    private final PlatosMasPedidosService masPedidosService;
 
-    public PlatoController(PlatoService service) {
+    public PlatoController(PlatoService service, PlatosMasPedidosService masPedidosService) {
         this.service = service;
+        this.masPedidosService = masPedidosService;
     }
 
     public EndpointGroup routes() {
@@ -41,6 +44,19 @@ public class PlatoController {
 
                 path("activos", () ->
                         get(ctx -> ctx.json(service.findActivos()))
+                );
+
+                path("mas-pedidos", () ->
+                        get(ctx -> {
+                            String limite = ctx.queryParam("limit");
+                            int n = 6;
+                            try {
+                                if (limite != null && !limite.isBlank()) n = Math.min(20, Integer.parseInt(limite.trim()));
+                            } catch (NumberFormatException ignored) {
+                                // se usa el valor por defecto
+                            }
+                            ctx.json(masPedidosService.obtenerMasPedidos(n));
+                        })
                 );
 
                 path("{id}", () -> {

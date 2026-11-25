@@ -521,7 +521,6 @@ public final class SimuladorHoyMananaHastaLas16 {
                     OrdenEstado.Entregado,
                     fechaOrden,
                     "",
-                    false,
                     true,
                     Optional.ofNullable(fechaPagoReal),
                     Optional.ofNullable(metodoPago)

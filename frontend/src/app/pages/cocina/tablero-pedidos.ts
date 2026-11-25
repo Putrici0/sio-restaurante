@@ -72,25 +72,6 @@ export class TableroPedidos implements OnInit, OnDestroy {
     }
   }
 
-  private ordenarConUrgentes(ordenes: OrdenCocinaResponse[]): OrdenCocinaResponse[] {
-    return [...ordenes].sort((a, b) => {
-      const aUrgente = !!a.urgente;
-      const bUrgente = !!b.urgente;
-
-      if (aUrgente && !bUrgente) return -1;
-      if (!aUrgente && bUrgente) return 1;
-
-      const prioridadA = a.prioridad?.total ?? 0;
-      const prioridadB = b.prioridad?.total ?? 0;
-
-      if (prioridadA !== prioridadB) {
-        return prioridadB - prioridadA;
-      }
-
-      return new Date(a.fecha).getTime() - new Date(b.fecha).getTime();
-    });
-  }
-
   recargar(): void {
     this.cargarTablero(true);
   }
@@ -106,31 +87,6 @@ export class TableroPedidos implements OnInit, OnDestroy {
 
   detalleAbierto(ordenId: string): boolean {
     return this.ordenDetalleAbiertaId() === ordenId;
-  }
-
-  esUrgente(orden: OrdenCocinaResponse): boolean {
-    return !!orden.urgente;
-  }
-
-  toggleUrgente(orden: OrdenCocinaResponse): void {
-    if (this.actualizando()) return;
-
-    this.actualizando.set(true);
-    this.error.set(null);
-    this.pausarSincronizacion(this.refreshAfterWriteMs + 100);
-
-    const request$ = orden.urgente
-      ? this.ordenesApiService.desmarcarUrgente(orden.id)
-      : this.ordenesApiService.marcarUrgente(orden.id);
-
-    request$.pipe(take(1)).subscribe({
-      next: () => this.recargarConRetardo(this.refreshAfterWriteMs),
-      error: (err) => {
-        console.error(err);
-        this.error.set('No se ha podido actualizar la urgencia de la orden.');
-        this.recargarConRetardo(this.refreshAfterWriteMs);
-      },
-    });
   }
 
   pasarAPreparacion(ordenId: string): void {
@@ -266,28 +222,14 @@ export class TableroPedidos implements OnInit, OnDestroy {
     }
   }
 
-  prioridadTexto(orden: OrdenCocinaResponse): string {
-    const total = orden.prioridad?.total;
-
-    if (total === undefined || total === null) {
-      return 'Sin prioridad';
-    }
-
-    return `Prioridad ${total}`;
+  posicionTexto(orden: OrdenCocinaResponse): string {
+    return orden.posicionCola ? `#${orden.posicionCola} en cola` : 'En cola';
   }
 
-  prioridadClase(orden: OrdenCocinaResponse): string {
-    const total = orden.prioridad?.total ?? 0;
-
-    if (total >= 95) return 'priority-badge priority-badge--critical';
-    if (total >= 75) return 'priority-badge priority-badge--high';
-    if (total >= 50) return 'priority-badge priority-badge--medium';
-
-    return 'priority-badge priority-badge--normal';
-  }
-
-  motivosPrioridad(orden: OrdenCocinaResponse): string[] {
-    return orden.prioridad?.motivos ?? [];
+  horaLlegada(orden: OrdenCocinaResponse): string {
+    const fecha = new Date(orden.fecha);
+    if (Number.isNaN(fecha.getTime())) return '--:--';
+    return fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
   }
 
   tiempoTranscurrido(fechaIso: string): string {
@@ -370,10 +312,6 @@ export class TableroPedidos implements OnInit, OnDestroy {
     return orden.id;
   }
 
-  trackByMotivo(_: number, motivo: string): string {
-    return motivo;
-  }
-
   private pausarSincronizacion(ms: number): void {
     this.pausadoHasta.set(Date.now() + ms);
   }
@@ -399,7 +337,7 @@ export class TableroPedidos implements OnInit, OnDestroy {
   }
 
   private tiempoObjetivoMinutos(orden: OrdenCocinaResponse): number {
-    const etaBackend = orden.prioridad?.etaMinutos;
+    const etaBackend = orden.etaMinutos;
     if (typeof etaBackend === 'number' && Number.isFinite(etaBackend) && etaBackend > 0) {
       return etaBackend;
     }
@@ -449,9 +387,8 @@ export class TableroPedidos implements OnInit, OnDestroy {
           const preparacion = data?.enPreparacion ?? [];
           const listas = data?.listas ?? [];
 
-          const pendientesConUrgentes = this.ordenarConUrgentes(pendientes);
-
-          this.ordenesPendientes.set(pendientesConUrgentes);
+          // El backend ya las entrega por orden de llegada (FIFO)
+          this.ordenesPendientes.set(pendientes);
           this.ordenesPreparacion.set(preparacion);
           this.ordenesListas.set(listas);
 

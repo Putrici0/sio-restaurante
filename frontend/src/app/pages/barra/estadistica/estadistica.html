@@ -1,662 +1,173 @@
 <app-navbar></app-navbar>
 
-<div class="estadisticas-container">
+<!-- Gráfico de columnas (series temporales) -->
+<ng-template #columnas let-barras let-titulo="titulo">
+  <div class="columnas" role="img" [attr.aria-label]="titulo">
+    @for (b of barras; track b.etiqueta) {
+      <div class="columna" tabindex="0">
+        <span class="tooltip">{{ b.etiqueta }} · {{ b.texto }}</span>
+        <div class="columna__pista">
+          <div class="columna__barra" [style.height.%]="b.pct"></div>
+        </div>
+        <span class="columna__eje">{{ b.etiqueta }}</span>
+      </div>
+    }
+  </div>
+</ng-template>
 
-  <div class="header-section">
+<!-- Gráfico de barras horizontales (rankings) -->
+<ng-template #horizontales let-barras>
+  <div class="horizontales">
+    @for (b of barras; track b.etiqueta) {
+      <div class="fila" tabindex="0">
+        <span class="fila__nombre">{{ b.etiqueta }}</span>
+        <div class="fila__pista"><div class="fila__barra" [style.width.%]="b.pct"></div></div>
+        <span class="fila__valor">{{ b.texto }}</span>
+      </div>
+    } @empty {
+      <p class="vacio">Sin ventas en este periodo.</p>
+    }
+  </div>
+</ng-template>
+
+<main class="panel">
+  <header class="panel__cabecera">
     <div>
-      <h1>Estadisticas del Restaurante</h1>
+      <p class="panel__eyebrow">Gerencia · SIGO-RSH</p>
+      <h1>Panel de gerencia · Sakura Hanami</h1>
     </div>
 
-    <div class="filter-buttons">
-      <button
-        [class.active]="filtroActual() === 'dia'"
-        (click)="cambiarFiltro('dia')">
-        Hoy
-      </button>
-
-      <button
-        [class.active]="filtroActual() === 'semana'"
-        (click)="cambiarFiltro('semana')">
-        Ultimos 7 dias
-      </button>
-
-      <button
-        [class.active]="filtroActual() === 'mes'"
-        (click)="cambiarFiltro('mes')">
-        Mes anterior
-      </button>
+    <div class="filtros" role="group" aria-label="Rango de fechas">
+      <button type="button" [class.activo]="rango() === '7d'" (click)="elegirRango('7d')">7 días</button>
+      <button type="button" [class.activo]="rango() === '30d'" (click)="elegirRango('30d')">30 días</button>
+      <button type="button" [class.activo]="rango() === 'mes'" (click)="elegirRango('mes')">Este mes</button>
+      <label>Desde <input type="date" [value]="desde()" (change)="cambiarFecha('desde', $any($event.target).value)" /></label>
+      <label>Hasta <input type="date" [value]="hasta()" (change)="cambiarFecha('hasta', $any($event.target).value)" /></label>
+      <button type="button" (click)="verTablas.set(!verTablas())">{{ verTablas() ? 'Ver gráficos' : 'Ver tablas' }}</button>
     </div>
-  </div>
+  </header>
 
-  @if (cargando()) {
-
-  <div class="loading-state">
-    <div class="spinner"></div>
-    <p>Cargando estadisticas...</p>
-  </div>
-
-  } @else if (error()) {
-
-  <div class="error-state">
-    <h3>Error</h3>
-    <p>{{ error() }}</p>
-  </div>
-
-  } @else {
-
-  <div class="charts-section">
-
-    <div class="chart-card">
-
-      <div class="chart-header">
-        <h2>Distribucion de Metodos de Pago</h2>
-      </div>
-
-      <div class="chart-content">
-
-        <div class="chart-visual-panel">
-          <div class="donut-chart-container">
-
-            <svg class="donut-chart" viewBox="0 0 100 100">
-              <circle
-                cx="50"
-                cy="50"
-                r="40"
-                fill="none"
-                stroke="#e5e7eb"
-                stroke-width="10">
-              </circle>
-
-              <circle
-                cx="50"
-                cy="50"
-                r="40"
-                fill="none"
-                stroke="#3b82f6"
-                stroke-width="10"
-                [attr.stroke-dasharray]="strokeDashArrayTarjeta()"
-                stroke-linecap="round"
-                transform="rotate(-90 50 50)">
-              </circle>
-
-              <circle
-                cx="50"
-                cy="50"
-                r="40"
-                fill="none"
-                stroke="#10b981"
-                stroke-width="10"
-                [attr.stroke-dasharray]="strokeDashArrayEfectivo()"
-                [attr.stroke-dashoffset]="strokeDashOffsetEfectivo()"
-                stroke-linecap="round"
-                transform="rotate(-90 50 50)">
-              </circle>
-            </svg>
-
-            <div class="chart-center">
-              <div class="center-total">
-                {{ totalGanancias() | currency:'EUR' }}
-              </div>
-
-              <div class="center-label">
-                Total
-              </div>
-            </div>
-
-          </div>
-
-          <div class="chart-legend">
-
-            <div class="legend-item">
-              <div class="legend-color blue"></div>
-
-              <div class="legend-info">
-                <span class="legend-label">Tarjeta</span>
-                <span class="legend-value">{{ porcentajeTarjeta().toFixed(1) }}%</span>
-              </div>
-            </div>
-
-            <div class="legend-item">
-              <div class="legend-color green"></div>
-
-              <div class="legend-info">
-                <span class="legend-label">Efectivo</span>
-                <span class="legend-value">{{ porcentajeEfectivo().toFixed(1) }}%</span>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-        <div class="chart-side-panel">
-          <div class="stats-grid">
-
-            <div class="stat-card total-card">
-              <div class="stat-content">
-                <h3>Total Ganancias</h3>
-
-                <div class="stat-value">
-                  {{ totalGanancias() | currency:'EUR' }}
-                </div>
-              </div>
-            </div>
-
-            <div class="stat-card cash-card">
-              <div class="stat-content">
-                <h3>Efectivo</h3>
-
-                <div class="stat-value">
-                  {{ totalEfectivo() | currency:'EUR' }}
-                </div>
-
-                <div class="stat-percentage">
-                  {{ porcentajeEfectivo().toFixed(1) }}%
-                </div>
-              </div>
-            </div>
-
-            <div class="stat-card card-card">
-              <div class="stat-content">
-                <h3>Tarjeta</h3>
-
-                <div class="stat-value">
-                  {{ totalTarjeta() | currency:'EUR' }}
-                </div>
-
-                <div class="stat-percentage">
-                  {{ porcentajeTarjeta().toFixed(1) }}%
-                </div>
-              </div>
-            </div>
-
-            <div class="stat-card partial-card">
-              <div class="stat-content">
-                <h3>Pagos Parciales</h3>
-
-                <div class="stat-value">
-                  {{ totalPagosParciales() | currency:'EUR' }}
-                </div>
-              </div>
-            </div>
-
-            <div class="stat-card complete-card">
-              <div class="stat-content">
-                <h3>Pagos Completos</h3>
-
-                <div class="stat-value">
-                  {{ totalPagosCompletos() | currency:'EUR' }}
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-      </div>
-
-    </div>
-
-  </div>
-
-  <div class="ranking-section">
-
-    <div class="ranking-header">
-
-      <div>
-        <h2>Platos mas vendidos</h2>
-        <p>Ranking segun el filtro seleccionado: dia, semana o mes.</p>
-      </div>
-
-      <select
-        class="ranking-select"
-        [ngModel]="limiteRanking()"
-        (ngModelChange)="limiteRanking.set($event)">
-
-        <option [ngValue]="3">TOP 3</option>
-        <option [ngValue]="5">TOP 5</option>
-        <option [ngValue]="10">TOP 10</option>
-        <option [ngValue]="20">TOP 20</option>
-
-      </select>
-
-    </div>
-
-    <div class="ranking-table-container">
-
-      <table class="ranking-table">
-
-        <thead>
-        <tr>
-          <th>#</th>
-          <th>Plato</th>
-          <th>Unidades vendidas</th>
-          <th>Ganancias</th>
-        </tr>
-        </thead>
-
-        <tbody>
-
-        @for (plato of platosMasVendidos(); track plato.nombre; let i = $index) {
-
-        <tr>
-          <td>
-            <span class="ranking-position">
-              {{ i + 1 }}
-            </span>
-          </td>
-
-          <td class="plato-cell">
-            <div class="plato-name">{{ plato.nombre }}</div>
-          </td>
-
-          <td>
-            <strong>{{ plato.unidadesVendidas }}</strong>
-          </td>
-
-          <td class="ranking-money">
-            {{ plato.ganancias | currency:'EUR' }}
-          </td>
-        </tr>
-
-        } @empty {
-
-        <tr>
-          <td colspan="4" class="empty-ranking">
-            No hay platos vendidos en este periodo.
-          </td>
-        </tr>
-
-        }
-
-        </tbody>
-
-      </table>
-
-    </div>
-
-  </div>
-
-  <div class="waiters-section">
-
-    <div class="waiters-header">
-      <div>
-        <h2>Porcentaje de trabajo hecho por camarero</h2>
-        <p>
-          Total de pedidos entregados por cada camarero sobre todos los pedidos entregados del dia.
-        </p>
-      </div>
-
-      <div class="waiters-controls">
-        <span class="waiters-total">
-          {{ totalNotificacionesDiaSeleccionado() }} pedidos entregados
-        </span>
-
-        <input
-          class="waiters-date"
-          type="date"
-          [ngModel]="fechaTrabajoSeleccionada()"
-          (ngModelChange)="cambiarFechaTrabajo($event)">
-      </div>
-    </div>
-
-    <div class="waiters-list">
-      @for (camarero of trabajoCamareros(); track camarero.nombre) {
-
-      <div class="waiter-row">
-        <div class="waiter-avatar">
-          {{ camarero.inicial }}
-        </div>
-
-        <div class="waiter-main">
-          <div class="waiter-row-head">
-            <div>
-              <div class="waiter-name">{{ camarero.nombre }}</div>
-              <div class="waiter-meta">
-                {{ camarero.notificacionesCogidas }} pedidos entregados
-              </div>
-            </div>
-
-            <div class="waiter-percentage">
-              {{ camarero.porcentaje.toFixed(1) }}%
-            </div>
-          </div>
-
-          <div class="waiter-bar-track">
-            <div
-              class="waiter-bar-fill"
-              [style.width.%]="camarero.porcentaje">
-            </div>
-          </div>
-        </div>
-      </div>
-
-      } @empty {
-
-      <div class="waiters-empty">
-        No hay pedidos entregados asignados a camareros en la fecha seleccionada.
-      </div>
-
-      }
-    </div>
-
-  </div>
-
-  <div class="bottleneck-section">
-
-    <div class="bottleneck-header">
-      <h2>Cuello de botella por platos y bebidas</h2>
-
-      <input
-        class="bottleneck-date"
-        type="date"
-        [ngModel]="fechaCuelloBotellaSeleccionada()"
-        (ngModelChange)="cambiarFechaCuelloBotella($event)">
-    </div>
-
-    @if (ordenesCuelloBotellaDiaSeleccionado().length > 0) {
-
-    <div class="bottleneck-layout">
-      <div class="bottleneck-chart">
-        <div class="bottleneck-y-axis">
-          <div class="bottleneck-y-title">Total de error</div>
-
-          <div class="bottleneck-y-scale">
-            @for (marca of marcasEjeCuelloBotella(); track marca) {
-            <span>{{ marca }}</span>
-            }
-          </div>
-        </div>
-
-        <div class="bottleneck-plot-area">
-          <div class="bottleneck-grid-lines">
-            @for (marca of marcasEjeCuelloBotella(); track marca) {
-            <div class="bottleneck-grid-line"></div>
-            }
-          </div>
-
-          <div class="bottleneck-bars">
-            @for (barra of barrasCuelloBotella(); track barra.hora) {
-            <div class="bottleneck-bar-column">
-              <div class="bottleneck-bar-zone">
-                <div class="bottleneck-bar-stack">
-                  @for (segmento of barra.segmentos; track segmento.ordenId) {
-                  <div
-                    class="bottleneck-bar-segment"
-                    [style.height.%]="obtenerAlturaSegmento(segmento.ratioError)"
-                    [style.background]="segmento.color"
-                    [title]="segmento.plato + ' | real: ' + segmento.realMinutos.toFixed(1) + ' min | estimado: ' + segmento.estimadoMinutos + ' min | error: ' + (segmento.ratioError * 100).toFixed(1) + '%'">
-                  </div>
-                  }
-                </div>
-              </div>
-
-              <div class="bottleneck-hour">{{ barra.hora }}</div>
-            </div>
-            }
-          </div>
-
-          <div class="bottleneck-x-title">Horas del dia</div>
-        </div>
-      </div>
-
-      <div class="bottleneck-legend">
-        <div class="bottleneck-legend-title">Leyenda</div>
-
-        @for (item of leyendaCuelloBotella(); track item.plato) {
-        <div class="bottleneck-legend-item">
-          <span
-            class="bottleneck-legend-dot"
-            [style.background]="item.color">
-          </span>
-          <span>{{ item.plato }}</span>
-        </div>
-        }
-      </div>
-    </div>
-
-    } @else {
-
-    <div class="bottleneck-empty">
-      No hay ordenes con retraso respecto al tiempo estimado en la fecha seleccionada.
-    </div>
-
-    }
-
-  </div>
-
-  <div class="accounts-activity-section">
-
-    <div class="accounts-activity-header">
-      <div>
-        <h2>Actividad de cuentas por hora</h2>
-        <p>
-          La linea muestra las cuentas activas por hora y cada palo marca el inicio y la duracion real de cada cuenta.
-        </p>
-      </div>
-
-      <div class="accounts-activity-controls">
-        <div class="accounts-activity-metric">
-          <span class="accounts-activity-metric-label">Tiempo medio</span>
-          <strong class="accounts-activity-metric-value">
-            {{ formatearDuracionMinutos(tiempoMedioServicioDiaSeleccionado()) }}
-          </strong>
-        </div>
-
-        <input
-          class="accounts-activity-date"
-          type="date"
-          [ngModel]="fechaCuentasSeleccionada()"
-          (ngModelChange)="cambiarFechaCuentas($event)">
-      </div>
-    </div>
-
-    @if (cuentasDiaSeleccionado().length > 0) {
-
-    <div
-      class="accounts-activity-layout"
-      [class.with-detail]="cuentaActivaSeleccionada()">
-      <div class="accounts-activity-chart-shell">
-        <div class="accounts-activity-axis-title axis-left">
-          Total de cuentas
-        </div>
-
-        <div class="accounts-activity-axis-title axis-right">
-          Duracion de cuenta
-        </div>
-
-        <svg
-          class="accounts-activity-chart"
-          [attr.viewBox]="'0 0 ' + graficoCuentasAncho + ' ' + graficoCuentasAlto"
-          preserveAspectRatio="none">
-
-          <line
-            class="accounts-axis-line"
-            [attr.x1]="graficoCuentasPadding.left"
-            [attr.y1]="graficoCuentasPadding.top"
-            [attr.x2]="graficoCuentasPadding.left"
-            [attr.y2]="graficoCuentasAlto - graficoCuentasPadding.bottom">
-          </line>
-
-          <line
-            class="accounts-axis-line"
-            [attr.x1]="graficoCuentasAncho - graficoCuentasPadding.right"
-            [attr.y1]="graficoCuentasPadding.top"
-            [attr.x2]="graficoCuentasAncho - graficoCuentasPadding.right"
-            [attr.y2]="graficoCuentasAlto - graficoCuentasPadding.bottom">
-          </line>
-
-          <line
-            class="accounts-axis-line"
-            [attr.x1]="graficoCuentasPadding.left"
-            [attr.y1]="graficoCuentasAlto - graficoCuentasPadding.bottom"
-            [attr.x2]="graficoCuentasAncho - graficoCuentasPadding.right"
-            [attr.y2]="graficoCuentasAlto - graficoCuentasPadding.bottom">
-          </line>
-
-          @for (marca of marcasDuracionCuentas(); track marca.valorHoras) {
-          <line
-            class="accounts-grid-line"
-            [attr.x1]="graficoCuentasPadding.left"
-            [attr.y1]="marca.y"
-            [attr.x2]="graficoCuentasAncho - graficoCuentasPadding.right"
-            [attr.y2]="marca.y">
-          </line>
-          }
-
-          @for (marca of marcasCuentasActivas(); track marca.valor) {
-          <text
-            class="accounts-axis-label accounts-axis-label-left"
-            [attr.x]="graficoCuentasPadding.left - 18"
-            [attr.y]="marca.y + 4">
-            {{ marca.valor }}
-          </text>
-          }
-
-          @for (marca of marcasDuracionCuentas(); track marca.valorHoras) {
-          <text
-            class="accounts-axis-label accounts-axis-label-right"
-            [attr.x]="graficoCuentasAncho - graficoCuentasPadding.right + 16"
-            [attr.y]="marca.y + 4">
-            {{ marca.etiqueta }}
-          </text>
-          }
-
-          <polyline
-            class="accounts-line"
-            [attr.points]="polylineCuentasActivas()">
-          </polyline>
-
-          @for (punto of horasLineaCuentasActivas(); track punto.hora) {
-          <circle
-            class="accounts-line-point"
-            [attr.cx]="punto.x"
-            [attr.cy]="punto.y"
-            r="4.5">
-          </circle>
-          }
-
-          @for (barra of barrasDuracionCuentas(); track barra.cuentaId) {
-          <line
-            class="accounts-bar-line"
-            [class.selected]="esCuentaActivaSeleccionada(barra.cuentaId)"
-            [attr.x1]="barra.x"
-            [attr.y1]="graficoCuentasAlto - graficoCuentasPadding.bottom"
-            [attr.x2]="barra.x"
-            [attr.y2]="barra.y">
-          </line>
-
-          <rect
-            class="accounts-bar-hit"
-            [class.selected]="esCuentaActivaSeleccionada(barra.cuentaId)"
-            [attr.x]="barra.x - barra.width / 2"
-            [attr.y]="barra.y"
-            [attr.width]="barra.width"
-            [attr.height]="barra.height">
-            <title>
-              {{ barra.cuentaId }} | {{ formatearHora(barra.fechaCreacionCuenta) }} - {{ formatearHora(barra.fechaSalidaReal) }} | {{ barra.totalCuenta | currency:'EUR' }}
-            </title>
-          </rect>
-
-          <circle
-            class="accounts-bar-cap"
-            [class.selected]="esCuentaActivaSeleccionada(barra.cuentaId)"
-            [attr.cx]="barra.x"
-            [attr.cy]="barra.y"
-            r="7"
-            (click)="seleccionarCuentaActiva(barra.cuentaId)">
-            <title>
-              {{ barra.cuentaId }} | {{ formatearHora(barra.fechaCreacionCuenta) }} - {{ formatearHora(barra.fechaSalidaReal) }} | {{ barra.totalCuenta | currency:'EUR' }}
-            </title>
-          </circle>
-          }
-
-          @for (hora of horasCuentas(); track hora) {
-          <line
-            class="accounts-hour-tick"
-            [attr.x1]="((graficoCuentasAncho - graficoCuentasPadding.left - graficoCuentasPadding.right) * ((hora - rangoHorasCuentas().inicio) / (rangoHorasCuentas().fin - rangoHorasCuentas().inicio))) + graficoCuentasPadding.left"
-            [attr.y1]="graficoCuentasAlto - graficoCuentasPadding.bottom"
-            [attr.x2]="((graficoCuentasAncho - graficoCuentasPadding.left - graficoCuentasPadding.right) * ((hora - rangoHorasCuentas().inicio) / (rangoHorasCuentas().fin - rangoHorasCuentas().inicio))) + graficoCuentasPadding.left"
-            [attr.y2]="graficoCuentasAlto - graficoCuentasPadding.bottom + 10">
-          </line>
-
-          <text
-            class="accounts-axis-label accounts-axis-label-hour"
-            [attr.x]="((graficoCuentasAncho - graficoCuentasPadding.left - graficoCuentasPadding.right) * ((hora - rangoHorasCuentas().inicio) / (rangoHorasCuentas().fin - rangoHorasCuentas().inicio))) + graficoCuentasPadding.left"
-            [attr.y]="graficoCuentasAlto - 30">
-            {{ hora }}
-          </text>
-          }
-
-          <text
-            class="accounts-axis-footer"
-            [attr.x]="graficoCuentasAncho / 2"
-            [attr.y]="graficoCuentasAlto - 2">
-            Horas del dia
-          </text>
-        </svg>
-      </div>
-
-      @if (cuentaActivaSeleccionada(); as cuentaSeleccionada) {
-      <div class="accounts-activity-detail">
-
-        <div class="accounts-detail-card">
-          <div class="accounts-detail-title">
-            Cuenta {{ cuentaSeleccionada.cuentaId }}
-          </div>
-
-          <div class="accounts-detail-row">
-            <span>Entrada</span>
-            <strong>{{ formatearHora(cuentaSeleccionada.fechaCreacionCuenta) }}</strong>
-          </div>
-
-          <div class="accounts-detail-row">
-            <span>Salida</span>
-            <strong>{{ formatearHora(cuentaSeleccionada.fechaSalidaReal) }}</strong>
-          </div>
-
-          <div class="accounts-detail-row">
-            <span>Duracion</span>
-            <strong>{{ formatearDuracionMinutos(cuentaSeleccionada.duracionMinutos) }}</strong>
-          </div>
-
-          <div class="accounts-detail-row">
-            <span>Total</span>
-            <strong>{{ cuentaSeleccionada.totalCuenta | currency:'EUR' }}</strong>
-          </div>
-
-          <div class="accounts-detail-row">
-            <span>Productividad</span>
-            <strong>{{ productividadCuenta(cuentaSeleccionada) | currency:'EUR' }}/h</strong>
-          </div>
-
-          <div class="accounts-detail-meta">
-            <span>Mesa {{ cuentaSeleccionada.mesa || 'Sin mesa' }}</span>
-            <span>{{ cuentaSeleccionada.numeroOrdenes }} ordenes</span>
-          </div>
-
-          <div class="accounts-detail-actions">
-            <button
-              type="button"
-              class="accounts-detail-close"
-              (click)="cerrarCuentaActivaSeleccionada()">
-              Cerrar
-            </button>
-          </div>
-        </div>
-      </div>
-      }
-    </div>
-
-    } @else {
-
-    <div class="accounts-activity-empty">
-      No hay cuentas en la fecha seleccionada dentro de <code>cuentas_salida.csv</code>.
-    </div>
-
-    }
-
-  </div>
-
+  @if (error()) {
+    <p class="aviso-error">{{ error() }}</p>
   }
 
-</div>
+  @if (cargando() && !datos()) {
+    <p class="vacio">Calculando indicadores...</p>
+  } @else if (datos(); as d) {
+    <div [class.recargando]="cargando()">
+      <!-- KPIs -->
+      <section class="kpis">
+        <article class="kpi">
+          <span class="kpi__label">Ingresos</span>
+          <span class="kpi__valor">{{ euros(d.ventas.ingresos) }}</span>
+          <span class="kpi__nota">{{ d.ventas.cuentas }} cuentas cobradas</span>
+        </article>
+        <article class="kpi">
+          <span class="kpi__label">Ticket medio</span>
+          <span class="kpi__valor">{{ euros(d.ventas.ticketMedio) }}</span>
+          <span class="kpi__nota">por cuenta</span>
+        </article>
+        <article class="kpi">
+          <span class="kpi__label">Ocupación media de mesa</span>
+          <span class="kpi__valor">{{ minutosATexto(d.eficiencia.ocupacionMediaMinutos) }}</span>
+          <span class="kpi__nota">de apertura a cobro · {{ d.eficiencia.sesiones }} sesiones</span>
+        </article>
+        <article class="kpi">
+          <span class="kpi__label">Rotación media diaria</span>
+          <span class="kpi__valor">{{ d.eficiencia.rotacionMediaDiaria | number:'1.2-2' }}</span>
+          <span class="kpi__nota">sesiones por mesa y día ({{ d.eficiencia.numeroMesas }} mesas)</span>
+        </article>
+        <article class="kpi">
+          <span class="kpi__label">Franja de mayor facturación</span>
+          <span class="kpi__valor">{{ franjaPico()?.etiqueta ?? '—' }}</span>
+          <span class="kpi__nota">{{ franjaPico() ? euros(franjaPico()!.valor) : 'sin datos' }}</span>
+        </article>
+      </section>
+
+      <!-- Análisis de ventas -->
+      <h2 class="seccion">Análisis de ventas</h2>
+      <section class="rejilla rejilla--2">
+        <article class="tarjeta">
+          <h3>Ingresos por día</h3>
+          @if (verTablas()) {
+            <table><thead><tr><th>Día</th><th>Ingresos</th></tr></thead><tbody>
+              @for (b of barrasDia(); track b.etiqueta) { <tr><td>{{ b.etiqueta }}</td><td>{{ b.texto }}</td></tr> }
+            </tbody></table>
+          } @else {
+            <ng-container *ngTemplateOutlet="columnas; context: { $implicit: barrasDia(), titulo: 'Ingresos por día' }" />
+          }
+        </article>
+        <article class="tarjeta">
+          <h3>Ingresos por franja horaria</h3>
+          @if (verTablas()) {
+            <table><thead><tr><th>Hora</th><th>Ingresos</th></tr></thead><tbody>
+              @for (b of barrasHora(); track b.etiqueta) { <tr><td>{{ b.etiqueta }}</td><td>{{ b.texto }}</td></tr> }
+            </tbody></table>
+          } @else if (barrasHora().length === 0) {
+            <p class="vacio">Sin ventas en este periodo.</p>
+          } @else {
+            <ng-container *ngTemplateOutlet="columnas; context: { $implicit: barrasHora(), titulo: 'Ingresos por franja horaria' }" />
+          }
+        </article>
+      </section>
+      <article class="tarjeta tarjeta--compacta">
+        <h3>Ingresos por método de pago</h3>
+        <ul class="lista-metodos">
+          @for (m of d.ventas.ingresosPorMetodo; track m.etiqueta) {
+            <li><strong>{{ m.etiqueta === 'EFECTIVO' ? 'Efectivo' : m.etiqueta === 'TARJETA' ? 'Tarjeta' : m.etiqueta }}</strong>
+              {{ euros(m.valor) }} <span class="kpi__nota">({{ porcentajeMetodo(m) }} %)</span></li>
+          } @empty {
+            <li class="vacio">Sin cobros en este periodo.</li>
+          }
+        </ul>
+      </article>
+
+      <!-- Análisis de carta -->
+      <h2 class="seccion">Análisis de carta</h2>
+      <section class="rejilla rejilla--2">
+        <article class="tarjeta">
+          <h3>Ranking de productos más vendidos</h3>
+          @if (verTablas()) {
+            <table><thead><tr><th>Plato</th><th>Unidades</th><th>Ingresos</th></tr></thead><tbody>
+              @for (p of d.carta.ranking; track p.platoId) { <tr><td>{{ p.nombre }}</td><td>{{ p.unidades }}</td><td>{{ euros(p.ingresos) }}</td></tr> }
+            </tbody></table>
+          } @else {
+            <ng-container *ngTemplateOutlet="horizontales; context: { $implicit: barrasRanking() }" />
+          }
+        </article>
+        <article class="tarjeta">
+          <h3>Distribución por categorías</h3>
+          @if (verTablas()) {
+            <table><thead><tr><th>Categoría</th><th>Unidades</th><th>Ingresos</th></tr></thead><tbody>
+              @for (c of d.carta.categorias; track c.categoria) { <tr><td>{{ etiquetasCategoria[c.categoria] }}</td><td>{{ c.unidades }}</td><td>{{ euros(c.ingresos) }}</td></tr> }
+            </tbody></table>
+          } @else {
+            <ng-container *ngTemplateOutlet="horizontales; context: { $implicit: barrasCategoria() }" />
+          }
+          <h3 class="subtitulo">Productos de baja rotación</h3>
+          <table>
+            <thead><tr><th>Plato</th><th>Categoría</th><th>Unidades</th></tr></thead>
+            <tbody>
+              @for (p of d.carta.bajaRotacion; track p.platoId) {
+                <tr><td>{{ p.nombre }}</td><td>{{ etiquetasCategoria[p.categoria] }}</td><td>{{ p.unidades }}</td></tr>
+              }
+            </tbody>
+          </table>
+        </article>
+      </section>
+
+      <!-- Análisis de eficiencia -->
+      <h2 class="seccion">Análisis de eficiencia</h2>
+      <article class="tarjeta">
+        <h3>Tasa de rotación de mesas por día</h3>
+        @if (verTablas()) {
+          <table><thead><tr><th>Día</th><th>Sesiones</th><th>Rotación</th></tr></thead><tbody>
+            @for (r of d.eficiencia.rotacionPorDia; track r.fecha) { <tr><td>{{ r.fecha }}</td><td>{{ r.sesiones }}</td><td>{{ r.rotacion | number:'1.2-2' }}</td></tr> }
+          </tbody></table>
+        } @else {
+          <ng-container *ngTemplateOutlet="columnas; context: { $implicit: barrasRotacion(), titulo: 'Rotación de mesas por día' }" />
+        }
+      </article>
+    </div>
+  }
+</main>

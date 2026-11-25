@@ -51,7 +51,8 @@ public class FirestoreCuentaRepository implements CuentaRepository {
                     cuenta.fechaCreacion(),
                     cuenta.fechaPago(),
                     cuenta.password(),
-                    cuenta.metodoPago()
+                    cuenta.metodoPago(),
+                    cuenta.cobroSolicitado()
             );
 
             db.collection(COLLECTION)
@@ -264,7 +265,8 @@ public class FirestoreCuentaRepository implements CuentaRepository {
                     cuenta.fechaCreacion(),
                     cuenta.fechaPago(),
                     cuenta.password(),
-                    cuenta.metodoPago()
+                    cuenta.metodoPago(),
+                    cuenta.cobroSolicitado()
             );
 
             db.collection(COLLECTION)
@@ -343,7 +345,8 @@ public class FirestoreCuentaRepository implements CuentaRepository {
                 fechaCreacion,
                 fechaPago,
                 password,
-                metodoPago
+                metodoPago,
+                Boolean.TRUE.equals(document.getBoolean("cobroSolicitado"))
         );
     }
 
@@ -358,6 +361,7 @@ public class FirestoreCuentaRepository implements CuentaRepository {
         data.put("fechaPago", cuenta.fechaPago().orElse(null));
         data.put("password", cuenta.password());
         data.put("metodoPago", cuenta.metodoPago().map(Enum::name).orElse(null));
+        data.put("cobroSolicitado", cuenta.cobroSolicitado());
         return data;
     }
 

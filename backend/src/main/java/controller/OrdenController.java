@@ -62,7 +62,7 @@ public class OrdenController {
 
                 path("cocina", () -> {
                     path("tablero", () ->
-                            get(ctx -> ctx.json(applicationService.obtenerTableroCocinaPriorizado()))
+                            get(ctx -> ctx.json(applicationService.obtenerTableroCocina()))
                     );
 
                     path("pendientes", () ->
@@ -201,22 +201,6 @@ public class OrdenController {
 
                             notificacionApplicationService.marcarNotificacionesRecogerComoLeidasDeOrden(orden.id());
 
-                            ctx.json(orden);
-                        });
-                    });
-
-                    path("urgente", () -> {
-                        post(ctx -> {
-                            String id = ctx.pathParam("id");
-                            Orden orden = applicationService.marcarOrdenUrgente(id);
-                            ctx.json(orden);
-                        });
-                    });
-
-                    path("no-urgente", () -> {
-                        post(ctx -> {
-                            String id = ctx.pathParam("id");
-                            Orden orden = applicationService.desmarcarOrdenUrgente(id);
                             ctx.json(orden);
                         });
                     });

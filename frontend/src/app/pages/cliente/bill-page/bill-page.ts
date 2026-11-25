@@ -841,7 +841,7 @@ export class BillPage implements OnInit, OnDestroy {
     const ordenes = [...(tablero.pendientes ?? []), ...(tablero.enPreparacion ?? [])];
 
     for (const orden of ordenes) {
-      const eta = orden.prioridad?.etaMinutos;
+      const eta = orden.etaMinutos;
       if (orden.id && typeof eta === 'number' && Number.isFinite(eta) && eta > 0) {
         mapa[orden.id] = eta;
       }

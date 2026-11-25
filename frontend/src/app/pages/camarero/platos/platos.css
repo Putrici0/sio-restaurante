@@ -1,6 +1,6 @@
 /* --- ESTILO GENERAL DE LA PÁGINA --- */
 .platos-page {
-  background-color: #e5ddd0; /* Color de fondo unificado para toda la pantalla */
+  background-color: #e6cfd5; /* Color de fondo unificado para toda la pantalla */
   min-height: 100vh;
 }
 
@@ -10,7 +10,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 15px;
-  background-color: #e5ddd0;
+  background-color: #e6cfd5;
   border-bottom: 1px solid rgba(0,0,0,0.05);
 }
 
@@ -27,8 +27,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: #d1c5b4;
-  border: 1px solid #a89d8e;
+  background-color: #d2b3bb;
+  border: 1px solid #a98d94;
   border-radius: 20px;
   padding: 6px 14px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -55,8 +55,8 @@
 
 .empty-state__card {
   border-radius: 16px;
-  border: 1px solid #b9ad9d;
-  background: #d7cbbb;
+  border: 1px solid #ba9ca4;
+  background: #d8bac2;
   padding: 18px 14px;
   text-align: center;
 }
@@ -72,7 +72,7 @@
   margin: 0;
   font-size: 0.85rem;
   line-height: 1.35;
-  color: #3b352e;
+  color: #3b2e31;
 }
 
 /* --- CONTENEDOR DE LA LISTA --- */
@@ -81,7 +81,7 @@
   flex-direction: column;
   gap: 12px;
   padding: 15px;
-  background-color: #e5ddd0;
+  background-color: #e6cfd5;
 }
 
 /* --- AJUSTES DEL COMPONENTE HIJO (pedido-card) --- */
@@ -91,7 +91,7 @@
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
-  background-color: #cdc1b0 !important;
+  background-color: #ceafb7 !important;
   border-radius: 25px !important;
   padding: 10px !important;
   gap: 10px !important;
@@ -109,7 +109,7 @@
   border-radius: 12px !important;
 
   /* Colores y Alineación */
-  background-color: #e5ddd0 !important;
+  background-color: #e6cfd5 !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;

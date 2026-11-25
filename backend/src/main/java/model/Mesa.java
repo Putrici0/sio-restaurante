@@ -5,14 +5,30 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
 
-public record Mesa(String id, int capacidad, List<String> mesasUnidas) {
+/**
+ * Mesa física del comedor. sucia = true cuando la sesión terminó y el
+ * personal todavía no la ha limpiado; mientras tanto no puede abrirse.
+ */
+public record Mesa(String id, int capacidad, List<String> mesasUnidas, boolean sucia) {
 
     public Mesa {
         mesasUnidas = normalizarMesasUnidas(id, mesasUnidas);
     }
 
+    public Mesa(String id, int capacidad, List<String> mesasUnidas) {
+        this(id, capacidad, mesasUnidas, false);
+    }
+
     public Mesa(String id, int capacidad) {
-        this(id, capacidad, List.of(id));
+        this(id, capacidad, List.of(id), false);
+    }
+
+    public Mesa conMesasUnidas(List<String> ids) {
+        return new Mesa(id, capacidad, ids, sucia);
+    }
+
+    public Mesa conSucia(boolean valor) {
+        return new Mesa(id, capacidad, mesasUnidas, valor);
     }
 
     private static List<String> normalizarMesasUnidas(String id, List<String> mesasUnidas) {

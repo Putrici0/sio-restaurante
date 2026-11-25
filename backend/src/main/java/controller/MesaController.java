@@ -111,6 +111,18 @@ public class MesaController {
                         });
                     });
 
+                    path("cerrar-sesion", () -> {
+                        post(ctx -> ctx.json(applicationService.cerrarSesionMesa(ctx.pathParam("id"))));
+                    });
+
+                    path("reabrir-sesion", () -> {
+                        post(ctx -> ctx.json(applicationService.reabrirSesionMesa(ctx.pathParam("id"))));
+                    });
+
+                    path("limpiar", () -> {
+                        post(ctx -> ctx.json(applicationService.limpiarMesa(ctx.pathParam("id"))));
+                    });
+
                     path("cuenta-activa", () -> {
                         get(ctx -> {
                             String id = ctx.pathParam("id");

@@ -23,8 +23,8 @@
 
 .historial-filtros {
   min-width: 260px;
-  background: #cfa98b;
-  border: 1px solid #b48f73;
+  background: #d1899b;
+  border: 1px solid #b67182;
   border-radius: 22px;
   padding: 16px;
 }
@@ -58,7 +58,7 @@
   border: none;
   border-radius: 12px;
   padding: 0 16px;
-  background: #9d8a75;
+  background: #9e747e;
   color: white;
   font-weight: 700;
   cursor: pointer;
@@ -70,8 +70,8 @@
 }
 
 .historial-tabla {
-  background: #f4ead8;
-  border: 2px solid #cfa98b;
+  background: #f5d7df;
+  border: 2px solid #d1899b;
   border-radius: 18px;
   overflow: hidden;
 }
@@ -84,14 +84,14 @@
 }
 
 .historial-tabla__head {
-  background: #cfa98b;
+  background: #d1899b;
   font-weight: 800;
   padding: 18px 22px;
 }
 
 .historial-tabla__row {
   padding: 28px 22px;
-  border-top: 1px solid #ddb99a;
+  border-top: 1px solid #df98aa;
 }
 
 .historial-tabla__body {
@@ -117,7 +117,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 22px 18px;
-  border-top: 1px solid #ddb99a;
+  border-top: 1px solid #df98aa;
 }
 
 .historial-paginacion {
@@ -137,13 +137,13 @@
 }
 
 .historial-paginacion button {
-  border: 1px solid #cfa98b;
-  background: #f2e6d7;
+  border: 1px solid #d1899b;
+  background: #f3d6dd;
   cursor: pointer;
 }
 
 .historial-paginacion__actual {
-  background: #7f5f32;
+  background: #813044;
   color: white;
   font-weight: 800;
 }
@@ -193,7 +193,7 @@
 .historial-modal__accion {
   border: none;
   border-radius: 8px;
-  background: #1a0f0a;
+  background: #1a0a0e;
   color: #ffffff;
   font-size: 0.78rem;
   font-weight: 800;
@@ -203,11 +203,11 @@
   transition: all 0.2s ease;
 }
 .historial-modal__acciones .historial-modal__accion {
-  background: #1a0f0a;
+  background: #1a0a0e;
   color: #ffffff;
 }
 .historial-modal__accion:hover {
-  background: #3b2416;
+  background: #3c151f;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
@@ -229,7 +229,7 @@
 .historial-modal__accion {
   border: none;
   border-radius: 10px;
-  background: #1a0f0a;
+  background: #1a0a0e;
   color: #ffffff;
   font-size: 0.9rem;
   font-weight: 800;
@@ -239,12 +239,12 @@
 }
 
 .historial-modal__acciones .historial-modal__accion {
-  background: #1a0f0a;
+  background: #1a0a0e;
   color: #ffffff;
 }
 
 .historial-modal__accion:hover {
-  background: #3b2416;
+  background: #3c151f;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
@@ -298,7 +298,7 @@
 }
 
 .cuenta-general-card {
-  border: 1px solid #e5e0d8;
+  border: 1px solid #e5d8db;
   border-radius: 14px;
   background: #fff;
   padding: 18px;
@@ -408,25 +408,25 @@
   margin: 0;
   font-size: 1.35rem;
   font-weight: 800;
-  color: #1f140d;
+  color: #1f0d11;
 }
 
 .historial-correo-modal__texto {
   margin: 18px 0;
-  color: #3a2a20;
+  color: #3b1f26;
 }
 
 .historial-correo-modal__label {
   display: block;
   margin-bottom: 8px;
   font-weight: 800;
-  color: #1f140d;
+  color: #1f0d11;
 }
 
 .historial-correo-modal__input {
   width: 100%;
   height: 44px;
-  border: 1px solid #c8b8aa;
+  border: 1px solid #c9a9b1;
   border-radius: 12px;
   padding: 0 12px;
   font-size: 1rem;
@@ -434,7 +434,7 @@
 }
 
 .historial-correo-modal__input:focus {
-  border-color: #3b2416;
+  border-color: #3c151f;
 }
 
 .historial-correo-modal__error {
@@ -461,17 +461,17 @@
 
 .historial-correo-modal__cancelar {
   background: #cfb2b2;
-  color: #2b1b12;
+  color: #2c1118;
 }
 
 .historial-correo-modal__enviar {
-  background: #1a0f0a;
+  background: #1a0a0e;
   color: #ffffff;
   transition: all 0.2s ease;
 }
 
 .historial-correo-modal__enviar:hover {
-  background: #3b2416;
+  background: #3c151f;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
@@ -557,29 +557,29 @@
   margin: 0;
   font-size: 1.35rem;
   font-weight: 800;
-  color: #1f140d;
+  color: #1f0d11;
 }
 .historial-correo-modal__texto {
   margin: 18px 0;
-  color: #3a2a20;
+  color: #3b1f26;
 }
 .historial-correo-modal__label {
   display: block;
   margin-bottom: 8px;
   font-weight: 800;
-  color: #1f140d;
+  color: #1f0d11;
 }
 .historial-correo-modal__input {
   width: 100%;
   height: 44px;
-  border: 1px solid #c8b8aa;
+  border: 1px solid #c9a9b1;
   border-radius: 12px;
   padding: 0 12px;
   font-size: 1rem;
   outline: none;
 }
 .historial-correo-modal__input:focus {
-  border-color: #3b2416;
+  border-color: #3c151f;
 }
 .historial-correo-modal__error {
   margin: 10px 0 0;
@@ -602,15 +602,15 @@
 }
 .historial-correo-modal__cancelar {
   background: #cfb2b2;
-  color: #2b1b12;
+  color: #2c1118;
 }
 .historial-correo-modal__enviar {
-  background: #1a0f0a;
+  background: #1a0a0e;
   color: #ffffff;
   transition: all 0.2s ease;
 }
 .historial-correo-modal__enviar:hover {
-  background: #3b2416;
+  background: #3c151f;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
@@ -631,7 +631,7 @@
   max-width: 560px;
   border-radius: 14px;
   padding: 12px 14px;
-  background: rgba(33, 24, 17, 0.96);
+  background: rgba(33, 17, 21, 0.96);
   color: #fff;
   display: flex;
   align-items: center;

@@ -1,17 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, OnDestroy, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subscription, forkJoin, take, timer, of, catchError } from 'rxjs';
 
-import { Mesa, ZonaMesa } from '../../../models/mesa.model';
+import { ETIQUETA_ESTADO_MESA, EstadoMesa, Mesa, ZonaMesa } from '../../../models/mesa.model';
 import { CuentaApiService } from '../../../services/cuenta-api.service';
 import { MesasApiService } from '../../../services/mesas-api.service';
 import { NotificacionesApiService } from '../../../services/notificaciones-api.service';
 import { CamareroAuthService } from '../../../services/camarero-auth.service';
 import { CamareroHeader } from '../camarero-header/camarero-header';
 import { Notificacion } from '../../../models/notificacion.model';
-import { ReservasApiService } from '../../../services/reservas-api.service';
-import { Reserva } from '../../../models/reserva.model';
 
 interface ItemCobroAgrupado {
   platoId: string;
@@ -31,12 +29,11 @@ interface ItemCobroAgrupado {
   templateUrl: './mesas.html',
   styleUrl: './mesas.css',
 })
-export class MesasCamarero implements OnInit, OnDestroy {
+export class MesasCamarero implements OnDestroy {
   private readonly mesasApi = inject(MesasApiService);
   private readonly cuentaApi = inject(CuentaApiService);
   private readonly notificacionesApi = inject(NotificacionesApiService);
   private readonly camareroAuth = inject(CamareroAuthService);
-  private readonly reservasApi = inject(ReservasApiService);
   private readonly router = inject(Router);
 
   readonly zonaActiva = signal<ZonaMesa>('interior');
@@ -68,34 +65,18 @@ export class MesasCamarero implements OnInit, OnDestroy {
   readonly mostrarConfirmacionLiberar = signal(false);
   readonly mesaPendienteLiberarId = signal<string | null>(null);
 
-  // NUEVO: Variables Modal Advertencia Ocupar
-  readonly mostrarAvisoReservaModal = signal(false);
-  readonly avisoReservaMinutos = signal<number>(0);
-  readonly mesaPendienteOcuparId = signal<string>('');
 
-  // NUEVO: Reservas y Reloj
-  readonly reservasHoy = signal<Reserva[]>([]);
-  readonly ahoraMs = signal<number>(Date.now());
-  private reservasSub?: Subscription;
-  private relojInterval?: any;
 
   private pollingSub?: Subscription;
   private readonly pollingMs = 2000;
   private readonly pollingNotificacionesMs = 8000;
-  private readonly reservaLookaheadMinutes = 1;
-  private readonly reservaGraceAfterMinutes = 1;
-  private readonly reservaBlockBeforeMinutes = 2;
-  private readonly reservaReservedSoonMinutes = 0;
-  private readonly avisoPrevioReservaMinutes = 1; // demo: 1 min (real: 15)
-  private readonly reservasAvisadas = new Set<string>();
-  readonly avisoReservaMovil = signal<{ reservaId: string; mensaje: string } | null>(null);
   private ultimoRefrescoNotificaciones = 0;
+
+  readonly etiquetasEstado = ETIQUETA_ESTADO_MESA;
 
   readonly mesasFiltradas = computed(() => {
     const activas = this.notificacionesAtencion();
     const idsMesasConAtencion = new Set<string>();
-    const nowMs = this.ahoraMs();
-    const reservas = this.reservasHoy().filter(r => r.estado === 'Confirmado');
 
     activas.forEach((n: Notificacion) => {
       if (n.enCurso && n.camareroUid && n.camareroUid !== this.camareroUidActual()) return;
@@ -106,76 +87,10 @@ export class MesasCamarero implements OnInit, OnDestroy {
       .filter((mesa) => mesa.zona === this.zonaActiva())
       .sort((a, b) => this.compararMesaIds(a.id, b.id));
 
-    // MAPEO DINÁMICO DE RESERVAS A MESAS
-    const mesasLibresFisicas = mesasZona.filter(m => !m.cuentaActiva);
-    const mesasOcupadasFisicas = mesasZona.filter(m => m.cuentaActiva);
-
-    const asignacionDinamica = new Map<string, { reserva: Reserva, estado: 'reservada' | 'proximamente-reservada' | 'alerta' }>();
-    const mesasYaAsignadas = new Set<string>();
-
-    for (const res of reservas) {
-      const diff = this.diffMinDesdeAhora(res.hora, nowMs);
-      if (diff > this.reservaLookaheadMinutes || diff < -this.reservaGraceAfterMinutes) continue;
-
-      let mesasAElegir: string[] | null = null;
-      let esAlerta = false;
-
-      // 1. FORZAR UNIÓN VISUAL: Si la reserva tiene mesas asignadas, las bloqueamos juntas siempre.
-      if (res.mesasIds && res.mesasIds.length > 0) {
-        mesasAElegir = res.mesasIds;
-        // Revisar si están ocupadas por otra cuenta para lanzar alerta si falta mucho tiempo
-        const estanOcupadas = res.mesasIds.some(id => mesasOcupadasFisicas.some(m => m.id === id));
-        if (estanOcupadas && diff > this.reservaAlertThresholdMinutes()) {
-          esAlerta = true;
-        }
-      } else {
-        const zonaRes = res.zona?.toLowerCase() || 'interior';
-        if (zonaRes !== 'cualquiera' && zonaRes !== this.zonaActiva()) continue;
-
-        const libresCandidatas = mesasLibresFisicas.filter(m => !mesasYaAsignadas.has(m.id));
-        const singleMesa = libresCandidatas
-          .filter(m => m.capacidad >= res.comensales)
-          .sort((a, b) => a.capacidad - b.capacidad)[0];
-
-        if (singleMesa) {
-          mesasAElegir = [singleMesa.id];
-        } else {
-          // ALGORITMO ALERTA: Buscar las ocupadas más antiguas
-          const ocupadasCandidatas = mesasOcupadasFisicas.filter(m => !mesasYaAsignadas.has(m.id));
-          ocupadasCandidatas.sort((a, b) => {
-            const cA = a.cuentaActivaId || '';
-            const cB = b.cuentaActivaId || '';
-            return cA.localeCompare(cB);
-          });
-          const singleOcupada = ocupadasCandidatas.filter(m => m.capacidad >= res.comensales)[0];
-          if (singleOcupada) {
-            mesasAElegir = [singleOcupada.id];
-            esAlerta = true;
-          }
-        }
-      }
-
-      if (mesasAElegir && mesasAElegir.length > 0) {
-        const estadoRes = esAlerta ? 'alerta' : ((diff <= this.reservaReservedSoonMinutes) ? 'reservada' : 'proximamente-reservada');
-        mesasAElegir.forEach(id => {
-          mesasYaAsignadas.add(id);
-          asignacionDinamica.set(id, { reserva: res, estado: estadoRes });
-        });
-      }
-    }
-
-    const mesasAgrupadas = new Map<string, (Mesa & { tieneAtencion: boolean, alertaReserva?: boolean })>();
+    const mesasAgrupadas = new Map<string, (Mesa & { tieneAtencion: boolean })>();
 
     for (const mesa of mesasZona) {
-      // Forzar agrupación visual si están ligadas por la misma reserva.
-      const asignacionTemp = asignacionDinamica.get(mesa.id);
-      const esParteDeReservaAgrupada = !!asignacionTemp &&
-        (asignacionTemp.reserva.mesasIds?.length ?? 0) > 1;
-
-      const grupoMesaIds = esParteDeReservaAgrupada
-        ? this.normalizarGrupoMesaIds(asignacionTemp!.reserva.mesasIds!)
-        : this.normalizarGrupoMesaIds(mesa.grupoMesaIds);
-
+      const grupoMesaIds = this.normalizarGrupoMesaIds(mesa.grupoMesaIds);
       const clave = this.claveGrupo(grupoMesaIds);
       if (mesasAgrupadas.has(clave)) continue;
 
@@ -187,32 +102,16 @@ export class MesasCamarero implements OnInit, OnDestroy {
       const cuentaActiva = miembros.find((item) => item.cuentaActiva)?.cuentaActiva ?? null;
       const mesaPrincipalId = miembros[0]?.id ?? mesa.id;
 
-      let estado: 'libre' | 'ocupada' | 'reservada' | 'proximamente-reservada' = cuentaActiva ? 'ocupada' : 'libre';
-      let alertaReserva = false;
-
-      if (estado === 'libre' || estado === 'ocupada') {
-        const asigId = Array.from(asignacionDinamica.keys()).find(id => grupoMesaIds.includes(id));
-        if (asigId) {
-          const asignacion = asignacionDinamica.get(asigId)!;
-          if (estado === 'libre') {
-            estado = (asignacion.estado === 'reservada') ? 'reservada' : 'proximamente-reservada';
-          } else if (estado === 'ocupada' && asignacion.estado === 'alerta') {
-            alertaReserva = true;
-          }
-        }
-      }
-
       mesasAgrupadas.set(clave, {
         id: mesaPrincipalId,
         capacidad: miembros.reduce((acc, item) => acc + item.capacidad, 0),
         zona: mesa.zona,
-        estado: estado,
+        estado: this.estadoGrupo(miembros),
         cuentaActivaId: cuentaActiva?.id ?? null,
         cuentaActiva,
         grupoMesaIds,
         mesaPrincipalId,
         tieneAtencion: grupoMesaIds.some((id) => idsMesasConAtencion.has(id)),
-        alertaReserva
       });
     }
 
@@ -269,48 +168,12 @@ export class MesasCamarero implements OnInit, OnDestroy {
 
   constructor() {
     this.cargarPerfilCamareroActual();
-    this.iniciarStreamReservasHoy();
     this.recargarMesas();
     this.iniciarPolling();
   }
 
-  ngOnInit(): void {
-    this.relojInterval = setInterval(() => {
-      this.ahoraMs.set(Date.now());
-    }, 1000);
-  }
-
   ngOnDestroy(): void {
     this.pollingSub?.unsubscribe();
-    this.reservasSub?.unsubscribe();
-    if (this.relojInterval) clearInterval(this.relojInterval);
-  }
-
-  private iniciarStreamReservasHoy(): void {
-    this.reservasSub?.unsubscribe();
-    const hoy = this.getLocalHoy();
-    this.reservasSub = this.reservasApi
-      .obtenerReservasPorFecha(hoy)
-      .pipe(catchError((err) => {
-        console.warn('Error stream reservas camarero:', err);
-        return of([] as Reserva[]);
-      }))
-      .subscribe((reservas) => {
-        this.reservasHoy.set(reservas);
-      });
-  }
-
-  private diffMinDesdeAhora(hora: string, nowMs = this.ahoraMs()): number {
-    const now = new Date(nowMs);
-    const reserva = new Date(now);
-    const [h, m] = hora.split(':').map(Number);
-    reserva.setHours(h || 0, m || 0, 0, 0);
-    return (reserva.getTime() - nowMs) / 60000;
-  }
-
-  private getLocalHoy(): string {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
   cambiarZona(nuevaZona: ZonaMesa): void {
@@ -435,39 +298,39 @@ export class MesasCamarero implements OnInit, OnDestroy {
     this.router.navigate(['/camarero/cuenta', mesa.id]);
   }
 
+  /** Apertura explícita de sesión. Las reservas no se asignan automáticamente. */
   solicitarOcuparMesa(mesaId: string): void {
-    const nowMs = this.ahoraMs();
-    const reservas = this.reservasHoy().filter(r => r.estado === 'Confirmado');
-    const mesaLogica = this.mesasFiltradas().find(m => m.id === mesaId);
-    const mesasIdsGrupo = mesaLogica ? mesaLogica.grupoMesaIds : [mesaId];
-
-    if (mesaLogica?.estado === 'reservada' || mesaLogica?.estado === 'proximamente-reservada') {
-      this.ocuparMesaFinal(mesaId);
-      return;
-    }
-
-    // Busca colisiones en la ventana configurada
-    const conflict = reservas.find(r =>
-      r.mesasIds?.some(id => mesasIdsGrupo.includes(id)) &&
-      this.diffMinDesdeAhora(r.hora, nowMs) <= this.reservaLookaheadMinutes &&
-      this.diffMinDesdeAhora(r.hora, nowMs) >= -this.reservaGraceAfterMinutes
-    );
-
-    if (conflict) {
-      const diff = this.diffMinDesdeAhora(conflict.hora, nowMs);
-      if (diff <= this.reservaBlockBeforeMinutes && diff >= -this.reservaGraceAfterMinutes) {
-        this.error.set(`Mesa bloqueada por reserva de ${conflict.nombre} a las ${conflict.hora}`);
-        return;
-      }
-      this.ocuparMesaFinal(mesaId);
-    } else {
-      this.ocuparMesaFinal(mesaId);
-    }
+    this.ocuparMesaFinal(mesaId);
   }
 
-  confirmarOcuparConAviso(): void {
-    this.mostrarAvisoReservaModal.set(false);
-    this.ocuparMesaFinal(this.mesaPendienteOcuparId());
+  /** Cierre explícito de sesión: la mesa queda pendiente de cobro. */
+  cerrarSesionMesa(mesaId: string): void {
+    this.accionSimpleMesa(mesaId, this.mesasApi.cerrarSesion(mesaId), 'No se ha podido cerrar la sesión.');
+  }
+
+  reabrirSesionMesa(mesaId: string): void {
+    this.accionSimpleMesa(mesaId, this.mesasApi.reabrirSesion(mesaId), 'No se ha podido reabrir la sesión.');
+  }
+
+  marcarMesaLimpia(mesaId: string): void {
+    this.accionSimpleMesa(mesaId, this.mesasApi.limpiarMesa(mesaId), 'No se ha podido marcar la mesa como limpia.');
+  }
+
+  private accionSimpleMesa(mesaId: string, request$: import('rxjs').Observable<unknown>, mensajeError: string): void {
+    if (this.accionMesaId() !== null) return;
+    this.error.set(null);
+    this.accionMesaId.set(mesaId);
+    request$.subscribe({
+      next: () => {
+        this.recargarMesas(mesaId);
+        this.cerrarModal();
+      },
+      error: (err: any) => {
+        console.error(mensajeError, err);
+        this.accionMesaId.set(null);
+        this.error.set(err?.error?.message ?? mensajeError);
+      },
+    });
   }
 
   private ocuparMesaFinal(mesaId: string): void {
@@ -546,7 +409,7 @@ export class MesasCamarero implements OnInit, OnDestroy {
       ? this.notificacionesApi.obtenerAsignacionesActivas().pipe(take(1), catchError(err => { console.warn('Error asignaciones:', err); return of(this.asignacionesActivas()); }))
       : of(this.asignacionesActivas());
 
-    // Mesas cada 2s; reservas por stream realtime; notificaciones cada 8s.
+    // Mesas cada 2s; notificaciones cada 8s.
     forkJoin({
       notifs: notifs$,
       asignaciones: asignaciones$,
@@ -688,12 +551,20 @@ export class MesasCamarero implements OnInit, OnDestroy {
       id: mesaPrincipalId,
       capacidad: miembros.reduce((acc, item) => acc + item.capacidad, 0),
       zona: mesaFisica.zona,
-      estado: cuentaActiva ? 'ocupada' : 'libre',
+      estado: this.estadoGrupo(miembros),
       cuentaActivaId: cuentaActiva?.id ?? null,
       cuentaActiva,
       grupoMesaIds,
       mesaPrincipalId,
     };
+  }
+
+  private estadoGrupo(miembros: Mesa[]): EstadoMesa {
+    const prioridad: EstadoMesa[] = ['pendiente-cobro', 'ocupada', 'sucia', 'libre'];
+    for (const estado of prioridad) {
+      if (miembros.some((m) => m.estado === estado)) return estado;
+    }
+    return 'libre';
   }
 
   private normalizarGrupoMesaIds(grupoMesaIds: string[]): string[] {
@@ -706,34 +577,6 @@ export class MesasCamarero implements OnInit, OnDestroy {
 
   private compararMesaIds(left: string, right: string): number {
     return Number(left) - Number(right);
-  }
-
-  private reservaAlertThresholdMinutes(): number {
-    return Math.max(this.reservaReservedSoonMinutes + 1, 1);
-  }
-
-  private evaluarAvisoReservaMovil(reservas: Reserva[]): void {
-    const nowMs = this.ahoraMs();
-    const candidata = reservas
-      .filter((r) => r.estado === 'Confirmado')
-      .map((r) => ({ r, diff: this.diffMinDesdeAhora(r.hora, nowMs) }))
-      .filter(({ diff }) => diff >= 0 && diff <= this.avisoPrevioReservaMinutes)
-      .sort((a, b) => a.diff - b.diff)[0];
-
-    if (!candidata || !candidata.r.id) return;
-    if (this.reservasAvisadas.has(candidata.r.id)) return;
-
-    this.avisoReservaMovil.set({
-      reservaId: candidata.r.id,
-      mensaje: `Reserva en ${Math.ceil(candidata.diff)} min (${candidata.r.nombre})`,
-    });
-  }
-
-  aceptarAvisoReservaMovil(): void {
-    const aviso = this.avisoReservaMovil();
-    if (!aviso) return;
-    this.reservasAvisadas.add(aviso.reservaId);
-    this.avisoReservaMovil.set(null);
   }
 
   private async cargarPerfilCamareroActual(): Promise<void> {

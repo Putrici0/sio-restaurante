@@ -6,14 +6,13 @@ import com.google.cloud.firestore.Firestore;
 import config.FirebaseConfig;
 import config.FirestoreClientProvider;
 import controller.CuentaController;
+import controller.EstadisticasController;
 import controller.MesaController;
 import controller.NotificacionController;
 import controller.OrdenController;
 import controller.PedidoController;
 import controller.PlatoController;
 import controller.ReservaController;
-import controller.TiqueController;
-import io.github.cdimascio.dotenv.Dotenv;
 import io.javalin.Javalin;
 import io.javalin.json.JavalinJackson;
 import repository.firestore.FirestoreCuentaRepository;
@@ -30,37 +29,22 @@ import service.NotificacionService;
 import service.OrdenService;
 import service.PedidoService;
 import service.PlatoService;
+import service.PlatosMasPedidosService;
 import service.ReservaService;
-import service.TiqueEmailService;
+import service.application.EstadisticasApplicationService;
 import service.application.HistorialCuentasApplicationService;
 import service.application.NotificacionApplicationService;
 import service.application.OrdenApplicationService;
 import service.application.PagoApplicationService;
 import service.application.PedidoApplicationService;
 import util.ApiError;
-import util.ExportadorCuentasSalidaCsv;
-import util.ExportadorOrdenesNotificacionesCsv;
 import util.MesaSeeder;
 import util.PlatoSeeder;
-import util.SincronizadorEstadisticas;
 
-import java.util.Scanner;
 
 public class Main {
 
     public static void main(String[] args) {
-        Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
-
-        if (dotenv.get("EMAIL_FROM") == null) {
-            dotenv = Dotenv.configure().directory("..").ignoreIfMissing().load();
-        }
-        if (dotenv.get("EMAIL_FROM") != null) {
-            dotenv.entries().forEach(entry -> System.setProperty(entry.getKey(), entry.getValue()));
-            System.out.println("Variables de entorno cargadas desde .env (Email: " + dotenv.get("EMAIL_FROM") + ")");
-        } else {
-            System.out.println("No se encontro el archivo .env o faltan variables.");
-        }
-
         FirebaseConfig.init();
         Firestore db = FirestoreClientProvider.getFirestore();
 
@@ -80,54 +64,6 @@ public class Main {
         MesaSeeder.seed(mesaRepository);
         PlatoSeeder.seed(platoRepository);
 
-        Scanner scanner = new Scanner(System.in);
-
-        System.out.println();
-        System.out.print("¿Desea sincronizar ganancias.csv? (s/n): ");
-
-        String respuesta = scanner.nextLine().trim();
-
-        if (respuesta.equalsIgnoreCase("s")) {
-
-            System.out.println();
-            System.out.println("Sincronizando CSV de estadísticas...");
-
-            SincronizadorEstadisticas.sincronizar(db);
-
-            System.out.println("CSV sincronizado");
-        }
-
-        System.out.println();
-        System.out.print("¿Desea exportar ordenes_notificaciones.csv? (s/n): ");
-
-        String respuestaExportacionOrdenes = scanner.nextLine().trim();
-
-        if (respuestaExportacionOrdenes.equalsIgnoreCase("s")) {
-
-            System.out.println();
-            System.out.println("Exportando CSV de ordenes y notificaciones...");
-
-            ExportadorOrdenesNotificacionesCsv.exportar(db);
-
-            System.out.println("CSV exportado");
-        }
-
-        System.out.println();
-        System.out.print("Â¿Desea exportar cuentas_salida.csv? (s/n): ");
-
-        String respuestaExportacionCuentas = scanner.nextLine().trim();
-
-        if (respuestaExportacionCuentas.equalsIgnoreCase("s")) {
-
-            System.out.println();
-            System.out.println("Exportando CSV de cuentas y salida...");
-
-            ExportadorCuentasSalidaCsv.exportar(db);
-
-            System.out.println("CSV exportado");
-        }
-
-        System.out.println("Continuando ejecucion del servidor...");
         PlatoService platoService = new PlatoService(platoRepository);
         MesaService mesaService = new MesaService(mesaRepository);
         ReservaService reservaService = new ReservaService(reservaRepository);
@@ -135,14 +71,12 @@ public class Main {
         PedidoService pedidoService = new PedidoService(pedidoRepository, cuentaRepository);
         OrdenService ordenService = new OrdenService(ordenRepository, pedidoRepository, platoRepository);
         NotificacionService notificacionService = new NotificacionService(notificacionRepository, cuentaRepository);
-        TiqueEmailService tiqueEmailService = new TiqueEmailService();
 
         MesaApplicationService mesaApplicationService = new MesaApplicationService(
                 mesaRepository,
                 cuentaRepository,
                 pedidoRepository,
-                ordenRepository,
-                reservaRepository
+                ordenRepository
         );
 
         PedidoApplicationService pedidoApplicationService = new PedidoApplicationService(
@@ -182,7 +116,10 @@ public class Main {
         HistorialCuentasApplicationService historialCuentasApplicationService =
                 new HistorialCuentasApplicationService(cuentaRepository, pedidoRepository, ordenRepository);
 
-        PlatoController platoController = new PlatoController(platoService);
+        PlatoController platoController = new PlatoController(
+                platoService,
+                new PlatosMasPedidosService(ordenRepository, platoRepository)
+        );
         MesaController mesaController = new MesaController(mesaService, mesaApplicationService);
         ReservaController reservaController = new ReservaController(reservaService);
         CuentaController cuentaController = new CuentaController(
@@ -201,13 +138,15 @@ public class Main {
                 notificacionApplicationService
         );
 
-        TiqueController tiqueController = new TiqueController(tiqueEmailService);
+        EstadisticasController estadisticasController = new EstadisticasController(
+                new EstadisticasApplicationService(cuentaRepository, ordenRepository, platoRepository, mesaRepository)
+        );
 
         Javalin app = Javalin.create(config -> {
             config.jsonMapper(new JavalinJackson(objectMapper, false));
             config.bundledPlugins.enableCors(cors -> cors.addRule(rule -> rule.anyHost()));
 
-            config.routes.get("/", ctx -> ctx.result("API del restaurante funcionando"));
+            config.routes.get("/", ctx -> ctx.result("API de SIGO-RSH (Sakura Hanami) funcionando"));
             config.routes.get("/health", ctx -> ctx.result("OK"));
 
             config.routes.apiBuilder(platoController.routes());
@@ -217,7 +156,7 @@ public class Main {
             config.routes.apiBuilder(pedidoController.routes());
             config.routes.apiBuilder(ordenController.routes());
             config.routes.apiBuilder(notificacionController.routes());
-            config.routes.apiBuilder(tiqueController.routes());
+            config.routes.apiBuilder(estadisticasController.routes());
 
             config.routes.exception(IllegalArgumentException.class, (e, ctx) -> {
                 ctx.status(400);

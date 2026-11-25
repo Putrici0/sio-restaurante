@@ -1,5 +1,9 @@
 import { Routes } from '@angular/router';
 
+import { InicioPublico } from './pages/publico/inicio';
+import { CartaPublica } from './pages/publico/carta-publica';
+import { ReservaOnline } from './pages/publico/reserva-online';
+
 import { Mesas } from './pages/barra/mesas/mesas';
 import { Bebidas } from './pages/barra/bebidas/bebidas';
 import { PlatosComponent } from './pages/barra/platos/platos';
@@ -24,7 +28,12 @@ import { RegistroCamarero } from './pages/camarero/registro/registro';
 import { camareroAuthGuard } from './guards/camarero-auth.guard';
 
 export const routes: Routes = [
-  { path: '', redirectTo: 'mesas', pathMatch: 'full' },
+  // Web pública del restaurante (sin login): portada, carta y reservas online
+  { path: '', component: InicioPublico, pathMatch: 'full', title: 'Sakura Hanami · Buffet japonés' },
+  { path: 'carta', component: CartaPublica, title: 'Carta · Sakura Hanami' },
+  { path: 'reservar', component: ReservaOnline, title: 'Reservas · Sakura Hanami' },
+
+  // Gerencia / encargado de sala
 
   { path: 'mesas', component: Mesas },
   { path: 'bebidas', component: Bebidas },
@@ -32,13 +41,16 @@ export const routes: Routes = [
   { path: 'historial', component: HistorialComponent },
   { path: 'estadistica', component: EstadisticaComponent },
 
+  // Cliente en mesa (QR)
   { path: 'acceso/:id', component: TableLogin },
   { path: 'admin/generar-qr', component: QrGenerator },
   { path: 'menu/:id', component: MenuPage, canActivate: [tableAccessGuard] },
   { path: 'cuenta/:id', component: BillPage, canActivate: [tableAccessGuard] },
 
+  // Cocina
   { path: 'cocina', component: TableroPedidos },
 
+  // Camareros
   { path: 'camarero', redirectTo: 'camarero/mesas', pathMatch: 'full' },
   { path: 'camarero/login', component: LoginCamarero },
   { path: 'camarero/registro', component: RegistroCamarero },
@@ -49,4 +61,5 @@ export const routes: Routes = [
   { path: 'camarero/cuenta/:id', component: PedidoCamarero, canActivate: [camareroAuthGuard] },
   { path: 'camarero/menu/:id', component: MenuCamarero, canActivate: [camareroAuthGuard] },
 
+  { path: '**', redirectTo: '' },
 ];

@@ -5,7 +5,6 @@ import model.Reserva;
 import repository.interfaces.ReservaRepository;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,23 +17,15 @@ public class FirestoreReservaRepository extends AbstractFirestoreRepository<Rese
 
     @Override
     protected Reserva mapToEntity(String id, Map<String, Object> data) {
-        @SuppressWarnings("unchecked")
-        List<String> mesasIds = data.get("mesasIds") instanceof List<?>
-                ? ((List<?>) data.get("mesasIds")).stream()
-                .filter(java.util.Objects::nonNull)
-                .map(Object::toString)
-                .toList()
-                : new ArrayList<>();
-
+        Object capacidad = data.getOrDefault("capacidad", data.getOrDefault("comensales", 0L));
         return new Reserva(
                 id,
                 get(data, "nombre", ""),
                 get(data, "telefono", ""),
+                get(data, "email", ""),
                 toInstant(data.get("fecha")),
                 get(data, "hora", ""),
-                ((Long) data.getOrDefault("capacidad", 0L)).intValue(),
-                get(data, "zona", ""),
-                mesasIds,
+                capacidad instanceof Number n ? n.intValue() : 0,
                 get(data, "nota", ""),
                 get(data, "estado", "Pendiente"),
                 toInstant(data.get("fechaCreacion"))
@@ -46,11 +37,10 @@ public class FirestoreReservaRepository extends AbstractFirestoreRepository<Rese
         Map<String, Object> map = new HashMap<>();
         map.put("nombre", reserva.nombre());
         map.put("telefono", reserva.telefono());
+        map.put("email", reserva.email());
         map.put("fecha", toTimestamp(reserva.fecha()));
         map.put("hora", reserva.hora());
         map.put("capacidad", reserva.capacidad());
-        map.put("zona", reserva.zona());
-        map.put("mesasIds", reserva.mesasIds());
         map.put("nota", reserva.nota());
         map.put("estado", reserva.estado());
         map.put("fechaCreacion", toTimestamp(reserva.fechaCreacion()));
@@ -68,11 +58,10 @@ public class FirestoreReservaRepository extends AbstractFirestoreRepository<Rese
                 id,
                 reserva.nombre(),
                 reserva.telefono(),
+                reserva.email(),
                 reserva.fecha(),
                 reserva.hora(),
                 reserva.capacidad(),
-                reserva.zona(),
-                reserva.mesasIds(),
                 reserva.nota(),
                 reserva.estado(),
                 reserva.fechaCreacion()

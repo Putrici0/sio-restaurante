@@ -5,7 +5,6 @@ import model.Reserva;
 import repository.firestore.FirestoreReservaRepository;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,11 +23,10 @@ public class ReservaService {
                 null,
                 request.nombre.trim(),
                 request.telefono != null ? request.telefono.trim() : "",
+                request.email != null ? request.email.trim() : "",
                 Instant.parse(request.fecha.trim()),
                 request.hora != null ? request.hora.trim() : "",
                 request.capacidad,
-                request.zona != null ? request.zona.trim() : "Cualquiera",
-                request.mesasIds != null ? request.mesasIds : new ArrayList<>(),
                 request.nota != null ? request.nota.trim() : "",
                 request.estado != null ? request.estado.trim() : "Pendiente",
                 Instant.now()
@@ -61,11 +59,10 @@ public class ReservaService {
                 id,
                 request.nombre.trim(),
                 request.telefono != null ? request.telefono.trim() : original.telefono(),
+                request.email != null ? request.email.trim() : original.email(),
                 Instant.parse(request.fecha.trim()),
                 request.hora != null ? request.hora.trim() : original.hora(),
                 request.capacidad,
-                request.zona != null ? request.zona.trim() : original.zona(),
-                request.mesasIds != null ? request.mesasIds : original.mesasIds(),
                 request.nota != null ? request.nota.trim() : original.nota(),
                 request.estado != null ? request.estado.trim() : original.estado(),
                 original.fechaCreacion()
@@ -92,7 +89,11 @@ public class ReservaService {
             throw new IllegalArgumentException("La capacidad es obligatoria");
         }
         if (request.capacidad <= 0) {
-            throw new IllegalArgumentException("La capacidad debe ser mayor que 0");
+            throw new IllegalArgumentException("El número de comensales debe ser mayor que 0");
+        }
+        if ((request.telefono == null || request.telefono.isBlank())
+                && (request.email == null || request.email.isBlank())) {
+            throw new IllegalArgumentException("Indica un teléfono o un correo de contacto");
         }
 
         try {

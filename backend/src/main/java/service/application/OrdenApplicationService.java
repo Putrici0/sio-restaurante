@@ -13,10 +13,8 @@ import repository.interfaces.CuentaRepository;
 import repository.interfaces.OrdenRepository;
 import repository.interfaces.PedidoRepository;
 import repository.interfaces.PlatoRepository;
-import service.domain.cocina.CocinaContextoCuenta;
-import service.domain.cocina.CocinaContextoService;
+import service.domain.cocina.CocinaColaService;
 import service.domain.cocina.CocinaOrdenMapper;
-import service.domain.cocina.CocinaPrioridadService;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -34,8 +32,7 @@ public class OrdenApplicationService {
     private final PedidoApplicationService pedidoApplicationService;
     private final CuentaRepository cuentaRepository;
 
-    private final CocinaContextoService cocinaContextoService = new CocinaContextoService();
-    private final CocinaPrioridadService cocinaPrioridadService = new CocinaPrioridadService();
+    private final CocinaColaService cocinaColaService = new CocinaColaService();
     private final CocinaOrdenMapper cocinaOrdenMapper = new CocinaOrdenMapper();
     private static final long TABLERO_CACHE_TTL_MS = 3000;
     private volatile CocinaTablero cacheTablero;
@@ -101,7 +98,7 @@ public class OrdenApplicationService {
         }
     }
 
-    public CocinaTablero obtenerTableroCocinaPriorizado() {
+    public CocinaTablero obtenerTableroCocina() {
         CocinaTablero tableroCacheado = cacheTableroVigente();
         if (tableroCacheado != null) {
             return tableroCacheado;
@@ -115,35 +112,20 @@ public class OrdenApplicationService {
                 .filter(this::esOrdenDeCocina)
                 .toList();
 
-        Map<String, CocinaContextoCuenta> contexto = cocinaContextoService.construirContexto(ordenesCocina);
-
-        List<Orden> pendientes = cocinaPrioridadService.ordenarPorPrioridad(
-                ordenesCocina.stream()
-                        .filter(o -> o.ordenEstado() == OrdenEstado.Pendiente)
-                        .toList(),
-                contexto,
-                ahora
+        // Cola única por orden de llegada: primero lo que ya está en preparación,
+        // después lo pendiente, ambos ordenados por la hora en que se pidieron.
+        List<Orden> enPreparacion = cocinaColaService.ordenarPorLlegada(
+                ordenesCocina.stream().filter(o -> o.ordenEstado() == OrdenEstado.Preparación).toList()
+        );
+        List<Orden> pendientes = cocinaColaService.ordenarPorLlegada(
+                ordenesCocina.stream().filter(o -> o.ordenEstado() == OrdenEstado.Pendiente).toList()
         );
 
-        List<Orden> enPreparacion = cocinaPrioridadService.ordenarPorPrioridad(
-                ordenesCocina.stream()
-                        .filter(o -> o.ordenEstado() == OrdenEstado.Preparación)
-                        .toList(),
-                contexto,
-                ahora
-        );
-
-        List<Orden> colaActivaPriorizada = cocinaPrioridadService.ordenarPorPrioridad(
-                ordenesCocina.stream()
-                        .filter(o -> o.ordenEstado() == OrdenEstado.Pendiente || o.ordenEstado() == OrdenEstado.Preparación)
-                        .toList(),
-                contexto,
-                ahora
-        );
-        int capacidadConcurrente = Math.max(1, enPreparacion.size());
-        Map<String, Integer> etaPorOrden = cocinaPrioridadService.calcularEtaMinutosPorOrden(
-                colaActivaPriorizada,
-                capacidadConcurrente
+        List<Orden> colaActiva = new ArrayList<>(enPreparacion);
+        colaActiva.addAll(pendientes);
+        Map<String, Integer> etaPorOrden = cocinaColaService.calcularEtaMinutosPorOrden(
+                colaActiva,
+                Math.max(1, enPreparacion.size())
         );
 
         List<Orden> listas = ordenesCocina.stream()
@@ -156,27 +138,22 @@ public class OrdenApplicationService {
                 .toList();
 
         CocinaTablero tablero = new CocinaTablero(
-                mapearConPrioridad(pendientes, contexto, ahora, etaPorOrden),
-                mapearConPrioridad(enPreparacion, contexto, ahora, etaPorOrden),
-                mapearConPrioridad(listas, contexto, ahora, etaPorOrden),
+                mapearCola(pendientes, etaPorOrden),
+                mapearCola(enPreparacion, etaPorOrden),
+                mapearCola(listas, etaPorOrden),
                 ahora
         );
         cachearTablero(tablero, ahora);
         return tablero;
     }
 
-    private List<CocinaOrden> mapearConPrioridad(
-            List<Orden> ordenes,
-            Map<String, CocinaContextoCuenta> contexto,
-            Instant ahora,
-            Map<String, Integer> etaPorOrden
-    ) {
-        return ordenes.stream()
-                .map(orden -> cocinaOrdenMapper.toCocinaOrden(
-                        orden,
-                        cocinaPrioridadService.calcularPrioridad(orden, contexto, ahora, etaPorOrden.get(orden.id()))
-                ))
-                .toList();
+    private List<CocinaOrden> mapearCola(List<Orden> ordenes, Map<String, Integer> etaPorOrden) {
+        List<CocinaOrden> resultado = new ArrayList<>();
+        for (int i = 0; i < ordenes.size(); i++) {
+            Orden orden = ordenes.get(i);
+            resultado.add(cocinaOrdenMapper.toCocinaOrden(orden, i + 1, etaPorOrden.get(orden.id())));
+        }
+        return resultado;
     }
 
     public List<Orden> obtenerBebidasActivasBarra() {
@@ -216,7 +193,7 @@ public class OrdenApplicationService {
     }
 
     public List<Orden> obtenerOrdenesCocinaPendientes() {
-        CocinaTablero tablero = obtenerTableroCocinaPriorizado();
+        CocinaTablero tablero = obtenerTableroCocina();
 
         return tablero.pendientes().stream()
                 .map(this::toOrden)
@@ -224,7 +201,7 @@ public class OrdenApplicationService {
     }
 
     public List<Orden> obtenerOrdenesCocinaEnPreparacion() {
-        CocinaTablero tablero = obtenerTableroCocinaPriorizado();
+        CocinaTablero tablero = obtenerTableroCocina();
 
         return tablero.enPreparacion().stream()
                 .map(this::toOrden)
@@ -232,7 +209,7 @@ public class OrdenApplicationService {
     }
 
     public List<Orden> obtenerOrdenesCocinaListas() {
-        CocinaTablero tablero = obtenerTableroCocinaPriorizado();
+        CocinaTablero tablero = obtenerTableroCocina();
 
         return tablero.listas().stream()
                 .map(this::toOrden)
@@ -311,7 +288,6 @@ public class OrdenApplicationService {
                 OrdenEstado.Pendiente,
                 orden.fecha(),
                 orden.detalles(),
-                orden.urgente(),
                 orden.pagada(),
                 orden.fechaPago(),
                 orden.metodoPago()
@@ -334,7 +310,6 @@ public class OrdenApplicationService {
                 OrdenEstado.Preparación,
                 orden.fecha(),
                 orden.detalles(),
-                orden.urgente(),
                 orden.pagada(),
                 orden.fechaPago(),
                 orden.metodoPago()
@@ -357,7 +332,6 @@ public class OrdenApplicationService {
                 OrdenEstado.Listo,
                 orden.fecha(),
                 orden.detalles(),
-                orden.urgente(),
                 orden.pagada(),
                 orden.fechaPago(),
                 orden.metodoPago()
@@ -385,7 +359,6 @@ public class OrdenApplicationService {
                 OrdenEstado.Entregado,
                 orden.fecha(),
                 orden.detalles(),
-                orden.urgente(),
                 orden.pagada(),
                 orden.fechaPago(),
                 orden.metodoPago()
@@ -408,53 +381,6 @@ public class OrdenApplicationService {
                 OrdenEstado.Listo,
                 orden.fecha(),
                 orden.detalles(),
-                orden.urgente(),
-                orden.pagada(),
-                orden.fechaPago(),
-                orden.metodoPago()
-        );
-
-        Orden resultado = ordenRepository.update(id, actualizada);
-        invalidarCacheTablero();
-        return resultado;
-    }
-
-    public Orden marcarOrdenUrgente(String id) {
-        Orden orden = ordenRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("La orden no existe"));
-
-        Orden actualizada = new Orden(
-                orden.id(),
-                orden.pedido(),
-                orden.plato(),
-                orden.precio(),
-                orden.ordenEstado(),
-                orden.fecha(),
-                orden.detalles(),
-                true,
-                orden.pagada(),
-                orden.fechaPago(),
-                orden.metodoPago()
-        );
-
-        Orden resultado = ordenRepository.update(id, actualizada);
-        invalidarCacheTablero();
-        return resultado;
-    }
-
-    public Orden desmarcarOrdenUrgente(String id) {
-        Orden orden = ordenRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("La orden no existe"));
-
-        Orden actualizada = new Orden(
-                orden.id(),
-                orden.pedido(),
-                orden.plato(),
-                orden.precio(),
-                orden.ordenEstado(),
-                orden.fecha(),
-                orden.detalles(),
-                false,
                 orden.pagada(),
                 orden.fechaPago(),
                 orden.metodoPago()
@@ -478,7 +404,6 @@ public class OrdenApplicationService {
                 orden.ordenEstado(),
                 orden.fecha(),
                 orden.detalles(),
-                orden.urgente(),
                 orden.pagada(),
                 orden.fechaPago(),
                 orden.metodoPago()
@@ -546,7 +471,6 @@ public class OrdenApplicationService {
                 cocinaOrden.ordenEstado(),
                 cocinaOrden.fecha(),
                 cocinaOrden.detalles(),
-                cocinaOrden.urgente(),
                 cocinaOrden.pagada(),
                 Optional.empty(),
                 Optional.empty()

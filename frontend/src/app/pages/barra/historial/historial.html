@@ -98,9 +98,6 @@
               <button type="button" class="historial-modal__accion" (click)="descargarTique()">
                 Descargar ticket
               </button>
-              <button type="button" class="historial-modal__accion" (click)="enviarTique()">
-                Compartir ticket
-              </button>
               <button type="button" class="historial-modal__cerrar" (click)="cerrarDetalle()">✕</button>
             </div>
           </div>
@@ -177,56 +174,6 @@
     </div>
   }
 
-  @if (mostrarModalCorreo()) {
-    <div class="historial-correo-overlay" (click)="cerrarModalCorreo()">
-      <div class="historial-correo-modal" (click)="$event.stopPropagation()">
-        <div class="historial-correo-modal__header">
-          <h3>Enviar ticket por correo</h3>
-          <button type="button" class="historial-modal__cerrar" (click)="cerrarModalCorreo()">✕</button>
-        </div>
-
-        <p class="historial-correo-modal__texto">
-          Introduce el correo al que quieres enviar el ticket.
-        </p>
-
-        <label class="historial-correo-modal__label" for="correoTiqueHistorial">
-          Correo
-        </label>
-        <input
-          id="correoTiqueHistorial"
-          type="email"
-          class="historial-correo-modal__input"
-          [value]="correoTique()"
-          (input)="actualizarCorreoTique($any($event.target).value)"
-          [disabled]="enviandoTique()"
-          autocomplete="email"
-        />
-
-        @if (errorCorreoTique()) {
-          <p class="historial-correo-modal__error">{{ errorCorreoTique() }}</p>
-        }
-
-        <div class="historial-correo-modal__acciones">
-          <button
-            type="button"
-            class="historial-correo-modal__cancelar"
-            (click)="cerrarModalCorreo()"
-            [disabled]="enviandoTique()"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            class="historial-correo-modal__enviar"
-            (click)="confirmarEnvioTique()"
-            [disabled]="enviandoTique()"
-          >
-            {{ enviandoTique() ? 'Enviando...' : 'Enviar ticket' }}
-          </button>
-        </div>
-      </div>
-    </div>
-  }
 
   @if (showToast()) {
     <div class="mobile-toast" role="status" aria-live="polite">

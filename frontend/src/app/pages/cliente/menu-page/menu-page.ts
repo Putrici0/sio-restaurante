@@ -12,7 +12,7 @@ import {
   CuentaActivaResponse,
   CuentaApiService,
 } from '../../../services/cuenta-api.service';
-import { CategoriaPlato, PlatoApi, PlatoMenu } from '../../../models/plato.model';
+import { CATEGORIAS_CARTA, CategoriaPlato, ETIQUETA_CATEGORIA, PlatoApi, PlatoMenu } from '../../../models/plato.model';
 
 @Component({
   selector: 'app-menu-page',
@@ -35,7 +35,9 @@ export class MenuPage implements OnInit, OnDestroy {
   readonly cargandoEstadoMesa = signal(true);
   readonly enviando = signal(false);
   readonly error = signal<string | null>(null);
-  readonly categoriaSeleccionada = signal<CategoriaPlato | 'Todos'>('Todos');
+  readonly categoriaSeleccionada = signal<CategoriaPlato | 'Todos' | 'MasPedidos'>('Todos');
+  readonly masPedidosIds = signal<string[]>([]);
+  readonly etiquetaCategoria = ETIQUETA_CATEGORIA;
   readonly platos = signal<PlatoMenu[]>([]);
   readonly showConfirmPopup = signal(false);
   readonly showToast = signal(false);
@@ -44,14 +46,9 @@ export class MenuPage implements OnInit, OnDestroy {
   readonly imagenAmpliada = signal<{ src: string; nombre: string } | null>(null);
   readonly cuentaActiva = signal<CuentaActivaResponse | null>(null);
 
-  readonly categorias: ReadonlyArray<CategoriaPlato> = [
-    'Bebida',
-    'Entrante',
-    'Principal',
-    'Postre',
-  ];
+  readonly categorias: ReadonlyArray<CategoriaPlato> = CATEGORIAS_CARTA;
 
-  readonly cuentaCerrada = computed(() => !!this.cuentaActiva()?.payed);
+  readonly cuentaCerrada = computed(() => !!this.cuentaActiva()?.payed || !!this.cuentaActiva()?.cobroSolicitado);
 
   readonly sinCuentaActiva = computed(
     () => !this.cargandoEstadoMesa() && this.cuentaActiva() === null,
@@ -75,6 +72,13 @@ export class MenuPage implements OnInit, OnDestroy {
       return lista;
     }
 
+    if (categoria === 'MasPedidos') {
+      const ids = this.masPedidosIds();
+      return ids
+        .map((id) => lista.find((plato) => plato.id === id))
+        .filter((plato): plato is PlatoMenu => !!plato);
+    }
+
     return lista.filter((plato) => plato.categoria === categoria);
   });
 
@@ -94,6 +98,7 @@ export class MenuPage implements OnInit, OnDestroy {
   );
 
   ngOnInit(): void {
+    this.cargarMasPedidos();
     this.cargarMenu(true);
     this.cargarEstadoMesa(true);
 
@@ -112,7 +117,17 @@ export class MenuPage implements OnInit, OnDestroy {
     }
   }
 
-  seleccionarCategoria(categoria: CategoriaPlato | 'Todos'): void {
+  private cargarMasPedidos(): void {
+    this.platosApiService
+      .obtenerMasPedidos(6)
+      .pipe(take(1))
+      .subscribe({
+        next: (ranking) => this.masPedidosIds.set(ranking.map((item) => item.plato.id)),
+        error: () => this.masPedidosIds.set([]),
+      });
+  }
+
+  seleccionarCategoria(categoria: CategoriaPlato | 'Todos' | 'MasPedidos'): void {
     this.categoriaSeleccionada.set(categoria);
   }
 

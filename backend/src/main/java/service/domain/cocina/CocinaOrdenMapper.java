@@ -1,12 +1,11 @@
 package service.domain.cocina;
 
 import dto.cocina.CocinaOrden;
-import dto.cocina.CocinaPrioridad;
 import model.Orden;
 
 public class CocinaOrdenMapper {
 
-    public CocinaOrden toCocinaOrden(Orden orden, CocinaPrioridad prioridad) {
+    public CocinaOrden toCocinaOrden(Orden orden, int posicionCola, Integer etaMinutos) {
         return new CocinaOrden(
                 orden.id(),
                 orden.pedido(),
@@ -15,9 +14,9 @@ public class CocinaOrdenMapper {
                 orden.ordenEstado(),
                 orden.fecha(),
                 orden.detalles(),
-                orden.urgente(),
                 orden.pagada(),
-                prioridad
+                posicionCola,
+                etaMinutos
         );
     }
 }

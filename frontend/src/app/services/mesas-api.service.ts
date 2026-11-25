@@ -3,6 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { catchError, forkJoin, map, Observable } from 'rxjs';
 import {
   CuentaApi,
+  EstadoMesa,
+  EstadoMesaApi,
   ImporteCuentaApi,
   Mesa,
   MesaApi,
@@ -16,7 +18,15 @@ interface MesaVistaApi {
   grupoMesaIds?: string[];
   cuentaActivaId?: string | null;
   cuentaActiva?: CuentaApi | null;
+  estado?: EstadoMesaApi;
 }
+
+const ESTADO_DESDE_API: Record<EstadoMesaApi, EstadoMesa> = {
+  LIBRE: 'libre',
+  OCUPADA: 'ocupada',
+  PENDIENTE_COBRO: 'pendiente-cobro',
+  SUCIA: 'sucia',
+};
 
 @Injectable({
   providedIn: 'root',
@@ -76,6 +86,20 @@ export class MesasApiService {
     return this.http.post<CuentaApi>(`${this.apiUrl}/mesas/${id}/ocupar`, {});
   }
 
+  /** Cierre explícito de sesión: la mesa queda pendiente de cobro. */
+  cerrarSesion(id: string): Observable<CuentaApi> {
+    return this.http.post<CuentaApi>(`${this.apiUrl}/mesas/${id}/cerrar-sesion`, {});
+  }
+
+  reabrirSesion(id: string): Observable<CuentaApi> {
+    return this.http.post<CuentaApi>(`${this.apiUrl}/mesas/${id}/reabrir-sesion`, {});
+  }
+
+  /** Marca la mesa (o su grupo) como limpia: vuelve a estar libre. */
+  limpiarMesa(id: string): Observable<MesaApi[]> {
+    return this.http.post<MesaApi[]>(`${this.apiUrl}/mesas/${id}/limpiar`, {});
+  }
+
   liberarMesa(id: string): Observable<CuentaApi> {
     return this.http.post<CuentaApi>(`${this.apiUrl}/mesas/${id}/liberar`, {});
   }
@@ -119,7 +143,11 @@ export class MesasApiService {
               id: mesaDb.id,
               capacidad: mesaDb.capacidad,
               zona: layout?.zona ?? 'interior',
-              estado: cuentaActiva ? 'ocupada' : 'libre',
+              estado: mesaDb.estado
+                ? ESTADO_DESDE_API[mesaDb.estado]
+                : cuentaActiva
+                  ? (cuentaActiva.cobroSolicitado ? 'pendiente-cobro' : 'ocupada')
+                  : 'libre',
               cuentaActivaId: mesaDb.cuentaActivaId ?? null,
               cuentaActiva,
               grupoMesaIds,
@@ -156,7 +184,9 @@ export class MesasApiService {
                   id: mesaDb.id,
                   capacidad: mesaDb.capacidad,
                   zona: layout?.zona ?? 'interior',
-                  estado: cuentaActiva ? 'ocupada' : 'libre',
+                  estado: cuentaActiva
+                    ? (cuentaActiva.cobroSolicitado ? 'pendiente-cobro' : 'ocupada')
+                    : (mesaDb.sucia ? 'sucia' : 'libre'),
                   cuentaActivaId: cuentaActiva?.id ?? null,
                   cuentaActiva,
                   grupoMesaIds,

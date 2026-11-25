@@ -36,9 +36,25 @@ public final class PlatoSeeder {
 
             PlatoService platoService = new PlatoService(platoRepository);
 
-            Set<String> clavesExistentes = platoRepository.findAll().stream()
+            List<Plato> platosExistentes = platoRepository.findAll();
+            Set<String> clavesExistentes = platosExistentes.stream()
                     .map(plato -> normalizarClave(plato.nombre(), plato.categoria().name()))
                     .collect(Collectors.toSet());
+
+            // La carta de Sakura Hanami es la de platos.json: los platos antiguos que no
+            // están en ella se desactivan (no se borran, para conservar el histórico).
+            Set<String> clavesCarta = platosBase.stream()
+                    .map(request -> normalizarClave(request.nombre, request.categoria))
+                    .collect(Collectors.toSet());
+            for (Plato plato : platosExistentes) {
+                String clave = normalizarClave(plato.nombre(), plato.categoria().name());
+                if (plato.estaActivo() && !clavesCarta.contains(clave)) {
+                    platoRepository.update(plato.id(), new Plato(
+                            plato.id(), plato.nombre(), plato.categoria(), plato.descripcion(),
+                            plato.precio(), false, plato.imagen()
+                    ));
+                }
+            }
 
             for (PlatoRequest request : platosBase) {
                 String clave = normalizarClave(request.nombre, request.categoria);

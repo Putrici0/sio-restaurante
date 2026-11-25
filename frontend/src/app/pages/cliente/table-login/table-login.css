@@ -4,7 +4,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #E6D3B8; /* Mismo beige que el fondo del menú */
+  background-color: #e7b7c3; /* Mismo beige que el fondo del menú */
   padding: 20px;
   font-family: sans-serif;
 }
@@ -29,7 +29,7 @@
 /* Destacamos el número de la mesa con el color principal */
 .table-info {
   font-weight: bold;
-  color: #c09d7a; /* Un tono un poco más oscuro que el header para leerse bien */
+  color: #c2788b; /* Un tono un poco más oscuro que el header para leerse bien */
   font-size: 1.3rem;
   margin: 10px 0;
 }
@@ -70,7 +70,7 @@
 
 
 .input-group input:focus {
-  border-color: #D4B596;
+  border-color: #d694a5;
 }
 
 /* Mensaje de error en rojo */
@@ -87,7 +87,7 @@
 
 button[type="submit"] {
   width: 100%;
-  background-color: #D4B596; /* Color del header de tu diseño */
+  background-color: #d694a5; /* Color del header de tu diseño */
   color: #111;
   font-weight: bold;
   border: none;
@@ -100,7 +100,7 @@ button[type="submit"] {
 }
 
 button[type="submit"]:hover:not(:disabled) {
-  background-color: #c09d7a;
+  background-color: #c2788b;
 }
 
 button[type="submit"]:active:not(:disabled) {

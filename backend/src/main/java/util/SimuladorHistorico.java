@@ -5,8 +5,6 @@ import config.FirebaseConfig;
 import config.FirestoreClientProvider;
 import model.*;
 import repository.firestore.*;
-import service.domain.cocina.CocinaPrioridadService;
-import service.domain.cocina.CocinaContextoCuenta;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -256,7 +254,7 @@ public class SimuladorHistorico {
                     }
                 }
 
-                // Paso 2: Simular órdenes de cocina usando CocinaPrioridadService
+                // Paso 2: Simular órdenes de cocina por orden de llegada
                 List<SimulatedOrden> kitchenOrders = simOrdenes.stream()
                         .filter(o -> o.plato.categoria() != Categoria.Bebida)
                         .collect(Collectors.toList());
@@ -267,8 +265,7 @@ public class SimuladorHistorico {
                             .min(Comparator.naturalOrder())
                             .get();
 
-                    CocinaPrioridadService cocinaPrioridadService = new CocinaPrioridadService();
-
+    
                     while (true) {
                         final Instant currentTime = tSim;
                         List<SimulatedOrden> activeOrPending = kitchenOrders.stream()
@@ -302,58 +299,15 @@ public class SimuladorHistorico {
                                 .toList();
 
                         if (freeSlots > 0 && !pending.isEmpty()) {
-                            Map<String, CocinaContextoCuenta> contextoMap = new HashMap<>();
-                            List<Orden> currentStateOrdenes = new ArrayList<>();
-
-                            for (SimulatedOrden simO : simOrdenes) {
-                                if (!simO.fechaOrden.isAfter(currentTime)) {
-                                    OrdenEstado estado = simO.getEstadoAt(currentTime);
-                                    Orden tempOrden = new Orden(
-                                            simO.id,
-                                            simO.pedido,
-                                            simO.plato,
-                                            simO.plato.precio(),
-                                            estado,
-                                            simO.fechaOrden,
-                                            "",
-                                            false,
-                                            false,
-                                            Optional.empty(),
-                                            Optional.empty()
-                                    );
-                                    currentStateOrdenes.add(tempOrden);
-                                }
-                            }
-
-                            CocinaContextoCuenta contexto = new CocinaContextoCuenta(
-                                    "cuenta:" + cuentaSim.id(),
-                                    cuentaSim,
-                                    currentStateOrdenes
-                            );
-                            contextoMap.put("cuenta:" + cuentaSim.id(), contexto);
-
-                            List<Orden> tempPending = pending.stream()
-                                    .map(simO -> new Orden(
-                                            simO.id,
-                                            simO.pedido,
-                                            simO.plato,
-                                            simO.plato.precio(),
-                                            OrdenEstado.Pendiente,
-                                            simO.fechaOrden,
-                                            "",
-                                            false,
-                                            false,
-                                            Optional.empty(),
-                                            Optional.empty()
-                                    ))
+                            // Cocina por orden de llegada (FIFO)
+                            List<SimulatedOrden> colaPorLlegada = pending.stream()
+                                    .sorted(Comparator.comparing((SimulatedOrden o) -> o.fechaOrden)
+                                            .thenComparing(o -> o.id))
                                     .toList();
 
-                            List<Orden> sortedTempPending = cocinaPrioridadService.ordenarPorPrioridad(tempPending, contextoMap, currentTime);
-
-                            int toStart = Math.min(freeSlots, sortedTempPending.size());
+                            int toStart = Math.min(freeSlots, colaPorLlegada.size());
                             for (int idx = 0; idx < toStart; idx++) {
-                                Orden chosen = sortedTempPending.get(idx);
-                                SimulatedOrden simO = pending.stream().filter(o -> o.id.equals(chosen.id())).findFirst().get();
+                                SimulatedOrden simO = colaPorLlegada.get(idx);
 
                                 simO.fechaPreparacion = currentTime;
 
@@ -493,7 +447,6 @@ public class SimuladorHistorico {
                                     OrdenEstado.Entregado,
                                     o.fechaOrden,
                                     "",
-                                    false,
                                     true, // pagada
                                     Optional.of(tPay),
                                     Optional.of(partMetodo)
@@ -529,7 +482,6 @@ public class SimuladorHistorico {
                                 OrdenEstado.Entregado,
                                 o.fechaOrden,
                                 "",
-                                false,
                                 true, // pagada
                                 Optional.of(instantPagoInicio),
                                 Optional.of(metodoPago)

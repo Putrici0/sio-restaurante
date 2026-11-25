@@ -14,29 +14,18 @@ export type CategoriaPlatoBackend =
   | 'Principal'
   | 'Postre';
 
-export interface CocinaPrioridadResponse {
-  total: number;
-  categoria: number;
-  espera: number;
-  mesa: number;
-  flujo: number;
-  tiempoEstimado: number;
-  etaMinutos: number;
-  sincronizacion: number;
-  urgencia: number;
-  motivos: string[];
-}
-
 export interface OrdenCocinaResponse {
   id: string;
   precio: number;
   ordenEstado: EstadoOrdenBackend;
   fecha: string;
   detalles: string;
-  urgente?: boolean;
   pagada?: boolean;
 
-  prioridad?: CocinaPrioridadResponse;
+  /** Puesto en la cola de cocina (orden de llegada). */
+  posicionCola?: number;
+  /** Minutos estimados hasta que el plato esté listo. */
+  etaMinutos?: number | null;
 
   pedido?: {
     id: string;
@@ -156,11 +145,4 @@ export class OrdenesApiService {
     return this.post<OrdenCocinaResponse>(`${this.apiUrl}/ordenes/${ordenId}/listo`);
   }
 
-  marcarUrgente(ordenId: string): Observable<OrdenCocinaResponse> {
-    return this.post<OrdenCocinaResponse>(`${this.apiUrl}/ordenes/${ordenId}/urgente`);
-  }
-
-  desmarcarUrgente(ordenId: string): Observable<OrdenCocinaResponse> {
-    return this.post<OrdenCocinaResponse>(`${this.apiUrl}/ordenes/${ordenId}/no-urgente`);
-  }
 }

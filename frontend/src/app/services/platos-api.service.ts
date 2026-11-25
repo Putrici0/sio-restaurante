@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { PlatoApi } from '../models/plato.model';
+import { PlatoApi, PlatoPopularApi } from '../models/plato.model';
 
 @Injectable({
   providedIn: 'root',
@@ -12,5 +12,10 @@ export class PlatosApiService {
 
   obtenerPlatos(): Observable<PlatoApi[]> {
     return this.http.get<PlatoApi[]>(`${this.apiUrl}/platos/activos`);
+  }
+
+  /** Ranking de los platos más pedidos (sección "Más pedidos" de la carta). */
+  obtenerMasPedidos(limite = 6): Observable<PlatoPopularApi[]> {
+    return this.http.get<PlatoPopularApi[]>(`${this.apiUrl}/platos/mas-pedidos?limit=${limite}`);
   }
 }

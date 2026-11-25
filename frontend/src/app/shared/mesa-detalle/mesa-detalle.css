@@ -212,3 +212,22 @@
 .accion-principal--disabled {
   background: #9da3ae;
 }
+
+/* Estados SIGO-RSH */
+.detalle-estado {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.detalle-estado--libre { background: #e3f4e8; color: #2f7a46; }
+.detalle-estado--ocupada { background: #fbe1e6; color: #b23a55; }
+.detalle-estado--pendiente-cobro { background: #fff1d6; color: #a86a00; }
+.detalle-estado--sucia { background: #ece7e3; color: #6d5d52; }
+
+.accion-principal--cobro { background: #d98c1f; color: #fff; }
+.accion-principal--limpiar { background: #7c6a5d; color: #fff; }

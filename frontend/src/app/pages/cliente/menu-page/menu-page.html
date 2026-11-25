@@ -4,7 +4,7 @@
 <div class="menu-page">
   <section class="hero">
     <p class="hero-kicker">Carta digital</p>
-    <h1>Descubre nuestro menú</h1>
+    <h1>Carta Sakura Hanami</h1>
     <p class="hero-text">
       Consulta los platos disponibles y prepara tu pedido cómodamente desde el móvil.
     </p>
@@ -14,14 +14,14 @@
     <section class="state-card warning">
       <h2>No hay una cuenta activa para esta mesa</h2>
       <p>
-        Cuando central o sala abra una cuenta para esta mesa, aquí se actualizará automáticamente.
+        Cuando el personal de sala abra la sesión de esta mesa, aquí se actualizará automáticamente.
       </p>
     </section>
   } @else if (cuentaCerrada()) {
     <section class="state-card danger">
-      <h2>Cuenta cerrada</h2>
+      <h2>Sesión cerrada</h2>
       <p>
-        Esta mesa ya ha sido marcada como pagada desde central. Ya no se pueden enviar más pedidos.
+        La sesión de esta mesa está cerrada (pendiente de cobro o pagada). Ya no se pueden enviar más pedidos.
       </p>
     </section>
   }
@@ -36,6 +36,17 @@
       Todos
     </button>
 
+    @if (masPedidosIds().length > 0) {
+      <button
+        class="filter-chip"
+        [class.active]="categoriaSeleccionada() === 'MasPedidos'"
+        (click)="seleccionarCategoria('MasPedidos')"
+        type="button"
+      >
+        🌸 Más pedidos
+      </button>
+    }
+
     @for (categoria of categorias; track categoria) {
       <button
         class="filter-chip"
@@ -43,7 +54,7 @@
         (click)="seleccionarCategoria(categoria)"
         type="button"
       >
-        {{ categoria }}
+        {{ etiquetaCategoria[categoria] }}
       </button>
     }
   </section>
@@ -75,7 +86,7 @@
             <span class="dish-zoom-hint" aria-hidden="true">
               <span class="dish-zoom-hint__lens">+</span>
             </span>
-            <span class="dish-category">{{ plato.categoria }}</span>
+            <span class="dish-category">{{ etiquetaCategoria[plato.categoria] }}</span>
           </div>
 
           <div class="dish-content">

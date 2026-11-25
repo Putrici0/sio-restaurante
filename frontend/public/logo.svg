@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Sakura Hanami">
+  <title>Sakura Hanami</title>
+  <g transform="translate(60 60)">
+    <g fill="#f3a5b8" stroke="#c94b6a" stroke-width="2.5" stroke-linejoin="round">
+      <path id="petalo" d="M0 -8 C -14 -20 -16 -38 -6 -48 L 0 -42 L 6 -48 C 16 -38 14 -20 0 -8 Z"/>
+      <use href="#petalo" transform="rotate(72)"/>
+      <use href="#petalo" transform="rotate(144)"/>
+      <use href="#petalo" transform="rotate(216)"/>
+      <use href="#petalo" transform="rotate(288)"/>
+    </g>
+    <circle r="9" fill="#fde8ec" stroke="#c94b6a" stroke-width="2.5"/>
+    <g fill="#8e2a43">
+      <circle cx="0" cy="-4" r="1.8"/>
+      <circle cx="3.8" cy="-1.2" r="1.8"/>
+      <circle cx="2.4" cy="3.3" r="1.8"/>
+      <circle cx="-2.4" cy="3.3" r="1.8"/>
+      <circle cx="-3.8" cy="-1.2" r="1.8"/>
+    </g>
+  </g>
+</svg>

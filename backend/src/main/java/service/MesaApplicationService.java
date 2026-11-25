@@ -5,11 +5,9 @@ import repository.interfaces.CuentaRepository;
 import repository.interfaces.MesaRepository;
 import repository.interfaces.OrdenRepository;
 import repository.interfaces.PedidoRepository;
-import repository.interfaces.ReservaRepository;
 
 import java.security.SecureRandom;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -23,7 +21,6 @@ public class MesaApplicationService {
     private final CuentaRepository cuentaRepository;
     private final PedidoRepository pedidoRepository;
     private final OrdenRepository ordenRepository;
-    private final ReservaRepository reservaRepository;
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -31,14 +28,12 @@ public class MesaApplicationService {
             MesaRepository mesaRepository,
             CuentaRepository cuentaRepository,
             PedidoRepository pedidoRepository,
-            OrdenRepository ordenRepository,
-            ReservaRepository reservaRepository
+            OrdenRepository ordenRepository
     ) {
         this.mesaRepository = mesaRepository;
         this.cuentaRepository = cuentaRepository;
         this.pedidoRepository = pedidoRepository;
         this.ordenRepository = ordenRepository;
-        this.reservaRepository = reservaRepository;
     }
 
     public boolean estaOcupada(String mesaId) {
@@ -61,56 +56,35 @@ public class MesaApplicationService {
         return cuentasActivas.stream().findFirst();
     }
 
+    /**
+     * Apertura explicita de sesion: crea la cuenta para la mesa (o su grupo).
+     * Las reservas no se asignan automaticamente; el personal decide que mesa abrir.
+     */
     public Cuenta ocuparMesa(String mesaId) {
-        // 1. Bloqueo de seguridad: ¿Está ocupada ya por alguna cuenta activa?
         if (estaOcupada(mesaId)) {
             throw new IllegalArgumentException("La mesa ya está ocupada o forma parte de un grupo ocupado");
         }
 
-        Optional<Reserva> reservaOpt = buscarReservaActivaParaMesa(mesaId);
-        List<String> idsAUnir = new ArrayList<>();
+        Mesa mesaActual = obtenerMesa(mesaId);
+        List<String> idsGrupo = grupoIdsDe(mesaActual);
 
-        if (reservaOpt.isPresent()) {
-            Reserva reserva = reservaOpt.get();
-            idsAUnir = reserva.mesasIds();
-            if (idsAUnir == null || idsAUnir.isEmpty()) {
-                idsAUnir = List.of(mesaId);
-            }
-        } else {
-            // Si no hay reserva, usamos la unión actual de la mesa
-            Mesa mesaActual = obtenerMesa(mesaId);
-            idsAUnir = grupoIdsDe(mesaActual);
-        }
-
-        // 2. Validar que NINGUNA de las mesas del grupo esté ocupada
-        List<Mesa> grupoMesasFinal = new ArrayList<>();
-        for (String id : idsAUnir) {
+        List<Mesa> grupoMesas = new ArrayList<>();
+        for (String id : idsGrupo) {
             if (estaOcupada(id)) {
                 throw new IllegalArgumentException("La mesa " + id + " del grupo ya está ocupada");
             }
-            grupoMesasFinal.add(obtenerMesa(id));
+            Mesa mesa = obtenerMesa(id);
+            if (mesa.sucia()) {
+                throw new IllegalArgumentException("La mesa " + id + " está sucia. Márcala como limpia antes de abrirla");
+            }
+            grupoMesas.add(mesa);
         }
 
-        // 3. Forzar la unión física en la DB para todas las mesas del grupo
-        // Esto es CRITICO para que el frontend las vea como una sola entidad
-        if (idsAUnir.size() > 1) {
-            for (String id : idsAUnir) {
-                Mesa m = obtenerMesa(id);
-                mesaRepository.update(id, new Mesa(id, m.capacidad(), List.copyOf(idsAUnir)));
-            }
-            // Refrescar la lista de mesas con la unión ya persistida
-            grupoMesasFinal.clear();
-            for (String id : idsAUnir) {
-                grupoMesasFinal.add(obtenerMesa(id));
-            }
-        }
-
-        // 4. Crear la cuenta única para el grupo
         Cuenta nuevaCuenta = new Cuenta(
                 null,
-                grupoMesasFinal,
+                grupoMesas,
                 false,
-                reservaOpt,
+                Optional.empty(),
                 Instant.now(),
                 Optional.empty(),
                 generarPassword(),
@@ -120,39 +94,58 @@ public class MesaApplicationService {
         return cuentaRepository.save(nuevaCuenta);
     }
 
-    private Optional<Reserva> buscarReservaActivaParaMesa(String mesaId) {
-        Instant ahora = Instant.now();
-        List<Reserva> todas = reservaRepository.findAll();
+    /**
+     * Cierre explicito de sesion: la mesa deja de admitir pedidos y pasa a
+     * "pendiente de cobro" hasta que se registre el pago.
+     */
+    public Cuenta cerrarSesionMesa(String mesaId) {
+        Cuenta cuentaActiva = obtenerCuentaActivaDeMesa(mesaId)
+                .orElseThrow(() -> new IllegalArgumentException("La mesa no tiene una sesión abierta"));
 
-        return todas.stream()
-                .filter(r -> "Confirmado".equalsIgnoreCase(r.estado()))
-                .filter(r -> r.mesasIds() != null && r.mesasIds().contains(mesaId))
-                .filter(r -> {
-                    try {
-                        String fechaBase = r.fecha().toString().split("T")[0];
-                        String horaStr = r.hora() == null || r.hora().isBlank() ? "00:00" : r.hora();
-                        Instant inicioReserva = Instant.parse(fechaBase + "T" + horaStr + ":00Z");
+        if (cuentaActiva.cobroSolicitado()) {
+            return cuentaActiva;
+        }
 
-                        // Solo unimos automáticamente si faltan 15 minutos o ya pasó la hora (pero menos de 15 mins)
-                        long diffMinutos = ChronoUnit.MINUTES.between(ahora, inicioReserva);
-                        return Math.abs(diffMinutos) <= 15;
-                    } catch (Exception e) {
-                        return false;
-                    }
-                })
-                .min(Comparator.comparingLong(r -> {
-                    try {
-                        String fechaBase = r.fecha().toString().split("T")[0];
-                        String horaStr = r.hora() == null || r.hora().isBlank() ? "00:00" : r.hora();
-                        Instant inicioReserva = Instant.parse(fechaBase + "T" + horaStr + ":00Z");
-                        // En caso de haber varias, nos quedamos con la más cercana al momento actual
-                        return Math.abs(ChronoUnit.SECONDS.between(ahora, inicioReserva));
-                    } catch (Exception e) {
-                        return Long.MAX_VALUE;
-                    }
-                }));
+        return cuentaRepository.update(cuentaActiva.id(), cuentaActiva.conCobroSolicitado(true));
     }
 
+    /** Reabre una sesion cerrada por error (de "pendiente de cobro" vuelve a "ocupada"). */
+    public Cuenta reabrirSesionMesa(String mesaId) {
+        Cuenta cuentaActiva = obtenerCuentaActivaDeMesa(mesaId)
+                .orElseThrow(() -> new IllegalArgumentException("La mesa no tiene una sesión abierta"));
+
+        if (!cuentaActiva.cobroSolicitado()) {
+            return cuentaActiva;
+        }
+
+        return cuentaRepository.update(cuentaActiva.id(), cuentaActiva.conCobroSolicitado(false));
+    }
+
+    /** El personal confirma que la mesa esta limpia y vuelve a estar libre. */
+    public List<Mesa> limpiarMesa(String mesaId) {
+        List<Mesa> grupo = obtenerGrupoMesas(mesaId);
+        for (Mesa mesa : grupo) {
+            if (mesa.sucia()) {
+                mesaRepository.update(mesa.id(), mesa.conSucia(false));
+            }
+        }
+        return obtenerGrupoMesas(mesaId);
+    }
+
+    /** Marca como sucias (y separa) las mesas de una sesion que acaba de terminar. */
+    public void marcarMesasSucias(List<Mesa> mesas) {
+        if (mesas == null) return;
+        for (Mesa mesa : mesas) {
+            if (mesa == null || mesa.id() == null || mesa.id().isBlank()) continue;
+            Mesa actual = mesaRepository.findById(mesa.id()).orElse(mesa);
+            mesaRepository.update(actual.id(), actual.conMesasUnidas(List.of(actual.id())).conSucia(true));
+        }
+    }
+
+    /**
+     * Termina la sesion sin cobro (clientes que se marchan sin consumir):
+     * cancela lo pendiente, cierra la cuenta y deja la mesa sucia.
+     */
     public Cuenta liberarMesa(String mesaId) {
         Cuenta cuentaActiva = obtenerCuentaActivaDeMesa(mesaId)
                 .orElseThrow(() -> new IllegalArgumentException("La mesa ya esta libre"));
@@ -177,7 +170,6 @@ public class MesaApplicationService {
                     OrdenEstado.Cancelado,
                     orden.fecha(),
                     orden.detalles(),
-                    orden.urgente(),
                     orden.pagada(),
                     orden.fechaPago(),
                     orden.metodoPago()
@@ -194,29 +186,13 @@ public class MesaApplicationService {
                 cuentaActiva.fechaCreacion(),
                 Optional.of(Instant.now()),
                 "",
-                cuentaActiva.metodoPago()
+                cuentaActiva.metodoPago(),
+                true
         );
 
-        // Finalizar la reserva si existe
-        if (cuentaActiva.reserva().isPresent()) {
-            Reserva reserva = cuentaActiva.reserva().get();
-            Reserva reservaFinalizada = new Reserva(
-                    reserva.id(),
-                    reserva.nombre(),
-                    reserva.telefono(),
-                    reserva.fecha(),
-                    reserva.hora(),
-                    reserva.capacidad(),
-                    reserva.zona(),
-                    reserva.mesasIds(),
-                    reserva.nota(),
-                    "Finalizado",
-                    reserva.fechaCreacion()
-            );
-            reservaRepository.update(reserva.id(), reservaFinalizada);
-        }
-
-        return cuentaRepository.update(cuentaActiva.id(), cuentaLiberada);
+        Cuenta resultado = cuentaRepository.update(cuentaActiva.id(), cuentaLiberada);
+        marcarMesasSucias(cuentaActiva.mesas());
+        return resultado;
     }
 
     public List<Mesa> unirMesas(String mesaIdOrigen, String mesaIdDestino) {
@@ -249,7 +225,7 @@ public class MesaApplicationService {
         }
 
         for (Mesa mesa : mesasDelGrupo) {
-            mesaRepository.update(mesa.id(), new Mesa(mesa.id(), mesa.capacidad(), List.copyOf(grupoIds)));
+            mesaRepository.update(mesa.id(), mesa.conMesasUnidas(List.copyOf(grupoIds)));
         }
 
         if (!cuentasActivas.isEmpty()) {
@@ -262,7 +238,8 @@ public class MesaApplicationService {
                     cuentaActiva.fechaCreacion(),
                     cuentaActiva.fechaPago(),
                     cuentaActiva.password(),
-                    cuentaActiva.metodoPago()
+                    cuentaActiva.metodoPago(),
+                    cuentaActiva.cobroSolicitado()
             );
             cuentaRepository.update(cuentaActiva.id(), cuentaActualizada);
         }
@@ -282,7 +259,7 @@ public class MesaApplicationService {
         }
 
         for (Mesa mesa : grupoMesas) {
-            mesaRepository.update(mesa.id(), new Mesa(mesa.id(), mesa.capacidad(), List.of(mesa.id())));
+            mesaRepository.update(mesa.id(), mesa.conMesasUnidas(List.of(mesa.id())));
         }
 
         return obtenerGrupoMesas(mesaId);
@@ -354,7 +331,8 @@ public class MesaApplicationService {
                     mesa.capacidad(),
                     grupoIds,
                     cuentaActiva != null ? cuentaActiva.id() : null,
-                    cuentaActiva
+                    cuentaActiva,
+                    estadoDe(mesa, cuentaActiva)
             ));
         }
 
@@ -366,8 +344,19 @@ public class MesaApplicationService {
             int capacidad,
             List<String> grupoMesaIds,
             String cuentaActivaId,
-            Cuenta cuentaActiva
+            Cuenta cuentaActiva,
+            EstadoMesa estado
     ) {}
+
+    /** Estados de mesa definidos en SIGO-RSH. */
+    public enum EstadoMesa { LIBRE, OCUPADA, PENDIENTE_COBRO, SUCIA }
+
+    private EstadoMesa estadoDe(Mesa mesa, Cuenta cuentaActiva) {
+        if (cuentaActiva != null) {
+            return cuentaActiva.cobroSolicitado() ? EstadoMesa.PENDIENTE_COBRO : EstadoMesa.OCUPADA;
+        }
+        return mesa.sucia() ? EstadoMesa.SUCIA : EstadoMesa.LIBRE;
+    }
 
     private String generarPassword() {
         int pin = RANDOM.nextInt(9000) + 1000;

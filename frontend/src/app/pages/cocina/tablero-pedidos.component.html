@@ -5,7 +5,7 @@
         <p class="kitchen-hero__eyebrow">Cocina</p>
         <h1 class="kitchen-hero__title">Tablero de órdenes</h1>
         <p class="kitchen-hero__subtitle">
-          Las órdenes se organizan automáticamente según prioridad dinámica.
+          Los platos se preparan por orden de llegada: el primero en pedirse es el primero en salir.
         </p>
       </div>
 
@@ -60,12 +60,7 @@
                           {{ categoriaCorta(orden.plato.categoria) }}
                         </span>
 
-                        <span [class]="prioridadClase(orden)">
-                          {{ prioridadTexto(orden) }}
-                        </span>
-                        @if (esUrgente(orden)) {
-                          <span class="urgent-badge">URGENTE</span>
-                        }
+                        <span class="priority-badge priority-badge--normal">{{ posicionTexto(orden) }}</span>
                       </div>
 
                       <span [class]="etaClase(orden)">
@@ -86,13 +81,6 @@
                     <div class="order-card__footer order-card__footer--pending">
                       <button class="action-btn action-btn--ghost" type="button" (click)="toggleDetalle(orden.id)">
                         {{ detalleAbierto(orden.id) ? 'Ocultar detalle' : 'Detalle' }}
-                      </button>
-                      <button
-                        class="action-btn action-btn--urgent"
-                        type="button"
-                        (click)="toggleUrgente(orden)"
-                      >
-                        {{ esUrgente(orden) ? 'Quitar urgente' : 'Urgente' }}
                       </button>
                       <button
                         class="action-btn action-btn--primary"
@@ -128,8 +116,8 @@
                           </div>
 
                           <div class="detail-item">
-                            <span class="detail-label">Prioridad total</span>
-                            <span class="detail-value">{{ orden.prioridad?.total ?? 'Sin prioridad' }}</span>
+                            <span class="detail-label">Hora de llegada</span>
+                            <span class="detail-value">{{ horaLlegada(orden) }}</span>
                           </div>
 
                           <div class="detail-item">
@@ -140,19 +128,6 @@
                           <div class="detail-item">
                             <span class="detail-label">Fecha pedido</span>
                             <span class="detail-value">{{ fechaLarga(orden.pedido?.fechaPedido) }}</span>
-                          </div>
-
-                          <div class="detail-item detail-item--full">
-                            <span class="detail-label">Motivos de prioridad</span>
-                            <span class="detail-value">
-                              @if (motivosPrioridad(orden).length === 0) {
-                                Sin motivos calculados
-                              } @else {
-                                <ng-container *ngFor="let motivo of motivosPrioridad(orden); trackBy: trackByMotivo">
-                                  <span class="priority-reason">• {{ motivo }}</span>
-                                </ng-container>
-                              }
-                            </span>
                           </div>
 
                           <div class="detail-item detail-item--full">
@@ -196,9 +171,7 @@
                           {{ categoriaCorta(orden.plato.categoria) }}
                         </span>
 
-                        <span [class]="prioridadClase(orden)">
-                          {{ prioridadTexto(orden) }}
-                        </span>
+                        <span class="priority-badge priority-badge--normal">{{ posicionTexto(orden) }}</span>
                       </div>
 
                       <span [class]="etaClase(orden)">
@@ -256,21 +229,8 @@
                           </div>
 
                           <div class="detail-item">
-                            <span class="detail-label">Prioridad total</span>
-                            <span class="detail-value">{{ orden.prioridad?.total ?? 'Sin prioridad' }}</span>
-                          </div>
-
-                          <div class="detail-item detail-item--full">
-                            <span class="detail-label">Motivos de prioridad</span>
-                            <span class="detail-value">
-                              @if (motivosPrioridad(orden).length === 0) {
-                                Sin motivos calculados
-                              } @else {
-                                <ng-container *ngFor="let motivo of motivosPrioridad(orden); trackBy: trackByMotivo">
-                                  <span class="priority-reason">• {{ motivo }}</span>
-                                </ng-container>
-                              }
-                            </span>
+                            <span class="detail-label">Hora de llegada</span>
+                            <span class="detail-value">{{ horaLlegada(orden) }}</span>
                           </div>
 
                           <div class="detail-item detail-item--full">

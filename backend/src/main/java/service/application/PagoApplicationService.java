@@ -121,7 +121,6 @@ public class PagoApplicationService {
                     orden.ordenEstado(),
                     orden.fecha(),
                     orden.detalles(),
-                    orden.urgente(),
                     true,
                     Optional.of(ahora),
                     Optional.of(metodoPago)
@@ -182,7 +181,6 @@ public class PagoApplicationService {
                     orden.ordenEstado(),
                     orden.fecha(),
                     orden.detalles(),
-                    orden.urgente(),
                     true,
                     Optional.of(ahora),
                     Optional.of(metodoPago)
@@ -202,7 +200,6 @@ public class PagoApplicationService {
                         orden.ordenEstado(),
                         orden.fecha(),
                         orden.detalles(),
-                        orden.urgente(),
                         true,
                         Optional.of(ahora),
                         Optional.of(metodoPago)
@@ -286,7 +283,6 @@ public class PagoApplicationService {
                 OrdenEstado.Cancelado,
                 orden.fecha(),
                 orden.detalles(),
-                orden.urgente(),
                 orden.pagada(),
                 orden.fechaPago(),
                 orden.metodoPago()
@@ -327,8 +323,12 @@ public class PagoApplicationService {
         return ordenRepository.findByPedidosIds(pedidosIds).stream();
     }
 
+    /**
+     * Al saldarse la cuenta termina la sesion: las mesas se separan y quedan
+     * en estado "sucia" hasta que el personal confirme que estan limpias.
+     */
     private void desagruparMesasDeCuenta(Cuenta cuenta) {
-        if (cuenta == null || cuenta.mesas() == null || cuenta.mesas().size() <= 1) {
+        if (cuenta == null || cuenta.mesas() == null) {
             return;
         }
 
@@ -337,7 +337,8 @@ public class PagoApplicationService {
                 continue;
             }
 
-            mesaRepository.update(mesa.id(), new Mesa(mesa.id(), mesa.capacidad(), List.of(mesa.id())));
+            Mesa actual = mesaRepository.findById(mesa.id()).orElse(mesa);
+            mesaRepository.update(actual.id(), actual.conMesasUnidas(List.of(actual.id())).conSucia(true));
         }
     }
 

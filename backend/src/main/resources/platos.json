@@ -1,165 +1,34 @@
 [
-  {
-    "nombre": "Agua mineral",
-    "categoria": "Bebida",
-    "descripcion": "Botella de agua mineral de 50cl",
-    "precio": "1.50",
-    "estaActivo": true,
-    "imagen": "https://loremflickr.com/640/480/water,bottle?lock=101"
-  },
-  {
-    "nombre": "Coca-Cola",
-    "categoria": "Bebida",
-    "descripcion": "Refresco de cola en lata",
-    "precio": "2.20",
-    "estaActivo": true,
-    "imagen": "https://loremflickr.com/640/480/coke,soft-drink?lock=102"
-  },
-  {
-    "nombre": "Fanta Naranja",
-    "categoria": "Bebida",
-    "descripcion": "Refresco de naranja en lata",
-    "precio": "2.20",
-    "estaActivo": true,
-    "imagen": "https://loremflickr.com/640/480/orange,soda?lock=103"
-  },
-  {
-    "nombre": "Nestea",
-    "categoria": "Bebida",
-    "descripcion": "Té frío al limón",
-    "precio": "2.40",
-    "estaActivo": true,
-    "imagen": "https://loremflickr.com/640/480/iced-tea,drink?lock=104"
-  },
-  {
-    "nombre": "Cerveza",
-    "categoria": "Bebida",
-    "descripcion": "Cerveza rubia de botella",
-    "precio": "2.80",
-    "estaActivo": true,
-    "imagen": "https://loremflickr.com/640/480/beer,drink?lock=105"
-  },
+  { "nombre": "Edamame", "categoria": "Entrante", "descripcion": "Vainas de soja verde al vapor con sal en escamas", "precio": "3.50", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/edamame?lock=201" },
+  { "nombre": "Sopa de miso", "categoria": "Entrante", "descripcion": "Caldo dashi con miso, tofu, wakame y cebollino", "precio": "3.20", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/miso,soup?lock=202" },
+  { "nombre": "Gyozas de pollo", "categoria": "Entrante", "descripcion": "Empanadillas japonesas a la plancha con salsa ponzu (6 uds.)", "precio": "5.50", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/gyoza?lock=203" },
+  { "nombre": "Ensalada de algas wakame", "categoria": "Entrante", "descripcion": "Algas wakame con sésamo tostado y aliño de vinagre de arroz", "precio": "4.50", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/seaweed,salad?lock=204" },
+  { "nombre": "Harumaki", "categoria": "Entrante", "descripcion": "Rollitos crujientes de verduras con salsa agridulce (4 uds.)", "precio": "4.20", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/spring,roll?lock=205" },
+  { "nombre": "Takoyaki", "categoria": "Entrante", "descripcion": "Bolitas de pulpo con salsa okonomi, mayonesa japonesa y katsuobushi", "precio": "5.80", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/takoyaki?lock=206" },
 
-  {
-    "nombre": "Ensalada César",
-    "categoria": "Entrante",
-    "descripcion": "Lechuga, pollo, parmesano, picatostes y salsa César",
-    "precio": "6.50",
-    "estaActivo": true,
-    "imagen": "https://loremflickr.com/640/480/caesar-salad,salad?lock=201"
-  },
-  {
-    "nombre": "Papas Bravas",
-    "categoria": "Entrante",
-    "descripcion": "Patatas fritas con salsa brava casera",
-    "precio": "5.50",
-    "estaActivo": true,
-    "imagen": "https://loremflickr.com/640/480/potatoes,fries,tapas?lock=202"
-  },
-  {
-    "nombre": "Croquetas de pollo",
-    "categoria": "Entrante",
-    "descripcion": "Croquetas caseras de pollo, 8 unidades",
-    "precio": "6.00",
-    "estaActivo": true,
-    "imagen": "https://loremflickr.com/640/480/croquettes,food?lock=203"
-  },
-  {
-    "nombre": "Nachos con queso",
-    "categoria": "Entrante",
-    "descripcion": "Nachos con cheddar fundido y jalapeños",
-    "precio": "7.00",
-    "estaActivo": true,
-    "imagen": "https://loremflickr.com/640/480/nachos,cheese?lock=204"
-  },
-  {
-    "nombre": "Queso frito",
-    "categoria": "Entrante",
-    "descripcion": "Tiras de queso rebozado con mermelada",
-    "precio": "6.80",
-    "estaActivo": true,
-    "imagen": "https://loremflickr.com/640/480/fried-cheese,food?lock=205"
-  },
+  { "nombre": "Nigiri de salmón", "categoria": "Principal", "descripcion": "Arroz de sushi con lámina de salmón fresco (2 uds.)", "precio": "3.80", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/nigiri,salmon?lock=211" },
+  { "nombre": "Nigiri de atún", "categoria": "Principal", "descripcion": "Arroz de sushi con atún rojo (2 uds.)", "precio": "4.20", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/nigiri,tuna?lock=212" },
+  { "nombre": "Maki de pepino", "categoria": "Principal", "descripcion": "Rollito fino de alga nori, arroz y pepino (6 uds.)", "precio": "3.50", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/maki,sushi?lock=213" },
+  { "nombre": "California roll", "categoria": "Principal", "descripcion": "Uramaki de surimi, aguacate y pepino con sésamo (8 uds.)", "precio": "6.50", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/california,roll?lock=214" },
+  { "nombre": "Uramaki Sakura", "categoria": "Principal", "descripcion": "Especialidad de la casa: salmón, aguacate y queso crema cubierto de salmón flambeado (8 uds.)", "precio": "8.90", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/uramaki,sushi?lock=215" },
+  { "nombre": "Sashimi variado", "categoria": "Principal", "descripcion": "Láminas de salmón, atún y pez mantequilla (9 piezas)", "precio": "9.50", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/sashimi?lock=216" },
+  { "nombre": "Temaki de salmón", "categoria": "Principal", "descripcion": "Cono de alga nori relleno de arroz, salmón y aguacate", "precio": "4.80", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/temaki?lock=217" },
+  { "nombre": "Tempura de langostinos", "categoria": "Principal", "descripcion": "Langostinos en tempura ligera con salsa tentsuyu (5 uds.)", "precio": "7.50", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/tempura,shrimp?lock=218" },
+  { "nombre": "Yakisoba", "categoria": "Principal", "descripcion": "Fideos salteados al wok con verduras, pollo y salsa yakisoba", "precio": "7.80", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/yakisoba,noodles?lock=219" },
+  { "nombre": "Ramen tonkotsu", "categoria": "Principal", "descripcion": "Caldo de cerdo cremoso con fideos, chashu, huevo marinado y nori", "precio": "10.50", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/ramen?lock=220" },
+  { "nombre": "Pollo teriyaki", "categoria": "Principal", "descripcion": "Muslo de pollo a la plancha glaseado con salsa teriyaki y arroz", "precio": "8.50", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/teriyaki,chicken?lock=221" },
+  { "nombre": "Yakitori", "categoria": "Principal", "descripcion": "Brochetas de pollo y puerro a la brasa con salsa tare (3 uds.)", "precio": "6.20", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/yakitori?lock=222" },
+  { "nombre": "Arroz frito japonés", "categoria": "Principal", "descripcion": "Yakimeshi salteado con huevo, verduras y salsa de soja", "precio": "5.90", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/fried,rice?lock=223" },
 
-  {
-    "nombre": "Hamburguesa completa",
-    "categoria": "Principal",
-    "descripcion": "Hamburguesa de ternera con queso, bacon y papas",
-    "precio": "10.90",
-    "estaActivo": true,
-    "imagen": "https://loremflickr.com/640/480/burger,hamburger?lock=301"
-  },
-  {
-    "nombre": "Pizza barbacoa",
-    "categoria": "Principal",
-    "descripcion": "Pizza con salsa barbacoa, carne y queso",
-    "precio": "11.50",
-    "estaActivo": true,
-    "imagen": "https://loremflickr.com/640/480/pizza,barbecue?lock=302"
-  },
-  {
-    "nombre": "Pasta carbonara",
-    "categoria": "Principal",
-    "descripcion": "Pasta con salsa carbonara y parmesano",
-    "precio": "9.80",
-    "estaActivo": true,
-    "imagen": "https://loremflickr.com/640/480/pasta,carbonara?lock=303"
-  },
-  {
-    "nombre": "Pollo a la plancha",
-    "categoria": "Principal",
-    "descripcion": "Pechuga de pollo a la plancha con guarnición",
-    "precio": "9.50",
-    "estaActivo": true,
-    "imagen": "https://loremflickr.com/640/480/grilled-chicken,food?lock=304"
-  },
-  {
-    "nombre": "Salmón al horno",
-    "categoria": "Principal",
-    "descripcion": "Lomo de salmón con verduras salteadas",
-    "precio": "13.20",
-    "estaActivo": true,
-    "imagen": "https://loremflickr.com/640/480/salmon,fish,dish?lock=305"
-  },
+  { "nombre": "Mochi variado", "categoria": "Postre", "descripcion": "Pastelitos de arroz glutinoso rellenos de helado: té verde, fresa y mango (3 uds.)", "precio": "4.50", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/mochi?lock=231" },
+  { "nombre": "Dorayaki", "categoria": "Postre", "descripcion": "Bizcochitos esponjosos rellenos de pasta dulce de judía roja", "precio": "3.80", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/dorayaki?lock=232" },
+  { "nombre": "Helado de té matcha", "categoria": "Postre", "descripcion": "Helado artesano de té verde matcha", "precio": "3.50", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/matcha,icecream?lock=233" },
+  { "nombre": "Tarta de queso japonesa", "categoria": "Postre", "descripcion": "Cheesecake estilo japonés, ligera y esponjosa", "precio": "4.90", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/japanese,cheesecake?lock=234" },
 
-  {
-    "nombre": "Tarta de queso",
-    "categoria": "Postre",
-    "descripcion": "Porción de tarta de queso al horno",
-    "precio": "4.80",
-    "estaActivo": true,
-    "imagen": "https://loremflickr.com/640/480/cheesecake,dessert?lock=401"
-  },
-  {
-    "nombre": "Brownie con helado",
-    "categoria": "Postre",
-    "descripcion": "Brownie templado con bola de vainilla",
-    "precio": "5.20",
-    "estaActivo": true,
-    "imagen": "https://loremflickr.com/640/480/brownie,ice-cream,dessert?lock=402"
-  },
-  {
-    "nombre": "Helado variado",
-    "categoria": "Postre",
-    "descripcion": "Copa de helado de varios sabores",
-    "precio": "4.50",
-    "estaActivo": true,
-    "imagen": "https://loremflickr.com/640/480/ice-cream,dessert?lock=403"
-  },
-  {
-    "nombre": "Fruta del día",
-    "categoria": "Postre",
-    "descripcion": "Selección de fruta fresca de temporada",
-    "precio": "3.90",
-    "estaActivo": true,
-    "imagen": "https://loremflickr.com/640/480/fruit,dessert?lock=404"
-  },
-  {
-    "nombre": "Mousse de chocolate",
-    "categoria": "Postre",
-    "descripcion": "Mousse cremosa de chocolate",
-    "precio": "4.60",
-    "estaActivo": true,
-    "imagen": "https://loremflickr.com/640/480/chocolate-mousse,dessert?lock=405"
-  }
+  { "nombre": "Agua mineral", "categoria": "Bebida", "descripcion": "Botella de agua mineral de 50 cl", "precio": "1.50", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/water,bottle?lock=101" },
+  { "nombre": "Té verde", "categoria": "Bebida", "descripcion": "Tetera de té verde japonés sencha", "precio": "2.20", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/green,tea?lock=241" },
+  { "nombre": "Ramune", "categoria": "Bebida", "descripcion": "Refresco japonés con canica, sabor original", "precio": "3.00", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/ramune,soda?lock=242" },
+  { "nombre": "Refresco de cola", "categoria": "Bebida", "descripcion": "Refresco de cola en lata", "precio": "2.20", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/coke,soft-drink?lock=102" },
+  { "nombre": "Cerveza Asahi", "categoria": "Bebida", "descripcion": "Cerveza japonesa Asahi Super Dry 33 cl", "precio": "3.50", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/japanese,beer?lock=243" },
+  { "nombre": "Sake", "categoria": "Bebida", "descripcion": "Copa de sake servido frío o caliente", "precio": "4.50", "estaActivo": true, "imagen": "https://loremflickr.com/640/480/sake?lock=244" }
 ]

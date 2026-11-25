@@ -45,7 +45,6 @@ public class OrdenService {
                 OrdenEstado.valueOf(request.estado.trim()),
                 Instant.now(),
                 request.detalles == null ? "" : request.detalles.trim(),
-                Boolean.TRUE.equals(request.urgente),
                 false,
                 Optional.empty(),
                 Optional.empty()
