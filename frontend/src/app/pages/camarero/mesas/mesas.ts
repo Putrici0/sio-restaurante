@@ -6,6 +6,7 @@ import { Observable, Subscription, catchError, forkJoin, of, switchMap, timer } 
 import { ETIQUETA_ESTADO_MESA, EstadoMesa, Mesa } from '../../../models/mesa.model';
 import { Notificacion } from '../../../models/notificacion.model';
 import { MesasApiService } from '../../../services/mesas-api.service';
+import { CuentaApiService, CuentaResumenResponse } from '../../../services/cuenta-api.service';
 import { NotificacionesApiService } from '../../../services/notificaciones-api.service';
 import { CamareroHeader } from '../camarero-header/camarero-header';
 
@@ -26,6 +27,7 @@ export class MesasCamarero implements OnDestroy {
   private readonly mesasApi = inject(MesasApiService);
   private readonly notificacionesApi = inject(NotificacionesApiService);
   private readonly router = inject(Router);
+  private readonly cuentaApi = inject(CuentaApiService);
   private readonly sub: Subscription;
 
   readonly etiquetas = ETIQUETA_ESTADO_MESA;
@@ -38,6 +40,9 @@ export class MesasCamarero implements OnDestroy {
   readonly accionEnCurso = signal(false);
   readonly mostrarCodigo = signal(false);
   readonly confirmarLiberar = signal(false);
+  readonly comensales = signal(2);
+  readonly cuentaCobro = signal<CuentaResumenResponse | null>(null);
+  readonly cobrado = signal(false);
 
   /** Mesas lógicas (las unidas se muestran como una sola). */
   readonly mesasSala = computed<MesaSala[]>(() => {
@@ -104,6 +109,40 @@ export class MesasCamarero implements OnDestroy {
     this.seleccionadaId.set(m.id);
     this.mostrarCodigo.set(false);
     this.confirmarLiberar.set(false);
+    this.cuentaCobro.set(null);
+    this.cobrado.set(false);
+    this.comensales.set(Math.min(2, m.capacidad));
+  }
+
+  cambiarComensales(delta: number, m: Mesa): void {
+    this.comensales.update((n) => Math.max(1, Math.min(m.capacidad, n + delta)));
+  }
+
+  /** Carga el importe pendiente para cobrar desde el móvil (TPV portátil o efectivo). */
+  prepararCobro(m: Mesa): void {
+    if (!m.cuentaActiva) return;
+    this.cuentaApi.obtenerResumenCuenta(m.cuentaActiva.id).subscribe({
+      next: (r) => this.cuentaCobro.set(r),
+      error: () => this.error.set('No se ha podido cargar la cuenta.'),
+    });
+  }
+
+  cobrar(metodo: 'TARJETA' | 'EFECTIVO'): void {
+    const r = this.cuentaCobro();
+    if (!r) return;
+    this.accionEnCurso.set(true);
+    this.cuentaApi.pagarCuentaCompleta(r.cuentaId, metodo).subscribe({
+      next: () => {
+        this.accionEnCurso.set(false);
+        this.cuentaCobro.set(null);
+        this.cobrado.set(true);
+        this.mesasApi.cargarMesasParaVista().subscribe((mesas) => this.mesas.set(mesas));
+      },
+      error: (err) => {
+        this.accionEnCurso.set(false);
+        this.error.set(err?.error?.message ?? 'No se ha podido registrar el cobro.');
+      },
+    });
   }
 
   cerrar(): void {
@@ -111,7 +150,7 @@ export class MesasCamarero implements OnDestroy {
   }
 
   abrirSesion(m: Mesa): void {
-    this.accion(this.mesasApi.ocuparMesa(m.id));
+    this.accion(this.mesasApi.ocuparMesa(m.id, this.comensales()));
   }
 
   cerrarSesion(m: Mesa): void {

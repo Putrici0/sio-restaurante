@@ -83,7 +83,7 @@
   right: 0;
   z-index: 50;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   background: var(--sh-superficie);
   border-top: 1px solid var(--sh-borde);
   padding-bottom: env(safe-area-inset-bottom);

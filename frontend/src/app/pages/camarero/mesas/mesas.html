@@ -22,7 +22,7 @@
         <button type="button" class="mesa mesa--{{ m.estado }}" [class.mesa--llama]="m.llamando" (click)="abrir(m)">
           @if (m.llamando) { <span class="mesa__llama" title="El cliente llama al camarero">🔔</span> }
           <span class="mesa__num">{{ etiqueta(m) }}</span>
-          <span class="mesa__pax">{{ m.capacidad }} pax</span>
+          <span class="mesa__pax">@if (m.cuentaActiva?.comensales) { {{ m.cuentaActiva!.comensales }}/{{ m.capacidad }} comensales } @else { {{ m.capacidad }} plazas }</span>
           <span class="mesa__estado">{{ etiquetas[m.estado] }}</span>
         </button>
       }
@@ -35,7 +35,7 @@
   <section class="hoja" role="dialog" aria-modal="true" [attr.aria-label]="'Mesa ' + etiqueta(m)">
     <header class="hoja__cab">
       <div>
-        <p class="sh-eyebrow">{{ m.capacidad }} comensales</p>
+        <p class="sh-eyebrow">{{ m.capacidad }} plazas@if (m.cuentaActiva?.comensales) { · {{ m.cuentaActiva!.comensales }} comensales }</p>
         <h2>Mesa {{ etiqueta(m) }}</h2>
       </div>
       <span class="estado estado--{{ m.estado }}">{{ etiquetas[m.estado] }}</span>
@@ -49,10 +49,20 @@
       <p class="error" role="alert">{{ error() }}</p>
     }
 
+    @if (cobrado()) {
+      <p class="hoja__aviso">✓ Cobro registrado. La mesa queda pendiente de limpieza.</p>
+    }
+
     <div class="hoja__acciones">
       @switch (m.estado) {
         @case ('libre') {
-          <button type="button" class="sh-btn sh-btn--primario" [disabled]="accionEnCurso()" (click)="abrirSesion(m)">Abrir sesión</button>
+          <div class="contador">
+            <button type="button" (click)="cambiarComensales(-1, m)" aria-label="Un comensal menos">−</button>
+            <strong>{{ comensales() }}</strong>
+            <button type="button" (click)="cambiarComensales(1, m)" aria-label="Un comensal más">+</button>
+            <span>comensales</span>
+          </div>
+          <button type="button" class="sh-btn sh-btn--primario" [disabled]="accionEnCurso()" (click)="abrirSesion(m)">Abrir mesa</button>
         }
         @case ('ocupada') {
           <button type="button" class="sh-btn sh-btn--primario" (click)="tomarComanda(m)">Tomar comanda</button>
@@ -61,7 +71,14 @@
           <button type="button" class="sh-btn" (click)="mostrarCodigo.set(!mostrarCodigo())">Código de la mesa (QR)</button>
         }
         @case ('pendiente-cobro') {
-          <button type="button" class="sh-btn sh-btn--primario" (click)="verCuenta(m)">Cobrar</button>
+          @if (cuentaCobro(); as r) {
+            <p class="codigo">Total pendiente: <strong>{{ r.pendiente | number:'1.2-2' }} €</strong></p>
+            <button type="button" class="sh-btn sh-btn--primario" [disabled]="accionEnCurso()" (click)="cobrar('TARJETA')">💳 Cobrado con tarjeta</button>
+            <button type="button" class="sh-btn" [disabled]="accionEnCurso()" (click)="cobrar('EFECTIVO')">💶 Cobrado en efectivo</button>
+          } @else {
+            <button type="button" class="sh-btn sh-btn--primario" (click)="prepararCobro(m)">Cobrar</button>
+          }
+          <button type="button" class="sh-btn" (click)="verCuenta(m)">Ver consumo</button>
           <button type="button" class="sh-btn" [disabled]="accionEnCurso()" (click)="reabrirSesion(m)">Reabrir sesión</button>
         }
         @case ('sucia') {

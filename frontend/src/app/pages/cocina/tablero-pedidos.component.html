@@ -1,341 +1,89 @@
-<section class="kitchen-page">
-  <main class="kitchen-main">
-    <header class="kitchen-hero">
-      <div class="kitchen-hero__content">
-        <p class="kitchen-hero__eyebrow">🌸 Sakura Hanami · Cocina</p>
-        <h1 class="kitchen-hero__title">Comandas</h1>
-        <p class="kitchen-hero__subtitle">
-          Los platos se preparan por orden de llegada: el primero en pedirse es el primero en salir.
-        </p>
-      </div>
+<header class="cab">
+  <div class="cab__marca">
+    <img src="logo.svg" alt="" />
+    <strong>Cocina</strong>
+  </div>
+  <div class="cab__datos">
+    <span><b>{{ platosEnCola() }}</b> platos en marcha</span>
+    <span><b>{{ espera().length }}</b> comandas en espera</span>
+    <span class="reloj">{{ horaActual() }}</span>
+  </div>
+  @if (error()) { <span class="cab__error">Sin conexión con el servidor</span> }
+</header>
 
-      <div class="kitchen-hero__actions">
-        <span class="hero-badge">
-          {{ totalOrdenes() }} {{ totalOrdenes() === 1 ? 'orden activa' : 'órdenes activas' }}
-        </span>
-
-        <button class="refresh-btn" type="button" (click)="recargar()" [disabled]="actualizando()">
-          Actualizar
-        </button>
-      </div>
-    </header>
-
-    @if (cargando()) {
-      <section class="state-card">
-        <div class="spinner"></div>
-        <p>Cargando órdenes...</p>
-      </section>
-    } @else if (error()) {
-      <section class="state-card">
-        <p class="state-card__error">{{ error() }}</p>
-        <button class="retry-btn" type="button" (click)="recargar()">Reintentar</button>
-      </section>
-    } @else {
-      <section class="board">
-        <article class="column">
-          <header class="column__header column__header--pending">
-            <p class="column__eyebrow">Por orden de llegada</p>
-            <div class="column__title-row">
-              <h2>En espera</h2>
-              <span class="column__count">{{ ordenesPendientes().length }}</span>
-            </div>
+<main class="tablero">
+  <!-- EN ESPERA -->
+  <section class="col col--espera">
+    <h2>En espera <span>{{ espera().length }}</span></h2>
+    <div class="col__lista">
+      @for (c of espera(); track c.id) {
+        <article class="ticket" [class.ticket--tarde]="c.minutos >= 15">
+          <header>
+            <span class="mesa">Mesa {{ c.mesa }}</span>
+            <span class="tiempo">{{ c.hora }} · {{ c.minutos }}′</span>
           </header>
-
-          <div class="column__content">
-            @if (ordenesPendientes().length === 0) {
-              <div class="empty-card">No hay órdenes pendientes.</div>
-            } @else {
-              <article class="order-card" *ngFor="let orden of ordenesPendientes(); trackBy: trackByOrdenId">
-                  <div class="order-card__body">
-                    <div class="order-card__top">
-                      <div class="order-card__top-left">
-                        <div class="order-card__mesa-block">
-                          <span class="order-card__mesa-label">Mesa</span>
-                          <span class="order-card__mesa order-card__mesa--big">
-                            {{ numeroMesaPlano(orden) }}
-                          </span>
-                        </div>
-
-                        <span class="order-card__category-badge">
-                          {{ categoriaCorta(orden.plato.categoria) }}
-                        </span>
-
-                        <span class="priority-badge priority-badge--normal">{{ posicionTexto(orden) }}</span>
-                      </div>
-
-                      <span [class]="etaClase(orden)">
-                        {{ etaTexto(orden) }}
-                      </span>
-                    </div>
-
-                    <div class="order-card__main">
-                      <h3 class="order-card__title">{{ orden.plato.nombre }}</h3>
-                      <p class="order-card__mesa-inline">{{ mesaDeOrden(orden) }}</p>
-                      <p class="order-card__time">{{ tiempoTextoTarjeta(orden) }}</p>
-                    </div>
-
-                    @if (orden.detalles) {
-                      <p class="order-card__note">{{ orden.detalles }}</p>
-                    }
-
-                    <div class="order-card__footer order-card__footer--pending">
-                      <button class="action-btn action-btn--ghost" type="button" (click)="toggleDetalle(orden.id)">
-                        {{ detalleAbierto(orden.id) ? 'Ocultar detalle' : 'Detalle' }}
-                      </button>
-                      <button
-                        class="action-btn action-btn--primary"
-                        type="button"
-                        (click)="pasarAPreparacion(orden.id)"
-                        [disabled]="actualizando()"
-                      >
-                        Empezar
-                      </button>
-                    </div>
-
-                    @if (detalleAbierto(orden.id)) {
-                      <div class="detail-panel">
-                        <div class="detail-grid">
-                          <div class="detail-item">
-                            <span class="detail-label">Mesa resuelta</span>
-                            <span class="detail-value">{{ mesaDeOrden(orden) }}</span>
-                          </div>
-
-                          <div class="detail-item">
-                            <span class="detail-label">ID orden</span>
-                            <span class="detail-value">{{ orden.id }}</span>
-                          </div>
-
-                          <div class="detail-item">
-                            <span class="detail-label">ID pedido</span>
-                            <span class="detail-value">{{ pedidoIdDeOrden(orden) }}</span>
-                          </div>
-
-                          <div class="detail-item">
-                            <span class="detail-label">ID cuenta</span>
-                            <span class="detail-value">{{ cuentaIdDeOrden(orden) }}</span>
-                          </div>
-
-                          <div class="detail-item">
-                            <span class="detail-label">Hora de llegada</span>
-                            <span class="detail-value">{{ horaLlegada(orden) }}</span>
-                          </div>
-
-                          <div class="detail-item">
-                            <span class="detail-label">Fecha orden</span>
-                            <span class="detail-value">{{ fechaLarga(orden.fecha) }}</span>
-                          </div>
-
-                          <div class="detail-item">
-                            <span class="detail-label">Fecha pedido</span>
-                            <span class="detail-value">{{ fechaLarga(orden.pedido?.fechaPedido) }}</span>
-                          </div>
-
-                          <div class="detail-item detail-item--full">
-                            <span class="detail-label">Detalles técnicos</span>
-                            <span class="detail-value">{{ detalleTecnico(orden) }}</span>
-                          </div>
-                        </div>
-                      </div>
-                    }
-                  </div>
-                </article>
+          <ul>
+            @for (l of c.lineas; track l.clave) {
+              <li>
+                <button type="button" class="linea" [disabled]="ocupado()" (click)="avanzar(l, 'espera')" title="Empezar">
+                  <b>{{ l.cantidad }}×</b> {{ l.nombre }}
+                </button>
+                @if (l.detalles) { <small>⚠ {{ l.detalles }}</small> }
+              </li>
             }
-          </div>
+          </ul>
+          <button type="button" class="todo" [disabled]="ocupado()" (click)="avanzarComanda(c, 'espera')">Empezar comanda ({{ c.total }})</button>
         </article>
+      } @empty { <p class="vacio">Sin comandas</p> }
+    </div>
+  </section>
 
-        <article class="column">
-          <header class="column__header column__header--progress">
-            <p class="column__eyebrow">En cocina</p>
-            <div class="column__title-row">
-              <h2>En preparación</h2>
-              <span class="column__count">{{ ordenesPreparacion().length }}</span>
-            </div>
+  <!-- EN PREPARACIÓN -->
+  <section class="col col--preparacion">
+    <h2>En preparación <span>{{ preparacion().length }}</span></h2>
+    <div class="col__lista">
+      @for (c of preparacion(); track c.id) {
+        <article class="ticket" [class.ticket--tarde]="c.minutos >= 20">
+          <header>
+            <span class="mesa">Mesa {{ c.mesa }}</span>
+            <span class="tiempo">{{ c.minutos }}′@if (c.eta) { · ~{{ c.eta }}′ }</span>
           </header>
-
-          <div class="column__content">
-            @if (ordenesPreparacion().length === 0) {
-              <div class="empty-card">No hay órdenes en preparación.</div>
-            } @else {
-              <article class="order-card" *ngFor="let orden of ordenesPreparacion(); trackBy: trackByOrdenId">
-                  <div class="order-card__body">
-                    <div class="order-card__top">
-                      <div class="order-card__top-left">
-                        <div class="order-card__mesa-block">
-                          <span class="order-card__mesa-label">Mesa</span>
-                          <span class="order-card__mesa order-card__mesa--big">
-                            {{ numeroMesaPlano(orden) }}
-                          </span>
-                        </div>
-
-                        <span class="order-card__category-badge">
-                          {{ categoriaCorta(orden.plato.categoria) }}
-                        </span>
-
-                        <span class="priority-badge priority-badge--normal">{{ posicionTexto(orden) }}</span>
-                      </div>
-
-                      <span [class]="etaClase(orden)">
-                        {{ etaTexto(orden) }}
-                      </span>
-                    </div>
-
-                    <div class="order-card__main">
-                      <h3 class="order-card__title">{{ orden.plato.nombre }}</h3>
-                      <p class="order-card__mesa-inline">{{ mesaDeOrden(orden) }}</p>
-                      <p class="order-card__time">{{ tiempoTextoTarjeta(orden) }}</p>
-                    </div>
-
-                    @if (orden.detalles) {
-                      <p class="order-card__note">{{ orden.detalles }}</p>
-                    }
-
-                    <div class="order-card__footer order-card__footer--two">
-                      <button
-                        class="action-btn action-btn--secondary"
-                        type="button"
-                        (click)="pasarAPendiente(orden.id)"
-                        [disabled]="actualizando()"
-                      >
-                        Volver
-                      </button>
-
-                      <button
-                        class="action-btn action-btn--success"
-                        type="button"
-                        (click)="pasarALista(orden.id)"
-                        [disabled]="actualizando()"
-                      >
-                        Marcar lista
-                      </button>
-                    </div>
-
-                    <div class="order-card__footer order-card__footer--detail-only">
-                      <button class="action-btn action-btn--ghost" type="button" (click)="toggleDetalle(orden.id)">
-                        {{ detalleAbierto(orden.id) ? 'Ocultar detalle' : 'Detalle' }}
-                      </button>
-                    </div>
-
-                    @if (detalleAbierto(orden.id)) {
-                      <div class="detail-panel">
-                        <div class="detail-grid">
-                          <div class="detail-item">
-                            <span class="detail-label">Mesa resuelta</span>
-                            <span class="detail-value">{{ mesaDeOrden(orden) }}</span>
-                          </div>
-
-                          <div class="detail-item">
-                            <span class="detail-label">ID orden</span>
-                            <span class="detail-value">{{ orden.id }}</span>
-                          </div>
-
-                          <div class="detail-item">
-                            <span class="detail-label">Hora de llegada</span>
-                            <span class="detail-value">{{ horaLlegada(orden) }}</span>
-                          </div>
-
-                          <div class="detail-item detail-item--full">
-                            <span class="detail-label">Detalles técnicos</span>
-                            <span class="detail-value">{{ detalleTecnico(orden) }}</span>
-                          </div>
-                        </div>
-                      </div>
-                    }
-                  </div>
-                </article>
+          <ul>
+            @for (l of c.lineas; track l.clave) {
+              <li>
+                <button type="button" class="linea" [disabled]="ocupado()" (click)="avanzar(l, 'preparacion')" title="Marcar listo">
+                  <b>{{ l.cantidad }}×</b> {{ l.nombre }} <i>✓</i>
+                </button>
+                @if (l.detalles) { <small>⚠ {{ l.detalles }}</small> }
+              </li>
             }
-          </div>
+          </ul>
+          <button type="button" class="todo todo--listo" [disabled]="ocupado()" (click)="avanzarComanda(c, 'preparacion')">Todo listo</button>
         </article>
+      } @empty { <p class="vacio">Nada en los fogones</p> }
+    </div>
+  </section>
 
-        <article class="column">
-          <header class="column__header column__header--ready">
-            <p class="column__eyebrow">Salida</p>
-            <div class="column__title-row">
-              <h2>Listo para servir</h2>
-              <span class="column__count">{{ ordenesListas().length }}</span>
-            </div>
+  <!-- LISTO PARA SERVIR -->
+  <section class="col col--listo">
+    <h2>Listo para servir <span>{{ listo().length }}</span></h2>
+    <div class="col__lista">
+      @for (c of listo(); track c.id) {
+        <article class="ticket ticket--listo">
+          <header>
+            <span class="mesa">Mesa {{ c.mesa }}</span>
+            <span class="tiempo">esperando sala</span>
           </header>
-
-          <div class="column__content">
-            @if (ordenesListas().length === 0) {
-              <div class="empty-card">No hay órdenes listas.</div>
-            } @else {
-              <article class="order-card order-card--ready" *ngFor="let orden of ordenesListas(); trackBy: trackByOrdenId">
-                  <div class="order-card__body">
-                    <div class="order-card__top">
-                      <div class="order-card__top-left">
-                        <div class="order-card__mesa-block">
-                          <span class="order-card__mesa-label">Mesa</span>
-                          <span class="order-card__mesa order-card__mesa--big">
-                            {{ numeroMesaPlano(orden) }}
-                          </span>
-                        </div>
-
-                        <span class="order-card__category-badge">
-                          {{ categoriaCorta(orden.plato.categoria) }}
-                        </span>
-                      </div>
-
-                      <span [class]="etaClase(orden)">
-                        {{ etaTexto(orden) }}
-                      </span>
-                    </div>
-
-                    <div class="order-card__main">
-                      <h3 class="order-card__title">{{ orden.plato.nombre }}</h3>
-                      <p class="order-card__mesa-inline">{{ mesaDeOrden(orden) }}</p>
-                      <p class="order-card__time">{{ tiempoTextoTarjeta(orden) }}</p>
-                    </div>
-
-                    @if (orden.detalles) {
-                      <p class="order-card__note">{{ orden.detalles }}</p>
-                    }
-
-                    <div class="order-card__footer order-card__footer--pending">
-                      <button
-                        class="action-btn action-btn--secondary"
-                        type="button"
-                        (click)="pasarAPendiente(orden.id)"
-                        [disabled]="actualizando()"
-                      >
-                        Reabrir
-                      </button>
-
-                      <button class="action-btn action-btn--ghost" type="button" (click)="toggleDetalle(orden.id)">
-                        {{ detalleAbierto(orden.id) ? 'Ocultar detalle' : 'Detalle' }}
-                      </button>
-                    </div>
-
-                    @if (detalleAbierto(orden.id)) {
-                      <div class="detail-panel">
-                        <div class="detail-grid">
-                          <div class="detail-item">
-                            <span class="detail-label">Mesa resuelta</span>
-                            <span class="detail-value">{{ mesaDeOrden(orden) }}</span>
-                          </div>
-
-                          <div class="detail-item">
-                            <span class="detail-label">ID orden</span>
-                            <span class="detail-value">{{ orden.id }}</span>
-                          </div>
-
-                          <div class="detail-item">
-                            <span class="detail-label">Fecha orden</span>
-                            <span class="detail-value">{{ fechaLarga(orden.fecha) }}</span>
-                          </div>
-
-                          <div class="detail-item detail-item--full">
-                            <span class="detail-label">Detalles técnicos</span>
-                            <span class="detail-value">{{ detalleTecnico(orden) }}</span>
-                          </div>
-                        </div>
-                      </div>
-                    }
-                  </div>
-                </article>
+          <ul>
+            @for (l of c.lineas; track l.clave) {
+              <li class="linea-lista">
+                <span><b>{{ l.cantidad }}×</b> {{ l.nombre }}</span>
+                <button type="button" class="deshacer" [disabled]="ocupado()" (click)="devolver(l)" title="Volver a preparación">↺</button>
+              </li>
             }
-          </div>
+          </ul>
         </article>
-      </section>
-    }
-  </main>
-</section>
+      } @empty { <p class="vacio">Pase vacío</p> }
+    </div>
+  </section>
+</main>

@@ -23,6 +23,7 @@ import {MenuCamarero} from './pages/camarero/menu/menu';
 import { LoginCamarero } from './pages/camarero/login/login';
 import { camareroAuthGuard } from './guards/camarero-auth.guard';
 import { ServicioSala } from './pages/camarero/servicio/servicio';
+import { ReservasSala } from './pages/camarero/reservas/reservas-sala';
 
 export const routes: Routes = [
   // Web pública del restaurante (sin login): portada, carta y reservas online
@@ -53,6 +54,7 @@ export const routes: Routes = [
   { path: 'camarero/mesas', component: MesasCamarero, canActivate: [camareroAuthGuard] },
   { path: 'camarero/platos', component: ServicioSala, data: { tipo: 'platos' }, canActivate: [camareroAuthGuard] },
   { path: 'camarero/bebidas', component: ServicioSala, data: { tipo: 'bebidas' }, canActivate: [camareroAuthGuard] },
+  { path: 'camarero/reservas', component: ReservasSala, canActivate: [camareroAuthGuard] },
   { path: 'camarero/cuenta/:id', component: PedidoCamarero, canActivate: [camareroAuthGuard] },
   { path: 'camarero/menu/:id', component: MenuCamarero, canActivate: [camareroAuthGuard] },
 
