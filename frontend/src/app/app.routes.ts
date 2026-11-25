@@ -4,7 +4,8 @@ import { InicioPublico } from './pages/publico/inicio';
 import { CartaPublica } from './pages/publico/carta-publica';
 import { ReservaOnline } from './pages/publico/reserva-online';
 
-import { Mesas } from './pages/barra/mesas/mesas';
+import { Sala } from './pages/gerencia/sala/sala';
+import { ReservasPagina } from './pages/gerencia/reservas/reservas-pagina';
 import { CartaGestion } from './pages/barra/carta-gestion/carta-gestion';
 import { HistorialComponent } from './pages/barra/historial/historial';
 import { EstadisticaComponent } from './pages/barra/estadistica/estadistica';
@@ -31,7 +32,8 @@ export const routes: Routes = [
 
   // Gerencia / encargado de sala
 
-  { path: 'mesas', component: Mesas },
+  { path: 'mesas', component: Sala, title: 'Sala · Sakura Hanami' },
+  { path: 'reservas', component: ReservasPagina, title: 'Reservas · Sakura Hanami' },
   { path: 'carta-gestion', component: CartaGestion },
   { path: 'historial', component: HistorialComponent },
   { path: 'estadistica', component: EstadisticaComponent },

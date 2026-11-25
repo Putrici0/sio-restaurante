@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { forkJoin } from 'rxjs';
-import jsPDF from 'jspdf';
+import { agruparLineas, generarTicketPdf, nombreArchivoTicket } from '../../../services/ticket-pdf';
 
 import { Navbar } from '../../../shared/navbar/navbar';
 import {
@@ -185,103 +185,19 @@ export class HistorialComponent {
     });
   }
   descargarTique(): void {
-    const pdf = this.construirPdfTique();
-    pdf.save(this.obtenerNombreArchivoTique());
-  }
-  private construirPdfTique(): jsPDF {
-    const pdf = new jsPDF();
-    const margenIzq = 14;
-    const margenDer = 196;
-    let y = 18;
-    const ahora = new Date();
     const cuenta = this.cuentaDetalle();
-    const mesaTexto = this.obtenerMesaDetalle();
-    const identificador = `TK-${ahora.getFullYear()}${String(ahora.getMonth() + 1).padStart(2, '0')}${String(ahora.getDate()).padStart(2, '0')}-${cuenta?.id?.slice(-6).toUpperCase() ?? 'SINID'}`;
-    const saltarPaginaSiHaceFalta = () => {
-      if (y > 280) {
-        pdf.addPage();
-        y = 18;
-      }
+    if (!cuenta) return;
+    const ordenes = this.ordenesDetalle().filter((o) => o.ordenEstado !== 'Cancelado');
+    const datos = {
+      cuentaId: cuenta.id,
+      mesa: this.obtenerMesaDetalle(),
+      comensales: (cuenta as { comensales?: number }).comensales ?? null,
+      fechaPago: (cuenta as { fechaPago?: string | null }).fechaPago ?? new Date().toISOString(),
+      metodoPago: ordenes.find((o) => o.metodoPago)?.metodoPago ?? 'TARJETA',
+      lineas: agruparLineas(ordenes.map((o) => ({ nombre: o.plato?.nombre ?? 'Consumo', precio: Number(o.precio) }))),
+      total: Number(ordenes.reduce((a, o) => a + Number(o.precio), 0).toFixed(2)),
     };
-    const escribirTexto = (
-      texto: string,
-      x = margenIzq,
-      salto = 7,
-      opciones?: { negrita?: boolean; tamano?: number },
-    ) => {
-      pdf.setFontSize(opciones?.tamano ?? 11);
-      pdf.setFont('helvetica', opciones?.negrita ? 'bold' : 'normal');
-      const lineas = pdf.splitTextToSize(texto, margenDer - margenIzq);
-      for (const linea of lineas) {
-        saltarPaginaSiHaceFalta();
-        pdf.text(linea, x, y);
-        y += salto;
-      }
-    };
-    const escribirImporte = (texto: string, importe: number) => {
-      saltarPaginaSiHaceFalta();
-      pdf.setFontSize(11);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(texto, margenIzq, y);
-      pdf.text(`${importe.toFixed(2)} €`, margenDer, y, { align: 'right' });
-      y += 7;
-    };
-    escribirTexto('RESTAURANTE SAKURA HANAMI', margenIzq, 8, {
-      negrita: true,
-      tamano: 15,
-    });
-    escribirTexto('TICKET');
-    escribirTexto(`No. ticket: ${identificador}`);
-    escribirTexto(`Fecha: ${ahora.toLocaleDateString('es-ES')}  Hora: ${ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`);
-    escribirTexto(`Mesa(s): ${mesaTexto}`);
-    if (cuenta?.fechaPago) {
-      escribirTexto(`Fecha de pago: ${this.formatearFecha(cuenta.fechaPago)}`);
-    }
-    escribirTexto(`Metodo de pago: ${this.obtenerMetodoPagoDetalle()}`);
-    y += 4;
-    pdf.line(margenIzq, y, margenDer, y);
-    y += 9;
-    escribirTexto('Productos', margenIzq, 8, { negrita: true, tamano: 13 });
-    for (const item of this.detalleAgrupado()) {
-      escribirImporte(`${item.cantidad}x ${item.nombre}`, item.subtotal);
-    }
-    y += 4;
-    pdf.line(margenIzq, y, margenDer, y);
-    y += 9;
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(13);
-    pdf.text('TOTAL', margenIzq, y);
-    pdf.text(`${this.totalDetalle().toFixed(2)} €`, margenDer, y, { align: 'right' });
-    y += 12;
-    const pagos = this.pagosDetalle();
-    if (pagos.length > 0) {
-      escribirTexto('Pagos', margenIzq, 8, { negrita: true, tamano: 13 });
-      for (const pago of pagos) {
-        escribirTexto(
-          `Pago ${pago.numero} - Metodo: ${pago.metodoPago}${
-            pago.fechaPago ? ` - ${this.formatearFecha(pago.fechaPago)}` : ''
-          }`,
-          margenIzq,
-          7,
-          { negrita: true },
-        );
-        for (const item of pago.items) {
-          escribirImporte(`  ${item.cantidad}x ${item.nombre}`, item.subtotal);
-        }
-        escribirImporte('  Total pago', pago.total);
-        y += 4;
-      }
-    }
-    y += 4;
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(10);
-    pdf.text('Gracias por su visita', 105, y, { align: 'center' });
-    return pdf;
-  }
-  private obtenerNombreArchivoTique(): string {
-    const mesa = this.obtenerMesaDetalle();
-    const fecha = new Date().toISOString().slice(0, 10);
-    return `ticket-mesa-${mesa}-${fecha}.pdf`;
+    generarTicketPdf(datos).save(nombreArchivoTicket(datos));
   }
   cerrarDetalle(): void {
     this.mostrarDetalle.set(false);

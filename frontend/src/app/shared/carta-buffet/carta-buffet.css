@@ -1,0 +1,64 @@
+.buffet { max-width: 760px; margin: 0 auto; padding: 16px 16px 120px; }
+.buffet__cab { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 14px; }
+.buffet__cab h1 { margin: 2px 0 0; font-size: 1.6rem; }
+.ronda { display: flex; align-items: center; gap: 8px; margin: 0; padding: 8px 12px; border-radius: 14px; background: var(--sh-superficie); border: 1px solid var(--sh-borde); }
+.ronda strong { font-family: var(--sh-fuente-titulos); font-size: 1.3rem; color: var(--sh-sakura-800); }
+.ronda span { font-size: 0.7rem; line-height: 1.2; color: var(--sh-tinta-suave); }
+.aviso { background: #fff6e6; color: #8a5a00; padding: 12px 14px; border-radius: 14px; font-weight: 600; list-style: none; }
+.nota-seccion { margin: 0 0 10px; color: var(--sh-tinta-suave); font-size: 0.88rem; }
+
+.filtros { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 12px; scrollbar-width: none; }
+.filtros button {
+  flex-shrink: 0; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--sh-borde);
+  background: var(--sh-superficie); font-weight: 700; color: var(--sh-tinta); cursor: pointer;
+}
+.filtros button.activo { background: var(--sh-tinta); border-color: var(--sh-tinta); color: #fff; }
+
+.platos { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.plato {
+  display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: 12px; align-items: center;
+  padding: 10px; border-radius: 18px; background: var(--sh-superficie); border: 1px solid var(--sh-borde);
+}
+.plato--elegido { border-color: var(--sh-sakura-400); box-shadow: 0 0 0 3px rgba(238, 143, 165, 0.2); }
+.plato img { width: 76px; height: 76px; border-radius: 14px; object-fit: cover; background: var(--sh-sakura-100); }
+.plato__texto h3 { margin: 0; font-size: 1rem; }
+.plato__texto p { margin: 2px 0 6px; font-size: 0.82rem; color: var(--sh-tinta-suave); line-height: 1.35; }
+.precio { font-weight: 700; color: var(--sh-sakura-800); }
+.incluido { font-size: 0.74rem; font-weight: 700; color: var(--sh-ok); background: #e3f4e8; padding: 2px 8px; border-radius: 999px; }
+.plato__cantidad { display: flex; align-items: center; gap: 8px; }
+.plato__cantidad button {
+  width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--sh-borde); background: #fff;
+  font-size: 1.2rem; font-weight: 700; cursor: pointer; color: var(--sh-tinta);
+}
+.plato__cantidad .mas { background: var(--sh-sakura-600); border-color: var(--sh-sakura-600); color: #fff; }
+.plato__cantidad button:disabled { opacity: 0.35; cursor: not-allowed; }
+.plato__cantidad strong { min-width: 18px; text-align: center; }
+
+.barra {
+  position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 40;
+  width: min(94vw, 720px); display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 12px 14px 12px 18px; border-radius: 20px; background: var(--sh-tinta); color: #fff;
+  box-shadow: 0 12px 30px rgba(43, 32, 36, 0.3);
+}
+.barra--camarero { bottom: 84px; }
+.barra div { display: grid; }
+.barra span { font-size: 0.8rem; opacity: 0.8; }
+
+.velo { position: fixed; inset: 0; background: rgba(43, 32, 36, 0.4); z-index: 60; }
+.hoja {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 61; max-width: 620px; margin: 0 auto;
+  max-height: 85dvh; overflow-y: auto; background: var(--sh-superficie); border-radius: 24px 24px 0 0;
+  padding: 20px 18px calc(20px + env(safe-area-inset-bottom)); display: grid; gap: 12px;
+}
+.hoja h2 { margin: 0; }
+.resumen { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.resumen li { display: flex; justify-content: space-between; gap: 10px; }
+.resumen li span:last-child { color: var(--sh-tinta-suave); }
+.hoja__acciones { display: flex; justify-content: flex-end; gap: 8px; }
+
+.toast {
+  position: fixed; left: 50%; top: 80px; transform: translateX(-50%); z-index: 100;
+  width: min(92vw, 420px); padding: 12px 16px; border-radius: 14px; background: var(--sh-ok); color: #fff;
+  text-align: center; font-weight: 600;
+}
+.toast--error { background: var(--sh-error); }

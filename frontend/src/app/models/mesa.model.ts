@@ -30,6 +30,7 @@ export interface CuentaApi {
   fechaPago?: string | null;
   password: string;
   cobroSolicitado?: boolean;
+  comensales?: number;
 }
 
 export interface ImporteCuentaApi {

@@ -1,0 +1,128 @@
+<app-navbar></app-navbar>
+
+<main class="pagina">
+  <header class="cab">
+    <div>
+      <p class="sh-eyebrow">Reservas</p>
+      <h1>{{ fechaLarga() }}</h1>
+      <p class="sub">
+        {{ resumen().reservas }} reservas · {{ resumen().comensales }} comensales
+        @if (resumen().porConfirmar > 0) { · <strong>{{ resumen().porConfirmar }} por confirmar</strong> }
+      </p>
+    </div>
+    <div class="navegacion">
+      <button type="button" class="sh-btn" (click)="moverDia(-1)" aria-label="Día anterior">‹</button>
+      <input type="date" [value]="fecha()" (change)="fecha.set($any($event.target).value)" aria-label="Fecha" />
+      <button type="button" class="sh-btn" (click)="moverDia(1)" aria-label="Día siguiente">›</button>
+      @if (!esHoy()) { <button type="button" class="sh-btn" (click)="irAHoy()">Hoy</button> }
+      <button type="button" class="sh-btn sh-btn--primario" (click)="nueva()">+ Nueva reserva</button>
+    </div>
+  </header>
+
+  @if (error() && !formulario() && !llegada()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+
+  <section class="lista">
+    @for (r of activas(); track r.id) {
+      <article class="reserva sh-tarjeta" [class.reserva--pendiente]="r.estado === 'Pendiente'">
+        <div class="reserva__hora">{{ r.hora }}</div>
+        <div class="reserva__datos">
+          <h2>{{ r.nombre }}</h2>
+          <p>
+            <span class="comensales">{{ r.comensales }} comensales</span>
+            · {{ r.telefono || r.email }}
+            @if (r.origen === 'web') { · <span class="sh-chip">Web</span> }
+          </p>
+          @if (r.nota) { <p class="nota">“{{ r.nota }}”</p> }
+        </div>
+        <span class="estado estado--{{ r.estado }}">{{ r.estado === 'Pendiente' ? 'Por confirmar' : 'Confirmada' }}</span>
+        <div class="reserva__acciones">
+          @if (r.estado === 'Pendiente') {
+            <button type="button" class="sh-btn" (click)="cambiarEstado(r, 'Confirmado')">Confirmar</button>
+          }
+          @if (esHoy()) {
+            <button type="button" class="sh-btn sh-btn--primario" (click)="abrirLlegada(r)">Ha llegado</button>
+          }
+          <button type="button" class="icono" title="Editar" (click)="editar(r)">✎</button>
+          <button type="button" class="icono" title="Cancelar reserva" (click)="cambiarEstado(r, 'Cancelado')">✕</button>
+        </div>
+      </article>
+    } @empty {
+      <p class="vacio">🌸 No hay reservas pendientes para este día.</p>
+    }
+
+    @if (cerradas().length > 0) {
+      <h3 class="cerradas-titulo">Atendidas y canceladas</h3>
+      @for (r of cerradas(); track r.id) {
+        <article class="reserva reserva--cerrada">
+          <div class="reserva__hora">{{ r.hora }}</div>
+          <div class="reserva__datos"><h2>{{ r.nombre }}</h2><p>{{ r.comensales }} comensales</p></div>
+          <span class="estado estado--{{ r.estado }}">{{ r.estado === 'Finalizado' ? 'Ha venido' : 'Cancelada' }}</span>
+        </article>
+      }
+    }
+  </section>
+</main>
+
+<!-- Alta / edición -->
+@if (formulario(); as f) {
+  <div class="velo" (click)="formulario.set(null)"></div>
+  <section class="dialogo sh-tarjeta" role="dialog" aria-modal="true" aria-labelledby="titulo-form">
+    <header class="dialogo__cab">
+      <h2 id="titulo-form">{{ f.id ? 'Editar reserva' : 'Nueva reserva' }}</h2>
+      <button type="button" class="icono" (click)="formulario.set(null)" aria-label="Cerrar">✕</button>
+    </header>
+    <label class="campo">Nombre <input [(ngModel)]="f.nombre" name="nombre" /></label>
+    <div class="fila">
+      <label class="campo">Teléfono <input type="tel" [(ngModel)]="f.telefono" name="telefono" /></label>
+      <label class="campo">Correo <input type="email" [(ngModel)]="f.email" name="email" /></label>
+    </div>
+    <div class="fila fila--3">
+      <label class="campo">Fecha <input type="date" [(ngModel)]="f.fecha" name="fecha" /></label>
+      <label class="campo">Hora <input type="time" [(ngModel)]="f.hora" name="hora" /></label>
+      <label class="campo">Comensales <input type="number" min="1" max="20" [(ngModel)]="f.comensales" name="comensales" /></label>
+    </div>
+    <label class="campo">Observaciones <textarea rows="2" [(ngModel)]="f.nota" name="nota"></textarea></label>
+    @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+    <div class="dialogo__acciones">
+      <button type="button" class="sh-btn" (click)="formulario.set(null)">Cancelar</button>
+      <button type="button" class="sh-btn sh-btn--primario" [disabled]="guardando()" (click)="guardar()">Guardar reserva</button>
+    </div>
+  </section>
+}
+
+<!-- Llegada del cliente: elegir mesa -->
+@if (llegada(); as r) {
+  <div class="velo" (click)="llegada.set(null)"></div>
+  <section class="dialogo sh-tarjeta" role="dialog" aria-modal="true" aria-labelledby="titulo-llegada">
+    <header class="dialogo__cab">
+      <div>
+        <p class="sh-eyebrow">Llegada · {{ r.hora }}</p>
+        <h2 id="titulo-llegada">{{ r.nombre }} · {{ r.comensales }} comensales</h2>
+      </div>
+      <button type="button" class="icono" (click)="llegada.set(null)" aria-label="Cerrar">✕</button>
+    </header>
+    <p class="sub">Elige la mesa donde se sientan. Se abrirá con {{ r.comensales }} comensales y la reserva quedará atendida.</p>
+
+    <div class="selector-mesas" role="radiogroup" aria-label="Mesas libres">
+      @for (m of mesasDisponibles(); track m.id) {
+        <button type="button" role="radio" class="opcion-mesa" [class.activa]="mesaElegida() === m.id"
+                [attr.aria-checked]="mesaElegida() === m.id" (click)="mesaElegida.set(m.id)">
+          <strong>{{ m.id }}</strong>
+          <span>{{ m.capacidad }} plazas</span>
+        </button>
+      } @empty {
+        <p class="error">No hay ninguna mesa libre para {{ r.comensales }} comensales. Libera o limpia una mesa en Sala.</p>
+      }
+    </div>
+
+    @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+    <div class="dialogo__acciones">
+      <button type="button" class="sh-btn" (click)="llegada.set(null)">Cancelar</button>
+      <button type="button" class="sh-btn sh-btn--primario" [disabled]="!mesaElegida() || guardando()" (click)="confirmarLlegada()">
+        Sentar en la mesa {{ mesaElegida() ?? '' }}
+      </button>
+    </div>
+  </section>
+}

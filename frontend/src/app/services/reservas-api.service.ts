@@ -22,6 +22,11 @@ export class ReservasApiService {
     return timer(0, this.refrescoMs).pipe(switchMap(() => this.http.get<Reserva[]>(this.apiUrl, { params })));
   }
 
+  /** Consulta puntual (sin refresco periódico) de las reservas de un día. */
+  listarPorFecha(fecha: string): Observable<Reserva[]> {
+    return this.http.get<Reserva[]>(this.apiUrl, { params: new HttpParams().set('fecha', fecha) });
+  }
+
   async crearReserva(reserva: Omit<Reserva, 'id'>): Promise<string> {
     const creada = await firstValueFrom(this.http.post<Reserva>(this.apiUrl, reserva));
     return creada.id ?? '';

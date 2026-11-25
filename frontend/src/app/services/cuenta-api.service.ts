@@ -7,6 +7,7 @@ export interface CuentaActivaResponse {
   id: string;
   payed: boolean;
   cobroSolicitado?: boolean;
+  comensales?: number;
   fechaCreacion: string;
   fechaPago?: string | null;
   password: string;

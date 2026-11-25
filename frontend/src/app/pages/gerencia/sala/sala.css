@@ -1,0 +1,118 @@
+.sala {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 24px;
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 22px clamp(16px, 2.5vw, 32px) 40px;
+}
+@media (max-width: 1050px) { .sala { grid-template-columns: 1fr; } }
+
+.plano__cab { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 18px; }
+.plano__cab h1 { margin: 2px 0 0; font-size: 2rem; }
+.sh-eyebrow:first-letter { text-transform: uppercase; }
+
+.indicadores { display: flex; flex-wrap: wrap; gap: 8px; }
+.indicador {
+  display: grid; padding: 8px 14px; min-width: 92px; border-radius: 14px;
+  background: var(--sh-superficie); border: 1px solid var(--sh-borde); border-left: 4px solid var(--sh-sakura-400);
+}
+.indicador strong { font-size: 1.3rem; font-family: var(--sh-fuente-titulos); }
+.indicador span { font-size: 0.75rem; color: var(--sh-tinta-suave); }
+.indicador--libre { border-left-color: var(--sh-libre); }
+.indicador--ocupada { border-left-color: var(--sh-ocupada); }
+.indicador--pendiente-cobro { border-left-color: var(--sh-pendiente-cobro); }
+.indicador--sucia { border-left-color: var(--sh-sucia); }
+
+.error { color: var(--sh-error); font-weight: 600; }
+
+/* Plano del comedor: mesas fijas, las grandes ocupan más */
+.mesas {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+  padding: 18px;
+  border-radius: 24px;
+  background:
+    linear-gradient(90deg, rgba(201, 75, 106, 0.04) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(rgba(201, 75, 106, 0.04) 1px, transparent 1px) 0 0 / 28px 28px,
+    var(--sh-superficie);
+  border: 1px solid var(--sh-borde);
+}
+.mesa {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  padding: 14px 8px 12px;
+  border-radius: 18px;
+  border: 2px solid transparent;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(142, 42, 67, 0.08);
+  cursor: pointer;
+  color: var(--sh-tinta);
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.mesa:hover { transform: translateY(-2px); }
+.mesa--grande { grid-column: span 2; }
+.mesa--activa { border-color: var(--sh-sakura-600); box-shadow: 0 0 0 4px rgba(201, 75, 106, 0.18); }
+.mesa__num { font-family: var(--sh-fuente-titulos); font-size: 1.7rem; font-weight: 700; line-height: 1; }
+.mesa__sillas { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+.mesa__sillas i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid #cdbcc1; }
+.mesa__sillas i.ocupada { background: var(--sh-sakura-600); border-color: var(--sh-sakura-600); }
+.mesa__info { font-size: 0.74rem; color: var(--sh-tinta-suave); }
+.mesa__estado { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+.mesa--libre { border-bottom: 5px solid var(--sh-libre); }
+.mesa--libre .mesa__estado { color: var(--sh-ok); }
+.mesa--ocupada { background: #fff1f4; border-bottom: 5px solid var(--sh-ocupada); }
+.mesa--ocupada .mesa__estado { color: var(--sh-sakura-800); }
+.mesa--pendiente-cobro { background: #fff6e6; border-bottom: 5px solid var(--sh-pendiente-cobro); }
+.mesa--pendiente-cobro .mesa__estado { color: #8a5a00; }
+.mesa--sucia { background: repeating-linear-gradient(45deg, #f6f1ee, #f6f1ee 8px, #efe7e2 8px, #efe7e2 16px); border-bottom: 5px solid var(--sh-sucia); }
+.mesa--sucia .mesa__estado { color: #5e5048; }
+
+/* Panel lateral */
+.panel { padding: 20px; align-self: start; position: sticky; top: 80px; display: grid; gap: 14px; }
+.panel__cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.panel__cab h2 { margin: 2px 0 0; }
+.cerrar { border: none; background: none; font-size: 1.1rem; cursor: pointer; color: var(--sh-tinta-suave); }
+.estado { padding: 5px 12px; border-radius: 999px; font-size: 0.76rem; font-weight: 700; margin-left: auto; }
+.estado--libre { background: #e3f4e8; color: var(--sh-ok); }
+.estado--ocupada { background: #fbe1e6; color: var(--sh-sakura-800); }
+.estado--pendiente-cobro { background: #fff1d6; color: #8a5a00; }
+.estado--sucia { background: #ece7e3; color: #5e5048; }
+.nota { margin: 0; color: var(--sh-tinta-suave); font-size: 0.9rem; line-height: 1.45; }
+
+.contador { display: flex; align-items: center; gap: 12px; }
+.contador button { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--sh-borde); background: #fff; font-size: 1.3rem; cursor: pointer; }
+.contador strong { font-size: 1.8rem; font-family: var(--sh-fuente-titulos); min-width: 32px; text-align: center; }
+.contador span { color: var(--sh-tinta-suave); }
+.ancho { width: 100%; }
+
+.datos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; }
+.datos div { background: var(--sh-sakura-50); border-radius: 12px; padding: 8px 10px; }
+.datos dt { font-size: 0.72rem; color: var(--sh-tinta-suave); }
+.datos dd { margin: 2px 0 0; font-weight: 700; }
+.codigo { letter-spacing: 0.15em; color: var(--sh-sakura-800); }
+
+.acciones { display: flex; gap: 8px; justify-content: flex-end; }
+.acciones--columna { flex-direction: column; }
+.enlace { background: none; border: none; color: var(--sh-tinta-suave); text-decoration: underline; cursor: pointer; padding: 4px; }
+
+h3 { margin: 0; font-size: 1.05rem; }
+.lineas { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; max-height: 260px; overflow: auto; }
+.lineas li { display: flex; justify-content: space-between; gap: 10px; font-size: 0.9rem; }
+.total { display: flex; justify-content: space-between; margin: 0; padding-top: 10px; border-top: 1px dashed var(--sh-borde); font-size: 1.15rem; }
+.metodos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.metodos button { padding: 10px; border-radius: 12px; border: 1px solid var(--sh-borde); background: #fff; cursor: pointer; font-weight: 600; }
+.metodos button.activo { background: var(--sh-sakura-600); border-color: var(--sh-sakura-600); color: #fff; }
+
+.cobrado { display: grid; gap: 10px; text-align: center; }
+.cobrado__ok { font-size: 1.3rem; font-weight: 700; color: var(--sh-ok); margin: 0; }
+.cobrado p { margin: 0; }
+
+.reservas { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.reservas li { display: flex; gap: 12px; align-items: center; padding: 8px 10px; border-radius: 12px; background: var(--sh-sakura-50); }
+.reservas__hora { font-family: var(--sh-fuente-titulos); font-weight: 700; color: var(--sh-sakura-800); }
+.reservas__nombre { display: grid; font-weight: 600; }
+.reservas__nombre small { font-weight: 400; color: var(--sh-tinta-suave); }

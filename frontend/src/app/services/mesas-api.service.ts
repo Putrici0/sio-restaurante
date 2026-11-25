@@ -82,8 +82,9 @@ export class MesasApiService {
     });
   }
 
-  ocuparMesa(id: string): Observable<CuentaApi> {
-    return this.http.post<CuentaApi>(`${this.apiUrl}/mesas/${id}/ocupar`, {});
+  /** Abre la sesión de la mesa para N comensales (se carga la tarifa del buffet por comensal). */
+  ocuparMesa(id: string, comensales?: number): Observable<CuentaApi> {
+    return this.http.post<CuentaApi>(`${this.apiUrl}/mesas/${id}/ocupar`, comensales ? { comensales } : {});
   }
 
   /** Cierre explícito de sesión: la mesa queda pendiente de cobro. */

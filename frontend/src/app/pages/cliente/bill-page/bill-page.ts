@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import jsPDF from 'jspdf';
+import { agruparLineas, generarTicketPdf, nombreArchivoTicket, DatosTicket } from '../../../services/ticket-pdf';
 import { catchError, forkJoin, of, take } from 'rxjs';
 import { Header } from '../../../shared/header/header';
 import {
@@ -61,10 +61,6 @@ export class BillPage implements OnInit, OnDestroy {
   readonly seleccionCantidadPorPlato = signal<Record<string, number>>({});
   readonly avisoPago = signal<string | null>(null);
 
-  readonly mostrarModalCorreo = signal(false);
-  readonly correoTique = signal('');
-  readonly errorCorreoTique = signal<string | null>(null);
-  readonly enviandoTique = signal(false);
   readonly showToast = signal(false);
   readonly toastMessage = signal('');
   readonly toastTipo = signal<'ok' | 'error'>('ok');
@@ -523,150 +519,26 @@ export class BillPage implements OnInit, OnDestroy {
   }
 
   descargarTique(): void {
-    const pdf = this.construirPdfTique();
-    pdf.save(this.obtenerNombreArchivoTique());
+    const datos = this.datosTicket();
+    generarTicketPdf(datos).save(nombreArchivoTicket(datos));
   }
-  enviarTique(): void {
-    this.correoTique.set('');
-    this.errorCorreoTique.set(null);
-    this.mostrarModalCorreo.set(true);
-  }
-  actualizarCorreoTique(valor: string): void {
-    this.correoTique.set(valor);
-    this.errorCorreoTique.set(null);
-  }
-  cerrarModalCorreo(): void {
-    if (this.enviandoTique()) {
-      return;
-    }
-    this.mostrarModalCorreo.set(false);
-    this.correoTique.set('');
-    this.errorCorreoTique.set(null);
-  }
-  confirmarEnvioTique(): void {
-    const correo = this.correoTique().trim();
-    if (!correo) {
-      this.errorCorreoTique.set('Introduce un correo.');
-      return;
-    }
-    if (!this.esCorreoValido(correo)) {
-      this.errorCorreoTique.set('Correo no válido.');
-      return;
-    }
-    this.enviandoTique.set(true);
-    this.errorCorreoTique.set(null);
-    const pdf = this.construirPdfTique();
-    const pdfBase64 = pdf.output('datauristring');
-    fetch('http://localhost:7070/tiques/enviar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        correo,
-        nombreArchivo: this.obtenerNombreArchivoTique(),
-        pdfBase64,
-      }),
-    })
-      .then(async (res) => {
-        if (!res.ok) {
-          const err = await res.json().catch(() => null);
-          throw new Error(err?.message ?? 'No se pudo enviar el ticket');
-        }
-        return res.json();
-      })
-      .then(() => {
-        this.enviandoTique.set(false);
-        this.cerrarModalCorreo();
-        this.mostrarToast(`Ticket enviado correctamente a ${correo}`, 'ok');
-      })
-      .catch((err) => {
-        this.enviandoTique.set(false);
-        this.errorCorreoTique.set(err.message ?? 'No se pudo enviar el ticket');
-      });
-  }
-  private construirPdfTique(): jsPDF {
-    const pdf = new jsPDF();
-    const margenIzq = 14;
-    const margenDer = 196;
-    let y = 18;
-    const ahora = new Date();
+
+  /** Factura simplificada con todo lo consumido en la mesa (formato de la caja del restaurante). */
+  private datosTicket(): DatosTicket {
     const cuenta = this.cuentaActiva();
-    const mesas = this.mostrarConfirmacionPago()
-      ? (this.mesasTicketSnapshot() ?? [])
-      : (cuenta?.mesas ?? []).map((mesa) => mesa.id).filter(Boolean);
-    const mesaTexto = mesas.length > 0 ? mesas.join(', ') : this.mesaId;
-    const cuentaIdTicket = this.mostrarConfirmacionPago()
-      ? this.cuentaIdTicketSnapshot()
-      : cuenta?.id;
-    const identificador = `TK-${ahora.getFullYear()}${String(ahora.getMonth() + 1).padStart(2, '0')}${String(ahora.getDate()).padStart(2, '0')}-${cuentaIdTicket?.slice(-6).toUpperCase() ?? 'SINID'}`;
-    const metodoPago = this.mostrarConfirmacionPago()
-      ? (this.metodoPagoTicketSnapshot() ?? this.pagosAgrupadosParaTique()[0]?.metodoPago ?? '-')
-      : (this.pagosAgrupadosParaTique()[0]?.metodoPago ?? '-');
-    const saltarPaginaSiHaceFalta = () => {
-      if (y > 280) { pdf.addPage(); y = 18; }
+    const ordenes = this.ordenesParaTicket().filter((o) => o.ordenEstado !== 'Cancelado');
+    const pagadas = ordenes.filter((o) => o.pagada);
+    const ultimoPago = pagadas.map((o) => o.fechaPago).filter((f): f is string => !!f).sort().pop();
+    const metodo = pagadas.find((o) => o.metodoPago)?.metodoPago ?? 'TARJETA';
+    return {
+      cuentaId: this.cuentaIdTicketSnapshot() ?? cuenta?.id ?? this.mesaId,
+      mesa: this.mesaId,
+      comensales: cuenta?.comensales ?? null,
+      fechaPago: ultimoPago ?? new Date().toISOString(),
+      metodoPago: metodo,
+      lineas: agruparLineas(ordenes.map((o) => ({ nombre: o.plato.nombre, precio: Number(o.precio) }))),
+      total: Number(ordenes.reduce((a, o) => a + Number(o.precio), 0).toFixed(2)),
     };
-    const escribirTexto = (t: string, x = margenIzq, salto = 7, op?: any) => {
-      pdf.setFontSize(op?.tamano ?? 11);
-      pdf.setFont('helvetica', op?.negrita ? 'bold' : 'normal');
-      const lineas = pdf.splitTextToSize(t, margenDer - margenIzq);
-      for (const l of lineas) {
-        saltarPaginaSiHaceFalta();
-        pdf.text(l, x, y);
-        y += salto;
-      }
-    };
-    const escribirImporte = (t: string, imp: number) => {
-      saltarPaginaSiHaceFalta();
-      pdf.setFontSize(11); pdf.setFont('helvetica', 'normal');
-      pdf.text(t, margenIzq, y);
-      pdf.text(`${imp.toFixed(2)} €`, margenDer, y, { align: 'right' });
-      y += 7;
-    };
-    escribirTexto('RESTAURANTE EJEMPLO', margenIzq, 8, { negrita: true, tamano: 15 });
-    escribirTexto('TICKET');
-    escribirTexto(`Nº ticket: ${identificador}`);
-    escribirTexto(`Fecha: ${ahora.toLocaleDateString('es-ES')}  Hora: ${ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`);
-    escribirTexto(`Mesa(s): ${mesaTexto}`);
-    escribirTexto(`Método de pago: ${metodoPago}`);
-    const fechaPagoTicket = this.mostrarConfirmacionPago()
-      ? this.fechaPagoTicketSnapshot()
-      : cuenta?.fechaPago;
-    if (fechaPagoTicket) {
-      escribirTexto(`Fecha de pago: ${this.formatearFecha(fechaPagoTicket)}`);
-    }
-    y += 4; pdf.line(margenIzq, y, margenDer, y); y += 9;
-    escribirTexto('Productos', margenIzq, 8, { negrita: true, tamano: 13 });
-    for (const item of this.itemsAgrupadosParaTique()) {
-      escribirImporte(`${item.cantidad}x ${item.nombre}`, item.subtotal);
-    }
-    y += 4; pdf.line(margenIzq, y, margenDer, y); y += 9;
-    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(13);
-    pdf.text('TOTAL', margenIzq, y);
-    pdf.text(`${this.totalCuenta().toFixed(2)} €`, margenDer, y, { align: 'right' });
-    y += 12;
-    const pagos = this.pagosAgrupadosParaTique();
-    if (pagos.length > 0) {
-      escribirTexto('Pagos', margenIzq, 8, { negrita: true, tamano: 13 });
-      for (const pago of pagos) {
-        escribirTexto(`Pago ${pago.numero} - Método: ${pago.metodoPago}${pago.fechaPago ? ` - ${this.formatearFecha(pago.fechaPago)}` : ''}`, margenIzq, 7, { negrita: true });
-        for (const item of pago.items) {
-          escribirImporte(`  ${item.cantidad}x ${item.nombre}`, item.subtotal);
-        }
-        escribirImporte('  Total pago', pago.total);
-        y += 4;
-      }
-    }
-    y += 4;
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(10);
-    pdf.text('Gracias por su visita', 105, y, { align: 'center' });
-    return pdf;
-  }
-  private obtenerNombreArchivoTique(): string {
-    const fecha = new Date().toISOString().slice(0, 10);
-    return `ticket-mesa-${this.mesaId}-${fecha}.pdf`;
-  }
-  private esCorreoValido(correo: string): boolean {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo);
   }
   formatearFecha(fechaIso: string): string {
     const fecha = new Date(fechaIso);

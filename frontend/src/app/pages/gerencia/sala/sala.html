@@ -1,0 +1,163 @@
+<app-navbar></app-navbar>
+
+<main class="sala">
+  <section class="plano">
+    <header class="plano__cab">
+      <div>
+        <p class="sh-eyebrow">{{ hoyTexto() }} · turno de {{ turno().toLowerCase() }}</p>
+        <h1>Comedor</h1>
+      </div>
+      <div class="indicadores">
+        <div class="indicador">
+          <strong>{{ comensalesEnSala() }}</strong><span>de {{ plazas() }} plazas ocupadas</span>
+        </div>
+        @for (r of resumenEstados(); track r.estado) {
+          <div class="indicador indicador--{{ r.estado }}">
+            <strong>{{ r.total }}</strong><span>{{ etiquetas[r.estado] }}</span>
+          </div>
+        }
+      </div>
+    </header>
+
+    @if (error() && !seleccionada()) {
+      <p class="error" role="alert">{{ error() }}</p>
+    }
+
+    <div class="mesas" role="list">
+      @for (m of mesas(); track m.id) {
+        <button type="button" role="listitem" class="mesa mesa--{{ m.estado }}"
+                [class.mesa--activa]="seleccionadaId() === m.id" [class.mesa--grande]="m.capacidad >= 6"
+                (click)="seleccionar(m)" [attr.aria-label]="'Mesa ' + m.id + ', ' + etiquetas[m.estado]">
+          <span class="mesa__num">{{ m.id }}</span>
+          <span class="mesa__sillas" aria-hidden="true">
+            @for (s of sillas(m.capacidad); track $index) {
+              <i [class.ocupada]="$index < (m.cuentaActiva?.comensales ?? 0)"></i>
+            }
+          </span>
+          <span class="mesa__info">
+            @if (m.cuentaActiva) {
+              {{ m.cuentaActiva.comensales || '?' }} de {{ m.capacidad }} · {{ minutosAbierta(m) }}
+            } @else {
+              {{ m.capacidad }} plazas
+            }
+          </span>
+          <span class="mesa__estado">{{ etiquetas[m.estado] }}</span>
+        </button>
+      }
+    </div>
+  </section>
+
+  <aside class="panel sh-tarjeta">
+    @if (seleccionada(); as m) {
+      <header class="panel__cab">
+        <div>
+          <p class="sh-eyebrow">{{ m.capacidad }} plazas</p>
+          <h2>Mesa {{ m.id }}</h2>
+        </div>
+        <span class="estado estado--{{ m.estado }}">{{ etiquetas[m.estado] }}</span>
+        <button type="button" class="cerrar" (click)="seleccionadaId.set(null)" aria-label="Cerrar panel">✕</button>
+      </header>
+
+      @if (error()) {
+        <p class="error" role="alert">{{ error() }}</p>
+      }
+
+      @if (cobrando()) {
+        <!-- Cobro en caja -->
+        @if (ticket()) {
+          <div class="cobrado">
+            <p class="cobrado__ok">✓ Cobro registrado</p>
+            <p>La mesa queda pendiente de limpieza.</p>
+            <button type="button" class="sh-btn sh-btn--primario" (click)="descargarTicket()">Imprimir ticket (PDF)</button>
+            <button type="button" class="sh-btn" (click)="cerrarCobro(); seleccionadaId.set(null)">Terminar</button>
+          </div>
+        } @else if (resumen(); as r) {
+          <h3>Cuenta</h3>
+          <ul class="lineas">
+            @for (l of lineasCobro(); track l.descripcion) {
+              <li><span>{{ l.cantidad }} × {{ l.descripcion }}</span><strong>{{ l.importe | number:'1.2-2' }} €</strong></li>
+            }
+          </ul>
+          <p class="total"><span>Total</span><strong>{{ r.total | number:'1.2-2' }} €</strong></p>
+          @if (r.total !== r.pendiente) {
+            <p class="nota">Ya pagado desde el móvil: {{ (r.total - r.pendiente) | number:'1.2-2' }} €. Pendiente: {{ r.pendiente | number:'1.2-2' }} €</p>
+          }
+          <div class="metodos" role="group" aria-label="Forma de pago">
+            <button type="button" [class.activo]="metodo() === 'TARJETA'" (click)="metodo.set('TARJETA')">💳 Tarjeta (TPV)</button>
+            <button type="button" [class.activo]="metodo() === 'EFECTIVO'" (click)="metodo.set('EFECTIVO')">💶 Efectivo</button>
+          </div>
+          @if (metodo() === 'EFECTIVO') {
+            <label class="campo">Entregado (€)
+              <input type="number" min="0" step="0.05" [value]="entregado() ?? ''" (input)="entregado.set($any($event.target).valueAsNumber || null)" />
+            </label>
+            @if (cambio() !== null) {
+              <p class="nota">{{ cambio()! >= 0 ? 'Cambio: ' + (cambio() | number:'1.2-2') + ' €' : 'Faltan ' + ((-cambio()!) | number:'1.2-2') + ' €' }}</p>
+            }
+          }
+          <div class="acciones">
+            <button type="button" class="sh-btn" (click)="cerrarCobro()">Volver</button>
+            <button type="button" class="sh-btn sh-btn--primario" [disabled]="ocupado() || r.pendiente <= 0" (click)="confirmarCobro(m)">
+              Cobrar {{ r.pendiente | number:'1.2-2' }} €
+            </button>
+          </div>
+        } @else {
+          <p class="nota">Cargando cuenta…</p>
+        }
+      } @else {
+        @switch (m.estado) {
+          @case ('libre') {
+            <p class="nota">Indica cuántos comensales se sientan. Se carga la tarifa del buffet del turno por cada uno.</p>
+            <div class="contador">
+              <button type="button" (click)="cambiarComensales(-1, m)" aria-label="Un comensal menos">−</button>
+              <strong>{{ comensalesApertura() }}</strong>
+              <button type="button" (click)="cambiarComensales(1, m)" aria-label="Un comensal más">+</button>
+              <span>comensales</span>
+            </div>
+            <button type="button" class="sh-btn sh-btn--primario ancho" [disabled]="ocupado()" (click)="abrir(m)">Abrir mesa</button>
+          }
+          @case ('sucia') {
+            <p class="nota">La sesión anterior ha terminado. Cuando esté recogida y limpia, márcala para volver a usarla.</p>
+            <button type="button" class="sh-btn sh-btn--primario ancho" [disabled]="ocupado()" (click)="limpiar(m)">Mesa limpia y lista</button>
+          }
+          @default {
+            @if (m.cuentaActiva; as c) {
+              <dl class="datos">
+                <div><dt>Comensales</dt><dd>{{ c.comensales || '—' }}</dd></div>
+                <div><dt>Abierta</dt><dd>{{ c.fechaCreacion | date:'HH:mm' }} ({{ minutosAbierta(m) }})</dd></div>
+                <div><dt>Código QR</dt><dd class="codigo">{{ c.password }}</dd></div>
+              </dl>
+            }
+            <div class="acciones acciones--columna">
+              <button type="button" class="sh-btn sh-btn--primario" (click)="abrirCobro(m)">Cobrar en caja</button>
+              @if (m.estado === 'ocupada') {
+                <button type="button" class="sh-btn" [disabled]="ocupado()" (click)="cerrarSesion(m)">Cerrar sesión (pedir la cuenta)</button>
+              } @else {
+                <button type="button" class="sh-btn" [disabled]="ocupado()" (click)="reabrir(m)">Reabrir sesión</button>
+              }
+              <button type="button" class="enlace" (click)="liberar(m)">Liberar sin cobrar…</button>
+            </div>
+          }
+        }
+      }
+    } @else {
+      <header class="panel__cab">
+        <div>
+          <p class="sh-eyebrow">Hoy</p>
+          <h2>Próximas reservas</h2>
+        </div>
+        <a class="sh-btn" routerLink="/reservas">Ver todas</a>
+      </header>
+      <ul class="reservas">
+        @for (r of proximasReservas(); track r.id) {
+          <li>
+            <span class="reservas__hora">{{ r.hora }}</span>
+            <span class="reservas__nombre">{{ r.nombre }}<small>{{ r.comensales }} comensales · {{ r.estado }}</small></span>
+          </li>
+        } @empty {
+          <li class="nota">No quedan reservas para hoy.</li>
+        }
+      </ul>
+      <p class="nota">Selecciona una mesa del plano para abrirla, cobrarla o marcarla como limpia.</p>
+    }
+  </aside>
+</main>
