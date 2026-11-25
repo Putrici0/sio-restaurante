@@ -85,17 +85,30 @@ platos, pesos = [], []
 for i, (nombre, cat, desc, precio, tag, peso) in enumerate(CARTA, start=1):
     platos.append({
         "id": f"plato-{i:02d}", "nombre": nombre, "categoria": cat, "descripcion": desc,
-        "precio": precio, "estaActivo": True,
+        # Buffet libre: la comida va incluida en la tarifa por comensal; las bebidas se cobran aparte
+        "precio": precio if cat == "Bebida" else 0.0, "estaActivo": True,
         "imagen": f"/platos/plato-{i:02d}.svg",
     })
     IMAGENES.mkdir(parents=True, exist_ok=True)
     (IMAGENES / f"plato-{i:02d}.svg").write_text(ilustracion(nombre, cat), encoding="utf-8")
     pesos.append(peso)
+# Tarifas del buffet libre por comensal
+TARIFAS = {"Almuerzo": ("buffet-almuerzo", "Buffet libre · almuerzo", 16.90), "Cena": ("buffet-cena", "Buffet libre · cena", 21.90)}
+EMOJIS["Buffet"] = "🍱"
+for turno, (tid, tnombre, tprecio) in TARIFAS.items():
+    platos.append({"id": tid, "nombre": tnombre, "categoria": "Buffet",
+                   "descripcion": f"Buffet libre a la carta, turno de {turno.lower()}. Bebidas no incluidas.",
+                   "precio": tprecio, "estaActivo": True, "imagen": "/platos/buffet.svg"})
+FONDOS["Buffet"] = ("#fde8ec", "#f9cfd8")
+(IMAGENES / "buffet.svg").write_text(ilustracion("Buffet", "Buffet"), encoding="utf-8")
+tarifa_por_turno = {t: next(p for p in platos if p["id"] == tid) for t, (tid, _, _) in TARIFAS.items()}
+
 por_categoria = {c: [(p, w) for p, w in zip(platos, pesos) if p["categoria"] == c]
                  for c in ("Entrante", "Principal", "Postre", "Bebida")}
 
 # ------------------------------------------------------------------ mesas (15)
-CAPACIDADES = [2, 4, 2, 4, 4, 4, 2, 4, 2, 4, 4, 4, 4, 6, 6]
+# Comedor: 15 mesas fijas (no se juntan), 60 plazas
+CAPACIDADES = [2, 2, 2, 2, 2, 2, 4, 4, 4, 4, 4, 6, 6, 8, 8]
 mesas = [{"id": str(i), "capacidad": c, "mesasUnidas": [str(i)], "sucia": False}
          for i, c in enumerate(CAPACIDADES, start=1)]
 mesa_por_id = {m["id"]: m for m in mesas}
@@ -151,6 +164,18 @@ def crear_sesion(mesa, inicio, duracion_min, estado_sesion, metodo=None):
     }
     cuentas.append(cuenta)
     comensales = max(1, min(mesa["capacidad"], round(random.gauss(mesa["capacidad"] * 0.8, 0.8))))
+    cuenta["comensales"] = comensales
+    # Tarifa del buffet: una linea por comensal, cargada al abrir la mesa
+    turno = "Cena" if inicio.hour >= 18 else "Almuerzo"
+    cubiertos = {"id": uid("ped"), "cuenta": cuenta_snapshot(cuenta), "pedidoEstado": "Listo", "fechaPedido": iso(inicio)}
+    pedidos.append(cubiertos)
+    tarifa = tarifa_por_turno[turno]
+    for _ in range(comensales):
+        ordenes.append({
+            "id": uid("ord"), "pedido": pedido_snapshot(cubiertos), "plato": plato_snapshot(tarifa), "precio": tarifa["precio"],
+            "ordenEstado": "Entregado", "fecha": iso(inicio), "detalles": "", "pagada": pagada,
+            "fechaPago": iso(fin) if pagada else None, "metodoPago": metodo if pagada else None,
+        })
     lineas = elegir_platos(comensales)
     rondas = 3 if len(lineas) > 6 else 2
     for r in range(rondas):
@@ -189,11 +214,12 @@ for dias_atras in range(21, 0, -1):
 # ------------------------------------------------------------------ servicio de hoy
 servicio_activo = ahora.hour >= 12
 inicio_servicio = ahora - timedelta(minutes=50) if servicio_activo else datetime.combine(hoy, time(13, 10), ZONA)
-crear_sesion(mesa_por_id["2"], inicio_servicio, 50, "ocupada")
-crear_sesion(mesa_por_id["5"], inicio_servicio + timedelta(minutes=15), 35, "ocupada")
-crear_sesion(mesa_por_id["11"], inicio_servicio + timedelta(minutes=25), 25, "ocupada")
-crear_sesion(mesa_por_id["14"], inicio_servicio - timedelta(minutes=30), 80, "pendiente-cobro")
-mesa_por_id["8"]["sucia"] = True
+crear_sesion(mesa_por_id["7"], inicio_servicio, 50, "ocupada")
+crear_sesion(mesa_por_id["2"], inicio_servicio + timedelta(minutes=15), 35, "ocupada")
+crear_sesion(mesa_por_id["12"], inicio_servicio + timedelta(minutes=25), 25, "ocupada")
+crear_sesion(mesa_por_id["15"], inicio_servicio - timedelta(minutes=30), 80, "pendiente-cobro")
+mesa_por_id["9"]["sucia"] = True
+mesa_por_id["4"]["sucia"] = True
 
 # ------------------------------------------------------------------ reservas
 NOMBRES = ["María Santana", "Carlos Medina", "Laura Rodríguez", "Javier Suárez", "Ana Quintana",

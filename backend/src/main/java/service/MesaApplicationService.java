@@ -5,6 +5,9 @@ import repository.interfaces.CuentaRepository;
 import repository.interfaces.MesaRepository;
 import repository.interfaces.OrdenRepository;
 import repository.interfaces.PedidoRepository;
+import repository.interfaces.PlatoRepository;
+import service.domain.BuffetLibre;
+import java.math.BigDecimal;
 
 import java.security.SecureRandom;
 import java.time.Instant;
@@ -21,6 +24,7 @@ public class MesaApplicationService {
     private final CuentaRepository cuentaRepository;
     private final PedidoRepository pedidoRepository;
     private final OrdenRepository ordenRepository;
+    private final PlatoRepository platoRepository;
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -28,12 +32,14 @@ public class MesaApplicationService {
             MesaRepository mesaRepository,
             CuentaRepository cuentaRepository,
             PedidoRepository pedidoRepository,
-            OrdenRepository ordenRepository
+            OrdenRepository ordenRepository,
+            PlatoRepository platoRepository
     ) {
         this.mesaRepository = mesaRepository;
         this.cuentaRepository = cuentaRepository;
         this.pedidoRepository = pedidoRepository;
         this.ordenRepository = ordenRepository;
+        this.platoRepository = platoRepository;
     }
 
     public boolean estaOcupada(String mesaId) {
@@ -61,6 +67,17 @@ public class MesaApplicationService {
      * Las reservas no se asignan automaticamente; el personal decide que mesa abrir.
      */
     public Cuenta ocuparMesa(String mesaId) {
+        return ocuparMesa(mesaId, obtenerMesa(mesaId).capacidad());
+    }
+
+    /**
+     * Abre la sesion de la mesa para un numero de comensales y carga en la cuenta
+     * la tarifa del buffet libre (almuerzo o cena) por cada comensal.
+     */
+    public Cuenta ocuparMesa(String mesaId, int comensales) {
+        if (comensales < 1) {
+            throw new IllegalArgumentException("Indica cuántos comensales se sientan en la mesa");
+        }
         if (estaOcupada(mesaId)) {
             throw new IllegalArgumentException("La mesa ya está ocupada o forma parte de un grupo ocupado");
         }
@@ -80,18 +97,32 @@ public class MesaApplicationService {
             grupoMesas.add(mesa);
         }
 
-        Cuenta nuevaCuenta = new Cuenta(
-                null,
-                grupoMesas,
-                false,
-                Optional.empty(),
-                Instant.now(),
-                Optional.empty(),
-                generarPassword(),
-                Optional.empty()
-        );
+        int capacidad = grupoMesas.stream().mapToInt(Mesa::capacidad).sum();
+        if (comensales > capacidad + 2) {
+            throw new IllegalArgumentException("La mesa " + mesaId + " es para " + capacidad + " comensales");
+        }
 
-        return cuentaRepository.save(nuevaCuenta);
+        Instant ahora = Instant.now();
+        Cuenta cuenta = cuentaRepository.save(new Cuenta(
+                null, grupoMesas, false, Optional.empty(), ahora, Optional.empty(),
+                generarPassword(), Optional.empty(), false, comensales
+        ));
+        cargarTarifaBuffet(cuenta, comensales, ahora);
+        return cuenta;
+    }
+
+    /** Una linea "Buffet libre" por comensal, ya servida (no pasa por cocina). */
+    private void cargarTarifaBuffet(Cuenta cuenta, int comensales, Instant ahora) {
+        Plato tarifa = platoRepository.findById(BuffetLibre.tarifaDelTurno(ahora)).orElse(null);
+        if (tarifa == null) {
+            return;
+        }
+        Pedido cubiertos = pedidoRepository.save(new Pedido(null, cuenta, PedidoEstado.Listo, ahora));
+        for (int i = 0; i < comensales; i++) {
+            ordenRepository.save(new Orden(null, cubiertos, tarifa,
+                    tarifa.precio() == null ? BigDecimal.ZERO : tarifa.precio(),
+                    OrdenEstado.Entregado, ahora, "", false, Optional.empty(), Optional.empty()));
+        }
     }
 
     /**
@@ -187,7 +218,8 @@ public class MesaApplicationService {
                 Optional.of(Instant.now()),
                 "",
                 cuentaActiva.metodoPago(),
-                true
+                true,
+                cuentaActiva.comensales()
         );
 
         Cuenta resultado = cuentaRepository.update(cuentaActiva.id(), cuentaLiberada);
@@ -239,7 +271,8 @@ public class MesaApplicationService {
                     cuentaActiva.fechaPago(),
                     cuentaActiva.password(),
                     cuentaActiva.metodoPago(),
-                    cuentaActiva.cobroSolicitado()
+                    cuentaActiva.cobroSolicitado(),
+                    cuentaActiva.comensales()
             );
             cuentaRepository.update(cuentaActiva.id(), cuentaActualizada);
         }

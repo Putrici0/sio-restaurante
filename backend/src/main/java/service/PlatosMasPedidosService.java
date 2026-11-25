@@ -40,7 +40,7 @@ public class PlatosMasPedidosService {
         Map<String, Long> conteo = conteoPorPlato();
         Map<String, Plato> activos = platoRepository.findAll().stream()
                 .filter(Plato::estaActivo)
-                .filter(p -> p.categoria() != Categoria.Bebida)
+                .filter(p -> p.categoria() != null && p.categoria().esComida())
                 .collect(Collectors.toMap(Plato::id, Function.identity(), (a, b) -> a));
 
         return conteo.entrySet().stream()

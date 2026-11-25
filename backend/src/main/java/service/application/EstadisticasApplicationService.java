@@ -9,6 +9,12 @@ import repository.interfaces.CuentaRepository;
 import repository.interfaces.MesaRepository;
 import repository.interfaces.OrdenRepository;
 import repository.interfaces.PlatoRepository;
+import repository.interfaces.ReservaRepository;
+import model.Reserva;
+import service.domain.BuffetLibre;
+import java.time.DayOfWeek;
+import java.time.format.TextStyle;
+import java.util.Locale;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -39,17 +45,20 @@ public class EstadisticasApplicationService {
     private final OrdenRepository ordenRepository;
     private final PlatoRepository platoRepository;
     private final MesaRepository mesaRepository;
+    private final ReservaRepository reservaRepository;
 
     public EstadisticasApplicationService(
             CuentaRepository cuentaRepository,
             OrdenRepository ordenRepository,
             PlatoRepository platoRepository,
-            MesaRepository mesaRepository
+            MesaRepository mesaRepository,
+            ReservaRepository reservaRepository
     ) {
         this.cuentaRepository = cuentaRepository;
         this.ordenRepository = ordenRepository;
         this.platoRepository = platoRepository;
         this.mesaRepository = mesaRepository;
+        this.reservaRepository = reservaRepository;
     }
 
     public Cuadro calcular(LocalDate desde, LocalDate hasta) {
@@ -73,7 +82,8 @@ public class EstadisticasApplicationService {
                 .filter(c -> c.fechaPago().isPresent() && enRango(c.fechaPago().get(), inicio, fin))
                 .toList();
 
-        return new Cuadro(desde, hasta, ventas(vendidas, desde, hasta), carta(vendidas), eficiencia(sesiones, desde, hasta));
+        return new Cuadro(desde, hasta, ventas(vendidas, desde, hasta), carta(vendidas), eficiencia(sesiones, desde, hasta),
+                sala(vendidas, sesiones), reservas(desde, hasta));
     }
 
     // ---------------------------------------------------------------- ventas
@@ -118,7 +128,7 @@ public class EstadisticasApplicationService {
 
         for (Orden o : vendidas) {
             Plato plato = o.plato();
-            if (plato == null || plato.id() == null) continue;
+            if (plato == null || plato.id() == null || plato.categoria() == Categoria.Buffet) continue;
             porPlato.merge(plato.id(),
                     new ProductoVendido(plato.id(), plato.nombre(), plato.categoria(), 1, precio(o)),
                     (a, b) -> new ProductoVendido(a.platoId(), a.nombre(), a.categoria(),
@@ -137,6 +147,7 @@ public class EstadisticasApplicationService {
 
         List<CategoriaVendida> categorias = new ArrayList<>();
         for (Categoria c : Categoria.values()) {
+            if (c == Categoria.Buffet) continue;
             long unidades = unidadesCategoria.getOrDefault(c, new long[1])[0];
             categorias.add(new CategoriaVendida(c, unidades, escala(ingresosCategoria.getOrDefault(c, BigDecimal.ZERO))));
         }
@@ -144,6 +155,7 @@ public class EstadisticasApplicationService {
         // Baja rotación: platos activos de la carta con menos unidades vendidas (incluye los no vendidos)
         List<ProductoVendido> bajaRotacion = platoRepository.findAll().stream()
                 .filter(Plato::estaActivo)
+                .filter(p -> p.categoria() != Categoria.Buffet)
                 .map(p -> porPlato.getOrDefault(p.id(),
                         new ProductoVendido(p.id(), p.nombre(), p.categoria(), 0, BigDecimal.ZERO)))
                 .sorted(Comparator.comparingLong(ProductoVendido::unidades).thenComparing(ProductoVendido::nombre))
@@ -180,6 +192,109 @@ public class EstadisticasApplicationService {
         return new Eficiencia(sesiones.size(), redondear(ocupacionMedia), redondear(rotacionMedia), numeroMesas, rotacion);
     }
 
+    // ------------------------------------------------------------- sala
+
+    /** Rentabilidad por mesa, turnos (almuerzo/cena), dias de la semana y peso de las bebidas. */
+    private Sala sala(List<Orden> vendidas, List<Cuenta> sesiones) {
+        Map<String, BigDecimal> ingresosPorCuenta = new HashMap<>();
+        BigDecimal bebidas = BigDecimal.ZERO;
+        BigDecimal total = BigDecimal.ZERO;
+        for (Orden o : vendidas) {
+            String cuentaId = cuentaId(o);
+            if (cuentaId != null) ingresosPorCuenta.merge(cuentaId, precio(o), BigDecimal::add);
+            if (o.plato() != null && o.plato().categoria() == Categoria.Bebida) bebidas = bebidas.add(precio(o));
+            total = total.add(precio(o));
+        }
+
+        Map<String, long[]> mesaSesionesComensalesMinutos = new HashMap<>();
+        Map<String, BigDecimal> mesaIngresos = new HashMap<>();
+        Map<String, long[]> turnoSesionesComensales = new LinkedHashMap<>();
+        Map<String, BigDecimal> turnoIngresos = new LinkedHashMap<>();
+        for (String t : List.of("Almuerzo", "Cena")) {
+            turnoSesionesComensales.put(t, new long[2]);
+            turnoIngresos.put(t, BigDecimal.ZERO);
+        }
+        Map<DayOfWeek, BigDecimal> diaIngresos = new TreeMap<>();
+        Map<DayOfWeek, long[]> diaSesiones = new TreeMap<>();
+        long comensalesTotales = 0;
+
+        for (Cuenta c : sesiones) {
+            BigDecimal ingreso = ingresosPorCuenta.getOrDefault(c.id(), BigDecimal.ZERO);
+            int comensales = Math.max(0, c.comensales());
+            comensalesTotales += comensales;
+            String mesa = c.mesas().isEmpty() ? "?" : c.mesas().get(0).id();
+            long minutos = c.fechaCreacion() == null ? 0 : Math.max(0, Duration.between(c.fechaCreacion(), c.fechaPago().get()).toMinutes());
+            long[] acc = mesaSesionesComensalesMinutos.computeIfAbsent(mesa, k -> new long[3]);
+            acc[0]++;
+            acc[1] += comensales;
+            acc[2] += minutos;
+            mesaIngresos.merge(mesa, ingreso, BigDecimal::add);
+
+            String turno = BuffetLibre.turno(c.fechaCreacion() != null ? c.fechaCreacion() : c.fechaPago().get());
+            long[] t = turnoSesionesComensales.get(turno);
+            t[0]++;
+            t[1] += comensales;
+            turnoIngresos.merge(turno, ingreso, BigDecimal::add);
+
+            DayOfWeek dia = c.fechaPago().get().atZone(ZONA).getDayOfWeek();
+            diaIngresos.merge(dia, ingreso, BigDecimal::add);
+            diaSesiones.computeIfAbsent(dia, k -> new long[1])[0]++;
+        }
+
+        List<RentabilidadMesa> mesas = new ArrayList<>();
+        for (var m : mesaRepository.findAll()) {
+            long[] acc = mesaSesionesComensalesMinutos.getOrDefault(m.id(), new long[3]);
+            BigDecimal ingresos = escala(mesaIngresos.getOrDefault(m.id(), BigDecimal.ZERO));
+            mesas.add(new RentabilidadMesa(
+                    m.id(), m.capacidad(), acc[0], acc[1], ingresos,
+                    acc[0] == 0 ? BigDecimal.ZERO : ingresos.divide(BigDecimal.valueOf(acc[0]), 2, RoundingMode.HALF_UP),
+                    acc[1] == 0 ? BigDecimal.ZERO : ingresos.divide(BigDecimal.valueOf(acc[1]), 2, RoundingMode.HALF_UP),
+                    ingresos.divide(BigDecimal.valueOf(Math.max(1, m.capacidad())), 2, RoundingMode.HALF_UP),
+                    acc[0] == 0 ? 0 : redondear((double) acc[2] / acc[0])
+            ));
+        }
+        mesas.sort(Comparator.comparing(RentabilidadMesa::ingresos).reversed());
+
+        List<Turno> turnos = new ArrayList<>();
+        for (String t : turnoSesionesComensales.keySet()) {
+            long[] v = turnoSesionesComensales.get(t);
+            BigDecimal ingresos = escala(turnoIngresos.get(t));
+            turnos.add(new Turno(t, v[0], v[1], ingresos,
+                    v[1] == 0 ? BigDecimal.ZERO : ingresos.divide(BigDecimal.valueOf(v[1]), 2, RoundingMode.HALF_UP)));
+        }
+
+        List<DiaSemana> dias = new ArrayList<>();
+        for (DayOfWeek d : DayOfWeek.values()) {
+            long n = diaSesiones.getOrDefault(d, new long[1])[0];
+            dias.add(new DiaSemana(d.getDisplayName(TextStyle.FULL, new Locale("es", "ES")), n,
+                    escala(diaIngresos.getOrDefault(d, BigDecimal.ZERO))));
+        }
+
+        BigDecimal gastoPorComensal = comensalesTotales == 0 ? BigDecimal.ZERO
+                : total.divide(BigDecimal.valueOf(comensalesTotales), 2, RoundingMode.HALF_UP);
+        double pctBebidas = total.signum() == 0 ? 0
+                : redondear(bebidas.multiply(BigDecimal.valueOf(100)).divide(total, 2, RoundingMode.HALF_UP).doubleValue());
+
+        return new Sala(comensalesTotales, gastoPorComensal, pctBebidas, mesas, turnos, dias);
+    }
+
+    // ---------------------------------------------------------- reservas
+
+    private Reservas reservas(LocalDate desde, LocalDate hasta) {
+        List<Reserva> enRango = reservaRepository.findAll().stream()
+                .filter(r -> r.fecha() != null && !r.fecha().isBlank())
+                .filter(r -> {
+                    LocalDate f = LocalDate.parse(r.fecha());
+                    return !f.isBefore(desde) && !f.isAfter(hasta);
+                })
+                .toList();
+        long web = enRango.stream().filter(r -> "web".equals(r.origen())).count();
+        long canceladas = enRango.stream().filter(r -> "Cancelado".equals(r.estado())).count();
+        long cumplidas = enRango.stream().filter(r -> "Finalizado".equals(r.estado())).count();
+        long comensales = enRango.stream().filter(r -> !"Cancelado".equals(r.estado())).mapToLong(Reserva::comensales).sum();
+        return new Reservas(enRango.size(), web, canceladas, cumplidas, comensales);
+    }
+
     // --------------------------------------------------------------- helpers
 
     private boolean enRango(Instant t, Instant inicio, Instant fin) {
@@ -204,7 +319,8 @@ public class EstadisticasApplicationService {
 
     // ------------------------------------------------------------------ DTOs
 
-    public record Cuadro(LocalDate desde, LocalDate hasta, Ventas ventas, Carta carta, Eficiencia eficiencia) {}
+    public record Cuadro(LocalDate desde, LocalDate hasta, Ventas ventas, Carta carta, Eficiencia eficiencia,
+                         Sala sala, Reservas reservas) {}
 
     public record Serie(String etiqueta, BigDecimal valor) {}
 
@@ -221,4 +337,17 @@ public class EstadisticasApplicationService {
 
     public record Eficiencia(long sesiones, double ocupacionMediaMinutos, double rotacionMediaDiaria,
                              int numeroMesas, List<RotacionDia> rotacionPorDia) {}
+
+    public record RentabilidadMesa(String mesa, int capacidad, long sesiones, long comensales, BigDecimal ingresos,
+                                   BigDecimal ingresoMedioSesion, BigDecimal ingresoPorComensal,
+                                   BigDecimal ingresoPorPlaza, double ocupacionMediaMinutos) {}
+
+    public record Turno(String turno, long sesiones, long comensales, BigDecimal ingresos, BigDecimal gastoPorComensal) {}
+
+    public record DiaSemana(String dia, long sesiones, BigDecimal ingresos) {}
+
+    public record Sala(long comensales, BigDecimal gastoPorComensal, double porcentajeBebidas,
+                       List<RentabilidadMesa> mesas, List<Turno> turnos, List<DiaSemana> diasSemana) {}
+
+    public record Reservas(long total, long web, long canceladas, long cumplidas, long comensales) {}
 }

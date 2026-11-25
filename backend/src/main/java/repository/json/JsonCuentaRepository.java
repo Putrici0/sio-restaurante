@@ -20,7 +20,7 @@ public class JsonCuentaRepository extends JsonRepository<Cuenta> implements Cuen
     @Override
     protected Cuenta conId(Cuenta c, String id) {
         return new Cuenta(id, c.mesas(), c.payed(), c.reserva(), c.fechaCreacion(), c.fechaPago(),
-                c.password(), c.metodoPago(), c.cobroSolicitado());
+                c.password(), c.metodoPago(), c.cobroSolicitado(), c.comensales());
     }
 
     @Override

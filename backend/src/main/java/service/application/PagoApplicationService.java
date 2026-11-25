@@ -137,7 +137,9 @@ public class PagoApplicationService {
                 cuenta.fechaCreacion(),
                 Optional.of(ahora),
                 "",
-                Optional.of(metodoPago)
+                Optional.of(metodoPago),
+                true,
+                cuenta.comensales()
         );
 
         Cuenta cuentaPagada = cuentaRepository.update(cuenta.id(), actualizada);
@@ -216,7 +218,9 @@ public class PagoApplicationService {
                     cuenta.fechaCreacion(),
                     Optional.of(ahora),
                     "",
-                    Optional.of(metodoPago)
+                    Optional.of(metodoPago),
+                    true,
+                    cuenta.comensales()
             );
 
             Cuenta cuentaActualizada = cuentaRepository.update(cuenta.id(), cuentaPagada);
@@ -246,7 +250,9 @@ public class PagoApplicationService {
                 cuenta.fechaCreacion(),
                 Optional.of(Instant.now()),
                 "",
-                cuenta.metodoPago()
+                cuenta.metodoPago(),
+                true,
+                cuenta.comensales()
         );
 
         Cuenta cuentaPagada = cuentaRepository.update(cuenta.id(), actualizada);

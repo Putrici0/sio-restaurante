@@ -3,6 +3,7 @@ package controller;
 import dto.ReservaRequest;
 import io.javalin.apibuilder.EndpointGroup;
 import model.Reserva;
+import service.MesaApplicationService;
 import service.ReservaService;
 import util.ApiError;
 
@@ -13,9 +14,11 @@ import static io.javalin.apibuilder.ApiBuilder.*;
 public class ReservaController {
 
     private final ReservaService service;
+    private final MesaApplicationService mesaApplicationService;
 
-    public ReservaController(ReservaService service) {
+    public ReservaController(ReservaService service, MesaApplicationService mesaApplicationService) {
         this.service = service;
+        this.mesaApplicationService = mesaApplicationService;
     }
 
     public EndpointGroup routes() {
@@ -45,6 +48,23 @@ public class ReservaController {
                 });
 
                 path("{id}", () -> {
+
+                    // El cliente con reserva ha llegado: se abre la mesa elegida y la reserva se da por cumplida
+                    path("llegada", () -> post(ctx -> {
+                        @SuppressWarnings("unchecked")
+                        java.util.Map<String, Object> body = ctx.bodyAsClass(java.util.Map.class);
+                        Object mesaId = body.get("mesaId");
+                        if (mesaId == null || mesaId.toString().isBlank()) {
+                            throw new IllegalArgumentException("Selecciona la mesa para el cliente");
+                        }
+                        Reserva reserva = service.findById(ctx.pathParam("id"))
+                                .orElseThrow(() -> new IllegalArgumentException("La reserva no existe"));
+                        if (!"Pendiente".equals(reserva.estado()) && !"Confirmado".equals(reserva.estado())) {
+                            throw new IllegalArgumentException("La reserva ya está " + reserva.estado().toLowerCase());
+                        }
+                        mesaApplicationService.ocuparMesa(mesaId.toString(), reserva.comensales());
+                        ctx.json(service.cambiarEstado(reserva.id(), "Finalizado"));
+                    }));
 
                     path("estado", () -> post(ctx -> {
                         @SuppressWarnings("unchecked")

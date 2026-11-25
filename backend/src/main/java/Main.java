@@ -68,7 +68,8 @@ public class Main {
                 mesaRepository,
                 cuentaRepository,
                 pedidoRepository,
-                ordenRepository
+                ordenRepository,
+                platoRepository
         );
 
         PedidoApplicationService pedidoApplicationService = new PedidoApplicationService(
@@ -105,7 +106,7 @@ public class Main {
                 new PlatosMasPedidosService(ordenRepository, platoRepository)
         );
         MesaController mesaController = new MesaController(mesaService, mesaApplicationService);
-        ReservaController reservaController = new ReservaController(reservaService);
+        ReservaController reservaController = new ReservaController(reservaService, mesaApplicationService);
         CuentaController cuentaController = new CuentaController(
                 cuentaService,
                 pagoApplicationService,
@@ -117,7 +118,7 @@ public class Main {
         AuthController authController = new AuthController(usuarioRepository);
 
         EstadisticasController estadisticasController = new EstadisticasController(
-                new EstadisticasApplicationService(cuentaRepository, ordenRepository, platoRepository, mesaRepository)
+                new EstadisticasApplicationService(cuentaRepository, ordenRepository, platoRepository, mesaRepository, reservaRepository)
         );
 
         Javalin app = Javalin.create(config -> {

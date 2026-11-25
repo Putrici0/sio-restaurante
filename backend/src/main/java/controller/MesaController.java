@@ -106,7 +106,17 @@ public class MesaController {
                     path("ocupar", () -> {
                         post(ctx -> {
                             String id = ctx.pathParam("id");
-                            Cuenta cuenta = applicationService.ocuparMesa(id);
+                            String cuerpo = ctx.body();
+                            int comensales = 0;
+                            if (cuerpo != null && !cuerpo.isBlank()) {
+                                @SuppressWarnings("unchecked")
+                                Map<String, Object> datos = ctx.bodyAsClass(Map.class);
+                                Object valor = datos.get("comensales");
+                                if (valor instanceof Number n) comensales = n.intValue();
+                            }
+                            Cuenta cuenta = comensales > 0
+                                    ? applicationService.ocuparMesa(id, comensales)
+                                    : applicationService.ocuparMesa(id);
                             ctx.status(201).json(cuenta);
                         });
                     });

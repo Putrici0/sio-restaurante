@@ -81,6 +81,8 @@ public class PedidoApplicationService {
             throw new IllegalArgumentException("La sesión de la mesa está cerrada y pendiente de cobro");
         }
 
+        validarRondaBuffet(cuenta, request);
+
         Pedido pedido = new Pedido(null, cuenta, PedidoEstado.Pendiente, Instant.now());
         Pedido pedidoGuardado = pedidoRepository.save(pedido);
 
@@ -209,6 +211,27 @@ public class PedidoApplicationService {
                 pedidoRepository.deleteById(pedido.id());
             } catch (Exception ignored) {
             }
+        }
+    }
+
+    /**
+     * Buffet libre: en cada ronda se piden como maximo PLATOS_POR_COMENSAL_Y_RONDA platos
+     * de comida por comensal; las tarifas del buffet no se piden como platos.
+     */
+    private void validarRondaBuffet(Cuenta cuenta, CrearPedidoClienteRequest request) {
+        int platosComida = 0;
+        for (CrearPedidoClienteRequest.ItemPedidoRequest item : request.items) {
+            Plato plato = platoRepository.findById(item.platoId).orElse(null);
+            if (plato == null || plato.categoria() == null) continue;
+            if (plato.categoria() == model.Categoria.Buffet) {
+                throw new IllegalArgumentException("La tarifa del buffet se carga al abrir la mesa");
+            }
+            if (plato.categoria().esComida()) platosComida += item.cantidad;
+        }
+        int maximo = service.domain.BuffetLibre.maximoPlatosPorRonda(cuenta.comensales());
+        if (platosComida > maximo) {
+            throw new IllegalArgumentException("En cada ronda podéis pedir hasta " + maximo
+                    + " platos (" + service.domain.BuffetLibre.PLATOS_POR_COMENSAL_Y_RONDA + " por comensal)");
         }
     }
 

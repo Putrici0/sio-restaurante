@@ -34,7 +34,7 @@ class FlujoMesaJsonTest {
         JsonCuentaRepository cuentas = new JsonCuentaRepository(store);
         JsonPedidoRepository pedidos = new JsonPedidoRepository(store);
         JsonOrdenRepository ordenes = new JsonOrdenRepository(store);
-        mesas = new MesaApplicationService(mesaRepository, cuentas, pedidos, ordenes);
+        mesas = new MesaApplicationService(mesaRepository, cuentas, pedidos, ordenes, new repository.json.JsonPlatoRepository(store));
         pagos = new PagoApplicationService(cuentas, mesaRepository, pedidos, ordenes);
     }
 

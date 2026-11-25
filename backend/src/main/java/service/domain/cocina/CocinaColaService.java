@@ -58,7 +58,7 @@ public class CocinaColaService {
             case Entrante -> 6;
             case Principal -> 10;
             case Postre -> 5;
-            case Bebida -> 2;
+            case Bebida, Buffet -> 2;
         };
     }
 }

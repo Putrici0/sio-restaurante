@@ -169,7 +169,7 @@ public class OrdenApplicationService {
         return obtenerOrdenesActivasPorEstados(
                 List.of(OrdenEstado.Listo, OrdenEstado.Entregado)
         ).stream()
-                .filter(o -> o.plato() != null && o.plato().categoria() != Categoria.Bebida)
+                .filter(o -> o.plato() != null && o.plato().categoria() != null && o.plato().categoria().esComida())
                 .filter(o -> o.ordenEstado() == OrdenEstado.Listo || o.ordenEstado() == OrdenEstado.Entregado)
                 .toList();
     }
@@ -439,7 +439,8 @@ public class OrdenApplicationService {
     private boolean esOrdenDeCocina(Orden orden) {
         return orden != null
                 && orden.plato() != null
-                && orden.plato().categoria() != Categoria.Bebida
+                && orden.plato().categoria() != null
+                && orden.plato().categoria().esComida()
                 && orden.ordenEstado() != OrdenEstado.Cancelado
                 && !orden.pagada();
     }
