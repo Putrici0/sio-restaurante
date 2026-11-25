@@ -29,6 +29,11 @@ public class ReservaController {
                 });
 
                 get(ctx -> {
+                    String fecha = ctx.queryParam("fecha");
+                    if (fecha != null && !fecha.isBlank()) {
+                        ctx.json(service.findByFecha(fecha.trim()));
+                        return;
+                    }
                     if (!paginationRequested(ctx.queryParam("limit"), ctx.queryParam("cursor"))) {
                         ctx.json(service.findAll());
                         return;
@@ -40,6 +45,13 @@ public class ReservaController {
                 });
 
                 path("{id}", () -> {
+
+                    path("estado", () -> post(ctx -> {
+                        @SuppressWarnings("unchecked")
+                        java.util.Map<String, Object> body = ctx.bodyAsClass(java.util.Map.class);
+                        Object estado = body.get("estado");
+                        ctx.json(service.cambiarEstado(ctx.pathParam("id"), estado == null ? null : estado.toString()));
+                    }));
 
                     get(ctx -> {
                         String id = ctx.pathParam("id");

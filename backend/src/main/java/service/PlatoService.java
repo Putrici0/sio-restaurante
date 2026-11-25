@@ -3,7 +3,7 @@ package service;
 import dto.PlatoRequest;
 import model.Categoria;
 import model.Plato;
-import repository.firestore.FirestorePlatoRepository;
+import repository.interfaces.PlatoRepository;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -11,9 +11,9 @@ import java.util.Optional;
 
 public class PlatoService {
 
-    private final FirestorePlatoRepository repository;
+    private final PlatoRepository repository;
 
-    public PlatoService(FirestorePlatoRepository repository) {
+    public PlatoService(PlatoRepository repository) {
         this.repository = repository;
     }
 

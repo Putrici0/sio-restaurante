@@ -16,3 +16,6 @@ target/
 
 backend/src/main/resources/firebase-key.json
 firebase-key.json
+
+# Datos de la demo en ejecución (se regeneran desde datos-iniciales.json)
+data/

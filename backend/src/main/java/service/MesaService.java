@@ -2,16 +2,16 @@ package service;
 
 import dto.MesaRequest;
 import model.Mesa;
-import repository.firestore.FirestoreMesaRepository;
+import repository.interfaces.MesaRepository;
 
 import java.util.List;
 import java.util.Optional;
 
 public class MesaService {
 
-    private final FirestoreMesaRepository repository;
+    private final MesaRepository repository;
 
-    public MesaService(FirestoreMesaRepository repository) {
+    public MesaService(MesaRepository repository) {
         this.repository = repository;
     }
 

@@ -1,10 +1,5 @@
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.google.cloud.firestore.Firestore;
-import config.FirebaseConfig;
-import config.FirestoreClientProvider;
+import controller.AuthController;
 import controller.CuentaController;
 import controller.EstadisticasController;
 import controller.MesaController;
@@ -15,17 +10,18 @@ import controller.PlatoController;
 import controller.ReservaController;
 import io.javalin.Javalin;
 import io.javalin.json.JavalinJackson;
-import repository.firestore.FirestoreCuentaRepository;
-import repository.firestore.FirestoreMesaRepository;
-import repository.firestore.FirestoreNotificacionRepository;
-import repository.firestore.FirestoreOrdenRepository;
-import repository.firestore.FirestorePedidoRepository;
-import repository.firestore.FirestorePlatoRepository;
-import repository.firestore.FirestoreReservaRepository;
+import repository.json.JsonCuentaRepository;
+import repository.json.JsonDataStore;
+import repository.json.JsonMesaRepository;
+import repository.json.JsonNotificacionRepository;
+import repository.json.JsonOrdenRepository;
+import repository.json.JsonPedidoRepository;
+import repository.json.JsonPlatoRepository;
+import repository.json.JsonReservaRepository;
+import repository.json.JsonUsuarioRepository;
 import service.CuentaService;
 import service.MesaApplicationService;
 import service.MesaService;
-import service.NotificacionService;
 import service.OrdenService;
 import service.PedidoService;
 import service.PlatoService;
@@ -38,39 +34,35 @@ import service.application.OrdenApplicationService;
 import service.application.PagoApplicationService;
 import service.application.PedidoApplicationService;
 import util.ApiError;
-import util.MesaSeeder;
-import util.PlatoSeeder;
 
+import java.nio.file.Path;
 
+/** Arranque del backend de SIGO-RSH (Restaurante Sakura Hanami) en http://localhost:7070. */
 public class Main {
 
     public static void main(String[] args) {
-        FirebaseConfig.init();
-        Firestore db = FirestoreClientProvider.getFirestore();
+        // Todos los datos de la demo viven en un unico fichero JSON (ver JsonDataStore)
+        Path ficheroDatos = Path.of(System.getProperty("sio.datos", "data/sio-restaurante.json"));
+        JsonDataStore store = new JsonDataStore(ficheroDatos);
+        System.out.println("Datos SIGO-RSH: " + ficheroDatos.toAbsolutePath());
 
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.registerModule(new Jdk8Module());
-        objectMapper.registerModule(new JavaTimeModule());
-        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        ObjectMapper objectMapper = JsonDataStore.crearMapper();
 
-        FirestorePlatoRepository platoRepository = new FirestorePlatoRepository(db);
-        FirestoreMesaRepository mesaRepository = new FirestoreMesaRepository(db);
-        FirestoreReservaRepository reservaRepository = new FirestoreReservaRepository(db);
-        FirestoreCuentaRepository cuentaRepository = new FirestoreCuentaRepository(db);
-        FirestorePedidoRepository pedidoRepository = new FirestorePedidoRepository(db);
-        FirestoreOrdenRepository ordenRepository = new FirestoreOrdenRepository(db);
-        FirestoreNotificacionRepository notificacionRepository = new FirestoreNotificacionRepository(db);
-
-        MesaSeeder.seed(mesaRepository);
-        PlatoSeeder.seed(platoRepository);
+        JsonPlatoRepository platoRepository = new JsonPlatoRepository(store);
+        JsonMesaRepository mesaRepository = new JsonMesaRepository(store);
+        JsonReservaRepository reservaRepository = new JsonReservaRepository(store);
+        JsonCuentaRepository cuentaRepository = new JsonCuentaRepository(store);
+        JsonPedidoRepository pedidoRepository = new JsonPedidoRepository(store);
+        JsonOrdenRepository ordenRepository = new JsonOrdenRepository(store);
+        JsonNotificacionRepository notificacionRepository = new JsonNotificacionRepository(store);
+        JsonUsuarioRepository usuarioRepository = new JsonUsuarioRepository(store);
 
         PlatoService platoService = new PlatoService(platoRepository);
         MesaService mesaService = new MesaService(mesaRepository);
         ReservaService reservaService = new ReservaService(reservaRepository);
-        CuentaService cuentaService = new CuentaService(cuentaRepository, mesaRepository, reservaRepository);
+        CuentaService cuentaService = new CuentaService(cuentaRepository, mesaRepository);
         PedidoService pedidoService = new PedidoService(pedidoRepository, cuentaRepository);
         OrdenService ordenService = new OrdenService(ordenRepository, pedidoRepository, platoRepository);
-        NotificacionService notificacionService = new NotificacionService(notificacionRepository, cuentaRepository);
 
         MesaApplicationService mesaApplicationService = new MesaApplicationService(
                 mesaRepository,
@@ -102,16 +94,8 @@ public class Main {
                 ordenRepository
         );
 
-        NotificacionApplicationService notificacionApplicationService = new NotificacionApplicationService(
-                notificacionRepository,
-                cuentaRepository,
-                ordenApplicationService
-        );
-
-        java.util.concurrent.Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(
-                notificacionApplicationService::limpiarNotificacionesEstancadas,
-                1, 1, java.util.concurrent.TimeUnit.MINUTES
-        );
+        NotificacionApplicationService notificacionApplicationService =
+                new NotificacionApplicationService(notificacionRepository, cuentaRepository);
 
         HistorialCuentasApplicationService historialCuentasApplicationService =
                 new HistorialCuentasApplicationService(cuentaRepository, pedidoRepository, ordenRepository);
@@ -128,15 +112,9 @@ public class Main {
                 historialCuentasApplicationService
         );
         PedidoController pedidoController = new PedidoController(pedidoService, pedidoApplicationService);
-        OrdenController ordenController = new OrdenController(
-                ordenService,
-                ordenApplicationService,
-                notificacionApplicationService
-        );
-        NotificacionController notificacionController = new NotificacionController(
-                notificacionService,
-                notificacionApplicationService
-        );
+        OrdenController ordenController = new OrdenController(ordenService, ordenApplicationService);
+        NotificacionController notificacionController = new NotificacionController(notificacionApplicationService);
+        AuthController authController = new AuthController(usuarioRepository);
 
         EstadisticasController estadisticasController = new EstadisticasController(
                 new EstadisticasApplicationService(cuentaRepository, ordenRepository, platoRepository, mesaRepository)
@@ -157,6 +135,7 @@ public class Main {
             config.routes.apiBuilder(ordenController.routes());
             config.routes.apiBuilder(notificacionController.routes());
             config.routes.apiBuilder(estadisticasController.routes());
+            config.routes.apiBuilder(authController.routes());
 
             config.routes.exception(IllegalArgumentException.class, (e, ctx) -> {
                 ctx.status(400);

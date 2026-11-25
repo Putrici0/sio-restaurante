@@ -3,10 +3,8 @@ package service;
 import dto.CuentaRequest;
 import model.Cuenta;
 import model.Mesa;
-import model.Reserva;
-import repository.firestore.FirestoreCuentaRepository;
-import repository.firestore.FirestoreMesaRepository;
-import repository.firestore.FirestoreReservaRepository;
+import repository.interfaces.CuentaRepository;
+import repository.interfaces.MesaRepository;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -15,16 +13,13 @@ import java.util.Optional;
 
 public class CuentaService {
 
-    private final FirestoreCuentaRepository repository;
-    private final FirestoreMesaRepository mesaRepository;
-    private final FirestoreReservaRepository reservaRepository;
+    private final CuentaRepository repository;
+    private final MesaRepository mesaRepository;
 
-    public CuentaService(FirestoreCuentaRepository repository,
-                         FirestoreMesaRepository mesaRepository,
-                         FirestoreReservaRepository reservaRepository) {
+    public CuentaService(CuentaRepository repository,
+                         MesaRepository mesaRepository) {
         this.repository = repository;
         this.mesaRepository = mesaRepository;
-        this.reservaRepository = reservaRepository;
     }
     public List<Cuenta> findCuentasActivas() {
         return repository.findByEstaPagada(false);
@@ -39,19 +34,11 @@ public class CuentaService {
             mesas.add(mesa);
         }
 
-        Optional<Reserva> reserva = Optional.empty();
-        if (request.reservaId != null && !request.reservaId.isBlank()) {
-            reserva = Optional.of(
-                    reservaRepository.findById(request.reservaId)
-                            .orElseThrow(() -> new IllegalArgumentException("La reserva no existe"))
-            );
-        }
-
         Cuenta cuenta = new Cuenta(
                 null,
                 mesas,
                 request.estaPagada,
-                reserva,
+                Optional.empty(),
                 Instant.now(),
                 Optional.empty(),
                 "",

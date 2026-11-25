@@ -1,19 +1,21 @@
 package model;
 
 import java.time.Instant;
+import java.util.List;
 
+/**
+ * Aviso "llamar al camarero": lo crea el cliente desde la pagina de su mesa
+ * y lo recibe el personal de sala en su movil hasta que lo marca como atendido.
+ */
 public record Notificacion(
         String id,
-        Cuenta cuenta,
-        TipoNotificacion tipo,
-        boolean leida,
+        String cuentaId,
+        List<String> mesaIds,
         Instant fecha,
-        String ordenId,
-        String nombreItem,
-        String categoriaItem,
-        boolean enCurso,
-        String camareroUid,
-        String camareroNombre,
-        Instant fechaEnCurso
+        boolean atendida,
+        Instant fechaAtendida
 ) {
+    public Notificacion {
+        mesaIds = mesaIds == null ? List.of() : List.copyOf(mesaIds);
+    }
 }

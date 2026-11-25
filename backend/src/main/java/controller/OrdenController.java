@@ -4,7 +4,6 @@ import dto.OrdenRequest;
 import io.javalin.apibuilder.EndpointGroup;
 import model.Orden;
 import service.OrdenService;
-import service.application.NotificacionApplicationService;
 import service.application.OrdenApplicationService;
 import util.ApiError;
 
@@ -16,16 +15,12 @@ import static io.javalin.apibuilder.ApiBuilder.*;
 public class OrdenController {
     private final OrdenService service;
     private final OrdenApplicationService applicationService;
-    private final NotificacionApplicationService notificacionApplicationService;
 
     public OrdenController(
             OrdenService service,
-            OrdenApplicationService applicationService,
-            NotificacionApplicationService notificacionApplicationService
-    ) {
+            OrdenApplicationService applicationService) {
         this.service = service;
         this.applicationService = applicationService;
-        this.notificacionApplicationService = notificacionApplicationService;
     }
 
     public EndpointGroup routes() {
@@ -172,24 +167,6 @@ public class OrdenController {
                             String id = ctx.pathParam("id");
                             Orden orden = applicationService.marcarOrdenLista(id);
 
-                            if (
-                                    orden.pedido() != null &&
-                                            orden.pedido().cuenta() != null &&
-                                            orden.pedido().cuenta().id() != null
-                            ) {
-                                String nombreItem = orden.plato() != null ? orden.plato().nombre() : "Pedido";
-                                String categoriaItem = orden.plato() != null && orden.plato().categoria() != null
-                                        ? orden.plato().categoria().name()
-                                        : null;
-
-                                notificacionApplicationService.crearNotificacionPedidoListo(
-                                        orden.pedido().cuenta().id(),
-                                        orden.id(),
-                                        nombreItem,
-                                        categoriaItem
-                                );
-                            }
-
                             ctx.json(orden);
                         });
                     });
@@ -198,8 +175,6 @@ public class OrdenController {
                         post(ctx -> {
                             String id = ctx.pathParam("id");
                             Orden orden = applicationService.marcarOrdenEntregada(id);
-
-                            notificacionApplicationService.marcarNotificacionesRecogerComoLeidasDeOrden(orden.id());
 
                             ctx.json(orden);
                         });

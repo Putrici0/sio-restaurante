@@ -11,6 +11,9 @@ import java.util.function.Predicate;
  */
 public record Mesa(String id, int capacidad, List<String> mesasUnidas, boolean sucia) {
 
+    /** Orden natural de las mesas por su numero (1, 2, ... 15). */
+    public static final Comparator<Mesa> POR_NUMERO = Comparator.comparing(Mesa::id, comparadorIdsMesa());
+
     public Mesa {
         mesasUnidas = normalizarMesasUnidas(id, mesasUnidas);
     }
