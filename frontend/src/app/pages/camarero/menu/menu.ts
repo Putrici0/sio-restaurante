@@ -12,7 +12,7 @@ import {
   CuentaActivaResponse,
   CuentaApiService,
 } from '../../../services/cuenta-api.service';
-import { CategoriaPlato, PlatoApi, PlatoMenu } from '../../../models/plato.model';
+import { CATEGORIAS_CARTA, CategoriaPlato, ETIQUETA_CATEGORIA, PlatoApi, PlatoMenu } from '../../../models/plato.model';
 
 @Component({
   selector: 'app-camarero-menu',
@@ -43,12 +43,8 @@ export class MenuCamarero implements OnInit, OnDestroy {
   readonly toastTipo = signal<'ok' | 'error'>('ok');
   readonly cuentaActiva = signal<CuentaActivaResponse | null>(null);
 
-  readonly categorias: ReadonlyArray<CategoriaPlato> = [
-    'Bebida',
-    'Entrante',
-    'Principal',
-    'Postre',
-  ];
+  readonly categorias: ReadonlyArray<CategoriaPlato> = CATEGORIAS_CARTA;
+  readonly etiquetaCategoria = ETIQUETA_CATEGORIA;
 
   readonly cuentaCerrada = computed(() => !!this.cuentaActiva()?.payed);
 
@@ -71,7 +67,7 @@ export class MenuCamarero implements OnInit, OnDestroy {
     const lista = this.platos();
 
     if (categoria === 'Todos') {
-      return lista;
+      return [...lista].sort((a, b) => CATEGORIAS_CARTA.indexOf(a.categoria) - CATEGORIAS_CARTA.indexOf(b.categoria));
     }
 
     return lista.filter((plato) => plato.categoria === categoria);

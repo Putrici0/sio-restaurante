@@ -2,8 +2,8 @@
   <main class="kitchen-main">
     <header class="kitchen-hero">
       <div class="kitchen-hero__content">
-        <p class="kitchen-hero__eyebrow">Cocina</p>
-        <h1 class="kitchen-hero__title">Tablero de órdenes</h1>
+        <p class="kitchen-hero__eyebrow">🌸 Sakura Hanami · Cocina</p>
+        <h1 class="kitchen-hero__title">Comandas</h1>
         <p class="kitchen-hero__subtitle">
           Los platos se preparan por orden de llegada: el primero en pedirse es el primero en salir.
         </p>
@@ -34,9 +34,9 @@
       <section class="board">
         <article class="column">
           <header class="column__header column__header--pending">
-            <p class="column__eyebrow">Cola de entrada</p>
+            <p class="column__eyebrow">Por orden de llegada</p>
             <div class="column__title-row">
-              <h2>Pendiente</h2>
+              <h2>En espera</h2>
               <span class="column__count">{{ ordenesPendientes().length }}</span>
             </div>
           </header>
@@ -250,7 +250,7 @@
           <header class="column__header column__header--ready">
             <p class="column__eyebrow">Salida</p>
             <div class="column__title-row">
-              <h2>Listo</h2>
+              <h2>Listo para servir</h2>
               <span class="column__count">{{ ordenesListas().length }}</span>
             </div>
           </header>

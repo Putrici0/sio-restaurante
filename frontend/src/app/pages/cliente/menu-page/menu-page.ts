@@ -69,7 +69,7 @@ export class MenuPage implements OnInit, OnDestroy {
     const lista = this.platos();
 
     if (categoria === 'Todos') {
-      return lista;
+      return [...lista].sort((a, b) => CATEGORIAS_CARTA.indexOf(a.categoria) - CATEGORIAS_CARTA.indexOf(b.categoria));
     }
 
     if (categoria === 'MasPedidos') {

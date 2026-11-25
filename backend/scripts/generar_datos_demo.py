@@ -120,7 +120,8 @@ def cuenta_snapshot(c):
 
 
 def plato_snapshot(p):
-    return {"id": p["id"], "nombre": p["nombre"], "categoria": p["categoria"], "precio": p["precio"], "estaActivo": True}
+    return {"id": p["id"], "nombre": p["nombre"], "categoria": p["categoria"], "precio": p["precio"],
+            "estaActivo": True, "imagen": p["imagen"]}
 
 
 def pedido_snapshot(p):

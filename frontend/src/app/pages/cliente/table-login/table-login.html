@@ -1,35 +1,24 @@
-<div class="login-container">
-  <div class="login-card">
-    <h2>¡Bienvenido!</h2>
+<main class="login-container">
+  <section class="login-card">
+    <img src="logo.svg" alt="" class="logo" />
+    <p class="sh-eyebrow">Bienvenido a Sakura Hanami</p>
+    <h1>Mesa {{ tableId() }}</h1>
 
-    <p class="table-info">Estás en la Mesa {{ tableId() }}</p>
-
-    <p class="instructions">Introduce el código que te ha dado el camarero para ver la carta y pedir.</p>
+    <p class="instructions">Introduce el código de tu mesa (te lo da el camarero) para ver la carta, pedir y seguir tus platos.</p>
 
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-      <div class="input-group">
-        <label for="password">Código de acceso</label>
-        <input
-          id="password"
-          type="password"
-          formControlName="password"
-          placeholder="Ej: 4582"
-        >
-      </div>
+      <label class="campo" for="password">
+        Código de la mesa
+        <input id="password" type="password" inputmode="numeric" formControlName="password" placeholder="••••" autocomplete="one-time-code">
+      </label>
 
       @if (errorMessage()) {
-        <div class="error-message">
-          {{ errorMessage() }}
-        </div>
+        <p class="error-message" role="alert">{{ errorMessage() }}</p>
       }
 
-      <button type="submit" [disabled]="loginForm.invalid || isLoading()">
-        @if (isLoading()) {
-          Comprobando...
-        } @else {
-          Ver la Carta
-        }
+      <button type="submit" class="sh-btn sh-btn--primario" [disabled]="loginForm.invalid || isLoading()">
+        {{ isLoading() ? 'Comprobando…' : 'Ver la carta' }}
       </button>
     </form>
-  </div>
-</div>
+  </section>
+</main>

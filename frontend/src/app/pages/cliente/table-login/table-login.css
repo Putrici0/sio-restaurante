@@ -1,115 +1,28 @@
-/* Centramos todo en la pantalla del móvil con el fondo beige */
 .login-container {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #e7b7c3; /* Mismo beige que el fondo del menú */
-  padding: 20px;
-  font-family: sans-serif;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background:
+    radial-gradient(circle at 15% 15%, rgba(238, 143, 165, 0.35), transparent 45%),
+    radial-gradient(circle at 85% 85%, rgba(249, 207, 216, 0.7), transparent 50%),
+    var(--sh-papel);
 }
 
-/* La tarjeta blanca donde va el formulario */
 .login-card {
-  background-color: #fff;
-  padding: 30px 25px;
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 380px; /* Para que no se estire en pantallas grandes */
+  width: min(100%, 380px);
+  padding: 30px 24px 26px;
   text-align: center;
+  background: var(--sh-superficie);
+  border: 1px solid var(--sh-borde);
+  border-radius: 24px;
+  box-shadow: var(--sh-sombra);
 }
 
-.login-card h2 {
-  margin-top: 0;
-  color: #333;
-  font-size: 1.8rem;
-}
-
-/* Destacamos el número de la mesa con el color principal */
-.table-info {
-  font-weight: bold;
-  color: #c2788b; /* Un tono un poco más oscuro que el header para leerse bien */
-  font-size: 1.3rem;
-  margin: 10px 0;
-}
-
-.instructions {
-  color: #666;
-  font-size: 0.95rem;
-  margin-bottom: 25px;
-  line-height: 1.4;
-}
-
-/* Estilos del formulario */
-.input-group {
-  display: flex;
-  flex-direction: column;
-  text-align: left;
-  margin-bottom: 20px;
-}
-
-.input-group label {
-  font-size: 0.9rem;
-  color: #444;
-  margin-bottom: 8px;
-  font-weight: bold;
-}
-
-/* Un input grande y cómodo para móviles */
-.input-group input {
-  padding: 14px;
-  font-size: 1.1rem;
-  border: 2px solid #ddd;
-  border-radius: 8px;
-  outline: none;
-  transition: border-color 0.3s;
-  text-align: center;
-  letter-spacing: 2px; /* Espacio entre los números para que parezca un PIN */
-}
-
-
-.input-group input:focus {
-  border-color: #d694a5;
-}
-
-/* Mensaje de error en rojo */
-.error-message {
-  color: #d32f2f;
-  background-color: #ffebee;
-  padding: 10px;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  margin-bottom: 15px;
-  font-weight: bold;
-}
-
-
-button[type="submit"] {
-  width: 100%;
-  background-color: #d694a5; /* Color del header de tu diseño */
-  color: #111;
-  font-weight: bold;
-  border: none;
-  padding: 15px;
-  font-size: 1.1rem;
-  border-radius: 8px;
-  cursor: pointer;
-  text-transform: uppercase;
-  transition: background-color 0.3s, transform 0.1s;
-}
-
-button[type="submit"]:hover:not(:disabled) {
-  background-color: #c2788b;
-}
-
-button[type="submit"]:active:not(:disabled) {
-  transform: scale(0.98); /* Pequeño efecto de hundimiento al tocar */
-}
-
-
-button[type="submit"]:disabled {
-  background-color: #e0e0e0;
-  color: #999;
-  cursor: not-allowed;
-}
+.logo { width: 68px; height: 68px; }
+h1 { margin: 4px 0 8px; font-size: 2rem; }
+.instructions { color: var(--sh-tinta-suave); line-height: 1.5; margin: 0 0 20px; }
+form { display: grid; gap: 14px; text-align: left; }
+.campo input { text-align: center; font-size: 1.4rem; letter-spacing: 0.4em; }
+.error-message { margin: 0; color: var(--sh-error); font-weight: 600; text-align: center; }
+button { width: 100%; }

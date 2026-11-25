@@ -847,3 +847,14 @@
 .mobile-toast__text {
   line-height: 1.3;
 }
+
+/* ===== Estilo Sakura Hanami ===== */
+.bill-hero {
+  background: var(--sh-superficie) !important;
+  color: var(--sh-tinta) !important;
+  border: 1px solid var(--sh-borde);
+  box-shadow: var(--sh-sombra);
+}
+.bill-hero__title { color: var(--sh-tinta) !important; }
+.bill-hero__eyebrow { color: var(--sh-sakura-800) !important; }
+.bill-hero p { color: var(--sh-tinta-suave); }

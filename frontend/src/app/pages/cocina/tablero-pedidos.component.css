@@ -536,3 +536,16 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ===== Estilo Sakura Hanami ===== */
+.kitchen-hero {
+  background: var(--sh-superficie);
+  color: var(--sh-tinta);
+  border: 1px solid var(--sh-borde);
+  box-shadow: var(--sh-sombra);
+}
+.kitchen-hero__title { font-family: var(--sh-fuente-titulos); color: var(--sh-tinta); }
+.kitchen-hero__eyebrow { color: var(--sh-sakura-800); }
+.kitchen-hero__subtitle { color: var(--sh-tinta-suave); }
+.column__header h2 { font-family: var(--sh-fuente-titulos); }
+.order-card__title { font-family: var(--sh-fuente-titulos); }

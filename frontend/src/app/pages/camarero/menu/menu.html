@@ -43,7 +43,7 @@
       (click)="seleccionarCategoria(categoria)"
       type="button"
     >
-      {{ categoria }}
+      {{ etiquetaCategoria[categoria] }}
     </button>
     }
   </section>
@@ -72,7 +72,7 @@
           [alt]="plato.nombre"
           (error)="onImageError($event)"
         />
-        <span class="dish-category">{{ plato.categoria }}</span>
+        <span class="dish-category">{{ etiquetaCategoria[plato.categoria] }}</span>
       </div>
 
       <div class="dish-content">

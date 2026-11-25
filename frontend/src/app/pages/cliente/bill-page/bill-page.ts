@@ -691,13 +691,15 @@ export class BillPage implements OnInit, OnDestroy {
   }
 
   obtenerResumenEstado(item: ItemCuentaAgrupado): string {
-    const estadosNormalizados = item.estados.map((estado) => {
-      if (estado === 'Preparación' || estado === 'Preparacion') {
-        return 'En preparación';
-      }
-
-      return estado;
-    });
+    // Estados de preparación que ve el cliente (SIGO-RSH)
+    const etiquetas: Record<string, string> = {
+      Pendiente: 'En espera',
+      'Preparación': 'En preparación',
+      Preparacion: 'En preparación',
+      Listo: 'Listo para servir',
+      Entregado: 'Servido',
+    };
+    const estadosNormalizados = item.estados.map((estado) => etiquetas[estado] ?? estado);
 
     const unicos = Array.from(new Set(estadosNormalizados));
     return unicos.join(' · ');
@@ -708,7 +710,10 @@ export class BillPage implements OnInit, OnDestroy {
 
     const estados = item.estados.map((estado) => this.normalizarEstado(estado));
 
-    if (estados.some((e) => e === 'Listo' || e === 'Entregado')) {
+    if (estados.every((e) => e === 'Entregado')) {
+      return 'Servido en la mesa';
+    }
+    if (estados.some((e) => e === 'Listo')) {
       return 'Listo para servir';
     }
 
