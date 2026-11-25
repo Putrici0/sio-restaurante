@@ -516,3 +516,11 @@
   transform: translateY(0);
 }
 
+
+/* ===== Estilo Sakura Hanami ===== */
+.modal-reserva { background: var(--sh-papel); border: 1px solid var(--sh-borde); width: 980px; }
+.reserva-card { background: var(--sh-superficie); border: 1px solid var(--sh-borde); box-shadow: 0 2px 8px rgba(142, 42, 67, 0.05); }
+.gestion-card, .calendario-card { background: var(--sh-superficie); border: 1px solid var(--sh-borde); }
+.header-reserva h2 { font-family: var(--sh-fuente-titulos); }
+.btn-nueva-reserva, .btn-confirmar { background: var(--sh-sakura-600); color: #fff; }
+.reserva-info .pax { display: block; }
