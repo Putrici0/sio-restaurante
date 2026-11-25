@@ -1,10 +1,21 @@
-<nav class="navbar">
-  <div class="navbar-logo">
-    <img src="logo.svg" alt="Sakura Hanami" />
+<nav class="nav">
+  <a class="nav__marca" routerLink="/mesas">
+    <img src="logo.svg" alt="" />
+    <span>
+      <strong>Sakura Hanami</strong>
+      <small>Gestión · SIGO-RSH</small>
+    </span>
+  </a>
+
+  <div class="nav__links">
+    <a routerLink="/mesas" routerLinkActive="activo">Mesas y reservas</a>
+    <a routerLink="/carta-gestion" routerLinkActive="activo">Carta</a>
+    <a routerLink="/historial" routerLinkActive="activo">Facturación</a>
+    <a routerLink="/estadistica" routerLinkActive="activo">Estadísticas</a>
   </div>
-  <div class="navbar-links">
-    <a routerLink="/mesas" routerLinkActive="active">MESAS</a>
-    <a routerLink="/historial" routerLinkActive="active">HISTORIAL</a>
-    <a routerLink="/estadistica" routerLinkActive="active">ESTADÍSTICA</a>
+
+  <div class="nav__otros">
+    <a routerLink="/cocina" title="Pantalla de cocina">Cocina</a>
+    <a routerLink="/" title="Web pública">Web</a>
   </div>
 </nav>

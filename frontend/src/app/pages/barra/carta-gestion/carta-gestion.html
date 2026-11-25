@@ -1,0 +1,70 @@
+<app-navbar></app-navbar>
+
+<main class="pagina">
+  <header class="pagina__cab">
+    <div>
+      <p class="sh-eyebrow">Gerencia</p>
+      <h1>Carta y precios</h1>
+      <p class="sub">Los platos desactivados no aparecen en la carta digital de los clientes ni de los camareros.</p>
+    </div>
+    <button type="button" class="sh-btn sh-btn--primario" (click)="nuevo()">+ Nuevo plato</button>
+  </header>
+
+  <div class="chips" role="group" aria-label="Filtrar por categoría">
+    <button type="button" class="chip" [class.activo]="filtro() === 'Todos'" (click)="filtro.set('Todos')">Todos</button>
+    @for (c of categorias; track c) {
+      <button type="button" class="chip" [class.activo]="filtro() === c" (click)="filtro.set(c)">{{ etiquetas[c] }}</button>
+    }
+  </div>
+
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+
+  <section class="sh-tarjeta tabla">
+    <table>
+      <thead>
+        <tr><th></th><th>Plato</th><th>Categoría</th><th class="num">Precio</th><th>En carta</th><th></th></tr>
+      </thead>
+      <tbody>
+        @for (p of visibles(); track p.id) {
+          <tr [class.inactivo]="!p.estaActivo">
+            <td><img [src]="p.imagen" alt="" /></td>
+            <td><strong>{{ p.nombre }}</strong><small>{{ p.descripcion }}</small></td>
+            <td>{{ etiquetas[p.categoria] }}</td>
+            <td class="num">{{ p.precio | number:'1.2-2' }} €</td>
+            <td>
+              <button type="button" class="interruptor" [class.on]="p.estaActivo" (click)="alternarActivo(p)"
+                      [attr.aria-pressed]="p.estaActivo" [attr.aria-label]="'Mostrar ' + p.nombre + ' en la carta'">
+                <span></span>
+              </button>
+            </td>
+            <td><button type="button" class="sh-btn editar" (click)="editar(p)">Editar</button></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </section>
+</main>
+
+@if (borrador(); as b) {
+  <div class="velo" (click)="borrador.set(null)"></div>
+  <section class="dialogo sh-tarjeta" role="dialog" aria-modal="true">
+    <h2>{{ b.id ? 'Editar plato' : 'Nuevo plato' }}</h2>
+    <label class="campo">Nombre <input [(ngModel)]="b.nombre" name="nombre" /></label>
+    <div class="fila">
+      <label class="campo">Categoría
+        <select [(ngModel)]="b.categoria" name="categoria">
+          @for (c of categorias; track c) { <option [value]="c">{{ etiquetas[c] }}</option> }
+        </select>
+      </label>
+      <label class="campo">Precio (€) <input type="number" min="0" step="0.10" [(ngModel)]="b.precio" name="precio" /></label>
+    </div>
+    <label class="campo">Descripción <textarea rows="3" [(ngModel)]="b.descripcion" name="descripcion"></textarea></label>
+    <label class="check"><input type="checkbox" [(ngModel)]="b.estaActivo" name="activo" /> Visible en la carta</label>
+    <div class="acciones">
+      <button type="button" class="sh-btn" (click)="borrador.set(null)">Cancelar</button>
+      <button type="button" class="sh-btn sh-btn--primario" [disabled]="guardando()" (click)="guardarBorrador()">Guardar</button>
+    </div>
+  </section>
+}

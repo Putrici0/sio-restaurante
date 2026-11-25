@@ -5,6 +5,7 @@ import { CartaPublica } from './pages/publico/carta-publica';
 import { ReservaOnline } from './pages/publico/reserva-online';
 
 import { Mesas } from './pages/barra/mesas/mesas';
+import { CartaGestion } from './pages/barra/carta-gestion/carta-gestion';
 import { HistorialComponent } from './pages/barra/historial/historial';
 import { EstadisticaComponent } from './pages/barra/estadistica/estadistica';
 
@@ -31,6 +32,7 @@ export const routes: Routes = [
   // Gerencia / encargado de sala
 
   { path: 'mesas', component: Mesas },
+  { path: 'carta-gestion', component: CartaGestion },
   { path: 'historial', component: HistorialComponent },
   { path: 'estadistica', component: EstadisticaComponent },
 

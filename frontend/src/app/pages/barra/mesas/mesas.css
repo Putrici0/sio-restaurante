@@ -1568,3 +1568,36 @@
 .badge-estado--ocupada { background: #b23a55; }
 .badge-estado--pendiente-cobro { background: #c47d12; }
 .badge-estado--sucia { background: #6d5d52; }
+
+/* ===== Estilo Sakura Hanami: comedor en cuadrícula 5 x 3 ===== */
+.mesas-page { height: calc(100vh - 62px); padding: 18px clamp(16px, 2.5vw, 28px); background: var(--sh-papel); }
+.mesas-topbar { grid-template-columns: auto 1fr auto; margin-bottom: 18px; }
+.tabs-zona { border-color: var(--sh-borde); background: var(--sh-superficie); }
+.tabs-zona button { font-family: var(--sh-fuente-titulos); }
+.tabs-zona button.active { background: var(--sh-sakura-600); color: #fff; }
+.grid-mesas {
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: 18px;
+  max-width: 980px;
+}
+.mesa-grid-cell, .mesa-visual, .mesa-fantasma { min-height: 118px; border-radius: 18px; }
+.mesa-visual {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  text-align: center;
+  gap: 4px;
+  background: var(--sh-superficie) !important;
+  border: 1px solid var(--sh-borde);
+  border-top: 6px solid var(--sh-libre);
+  box-shadow: var(--sh-sombra);
+}
+.mesa-visual__title { font-family: var(--sh-fuente-titulos); font-size: 1.5rem; font-weight: 700; color: var(--sh-tinta); }
+.mesa-visual__pill { background: var(--sh-sakura-50); color: var(--sh-tinta-suave); }
+.mesa-grid-cell--ocupada .mesa-visual { border-top-color: var(--sh-ocupada); background: #fff1f4 !important; }
+.mesa-grid-cell--pendiente-cobro .mesa-visual { border-top-color: var(--sh-pendiente-cobro); background: #fff6e6 !important; }
+.mesa-grid-cell--sucia .mesa-visual {
+  border-top-color: var(--sh-sucia);
+  background: repeating-linear-gradient(45deg, #f6f1ee, #f6f1ee 8px, #efe7e2 8px, #efe7e2 16px) !important;
+}
+.mesa-grid-cell--seleccionada { box-shadow: 0 0 0 3px var(--sh-sakura-600); border-radius: 18px; }
+.badge-estado { top: -8px; right: -6px; border-radius: 999px; font-size: 0.7rem; }

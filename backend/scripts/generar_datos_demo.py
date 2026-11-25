@@ -18,6 +18,22 @@ from zoneinfo import ZoneInfo
 ZONA = ZoneInfo("Atlantic/Canary")
 random.seed(2026)
 SALIDA = Path(__file__).resolve().parents[1] / "src" / "main" / "resources" / "datos-iniciales.json"
+IMAGENES = Path(__file__).resolve().parents[2] / "frontend" / "public" / "platos"
+EMOJIS = {'Edamame': '🫛', 'Sopa de miso': '🍲', 'Gyozas de pollo': '🥟', 'Ensalada de algas wakame': '🥗', 'Harumaki': '🌯', 'Takoyaki': '🐙', 'Nigiri de salmón': '🍣', 'Nigiri de atún': '🍣', 'Maki de pepino': '🥒', 'California roll': '🍱', 'Uramaki Sakura': '🌸', 'Sashimi variado': '🐟', 'Temaki de salmón': '🍙', 'Tempura de langostinos': '🍤', 'Yakisoba': '🍜', 'Ramen tonkotsu': '🍜', 'Pollo teriyaki': '🍗', 'Yakitori': '🍢', 'Arroz frito japonés': '🍚', 'Mochi variado': '🍡', 'Dorayaki': '🥞', 'Helado de té matcha': '🍨', 'Tarta de queso japonesa': '🍰', 'Agua mineral': '💧', 'Té verde': '🍵', 'Ramune': '🫧', 'Refresco de cola': '🥤', 'Cerveza Asahi': '🍺', 'Sake': '🍶'}
+FONDOS = {"Entrante": ("#fde8ec", "#f9cfd8"), "Principal": ("#fff1e6", "#fbd9c4"),
+          "Postre": ("#f1ecfb", "#ddd0f5"), "Bebida": ("#e8f4f1", "#c9e6de")}
+
+
+def ilustracion(nombre, categoria):
+    """Ilustracion SVG local del plato (sin depender de servicios externos)."""
+    a, b = FONDOS[categoria]
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220">'
+            f'<defs><radialGradient id="g" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="{a}"/>'
+            f'<stop offset="1" stop-color="{b}"/></radialGradient></defs>'
+            f'<rect width="320" height="220" fill="url(#g)"/>'
+            f'<circle cx="270" cy="40" r="6" fill="#f3a5b8" opacity=".7"/><circle cx="40" cy="180" r="4" fill="#f3a5b8" opacity=".6"/>'
+            f'<ellipse cx="160" cy="158" rx="78" ry="14" fill="#000" opacity=".06"/>'
+            f'<text x="160" y="140" font-size="96" text-anchor="middle">{EMOJIS.get(nombre, "🍽")}</text></svg>')
 
 
 def uid(prefijo):
@@ -70,8 +86,10 @@ for i, (nombre, cat, desc, precio, tag, peso) in enumerate(CARTA, start=1):
     platos.append({
         "id": f"plato-{i:02d}", "nombre": nombre, "categoria": cat, "descripcion": desc,
         "precio": precio, "estaActivo": True,
-        "imagen": f"https://loremflickr.com/640/480/{tag}?lock={200 + i}",
+        "imagen": f"/platos/plato-{i:02d}.svg",
     })
+    IMAGENES.mkdir(parents=True, exist_ok=True)
+    (IMAGENES / f"plato-{i:02d}.svg").write_text(ilustracion(nombre, cat), encoding="utf-8")
     pesos.append(peso)
 por_categoria = {c: [(p, w) for p, w in zip(platos, pesos) if p["categoria"] == c]
                  for c in ("Entrante", "Principal", "Postre", "Bebida")}

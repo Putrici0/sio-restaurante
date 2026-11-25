@@ -11,6 +11,9 @@ import { MesasApiService } from '../../../services/mesas-api.service';
 import { MESAS_LAYOUT } from '../../../data/mesas-layout';
 import { Reservas } from '../reservas/reservas';
 
+/** El comedor se dibuja en una cuadrícula de 5 columnas x 3 filas (15 mesas). */
+const COLUMNAS_COMEDOR = 5;
+
 type DireccionUnion = 'arriba' | 'derecha' | 'abajo' | 'izquierda';
 
 interface MesaCeldaVista {
@@ -835,8 +838,8 @@ export class Mesas implements OnDestroy {
       const mesaLogica = { ...mesaLogicaOriginal };
 
       const mesaPrincipalId = grupoMesaIds[0];
-      const fila = Math.floor(index / 3) + 1;
-      const columna = (index % 3) + 1;
+      const fila = Math.floor(index / COLUMNAS_COMEDOR) + 1;
+      const columna = (index % COLUMNAS_COMEDOR) + 1;
 
       return {
         mesaFisicaId: mesaId,
@@ -846,9 +849,9 @@ export class Mesas implements OnDestroy {
         fila,
         columna,
         vecinos: {
-          arriba: fila > 1 ? ordenMesaIds[index - 3] : undefined,
-          derecha: columna < 3 ? ordenMesaIds[index + 1] : undefined,
-          abajo: index + 3 < ordenMesaIds.length ? ordenMesaIds[index + 3] : undefined,
+          arriba: fila > 1 ? ordenMesaIds[index - COLUMNAS_COMEDOR] : undefined,
+          derecha: columna < COLUMNAS_COMEDOR ? ordenMesaIds[index + 1] : undefined,
+          abajo: index + COLUMNAS_COMEDOR < ordenMesaIds.length ? ordenMesaIds[index + COLUMNAS_COMEDOR] : undefined,
           izquierda: columna > 1 ? ordenMesaIds[index - 1] : undefined,
         },
       };
