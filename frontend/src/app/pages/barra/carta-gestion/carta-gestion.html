@@ -5,7 +5,7 @@
     <div>
       <p class="sh-eyebrow">Gerencia</p>
       <h1>Carta y precios</h1>
-      <p class="sub">La comida va incluida en el buffet. Aquí se fijan los precios por comensal, el precio de las bebidas y qué platos aparecen en la carta.</p>
+      <p class="sub">La comida va incluida en el buffet; bebidas y postres se cobran aparte. Aquí se fijan los precios por comensal, el de bebidas y postres, y qué platos aparecen en la carta.</p>
     </div>
     <button type="button" class="sh-btn sh-btn--primario" (click)="nuevo()">+ Nuevo plato</button>
   </header>
@@ -15,7 +15,7 @@
       <article class="tarifa sh-tarjeta">
         <span class="sh-eyebrow">{{ t.nombre.replace('Buffet libre · ', 'Buffet · ') }}</span>
         <strong>{{ t.precio | number:'1.2-2' }} €</strong>
-        <span class="tarifa__nota">por comensal · bebidas aparte</span>
+        <span class="tarifa__nota">por comensal · bebidas y postres aparte</span>
         <button type="button" class="sh-btn editar" (click)="editar(t)">Cambiar precio</button>
       </article>
     }

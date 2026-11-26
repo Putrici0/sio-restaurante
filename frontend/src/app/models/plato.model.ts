@@ -9,8 +9,8 @@ export const ETIQUETA_CATEGORIA: Record<CategoriaPlato, string> = {
   Buffet: 'Buffet libre (por comensal)',
 };
 
-/** La comida del buffet va incluida en la tarifa por comensal; las bebidas se cobran aparte. */
-export const esComida = (c: CategoriaPlato): boolean => c === 'Entrante' || c === 'Principal' || c === 'Postre';
+/** La comida del buffet va incluida en la tarifa por comensal; bebidas y postres se cobran aparte. */
+export const esComida = (c: CategoriaPlato): boolean => c === 'Entrante' || c === 'Principal';
 export const PLATOS_POR_COMENSAL_Y_RONDA = 5;
 
 /** Orden de las categorías en la carta. */

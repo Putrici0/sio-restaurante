@@ -1,11 +1,14 @@
 package service.domain;
 
+import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.ZoneId;
 
 /**
  * Reglas del buffet libre a la carta de Sakura Hanami.
- * - Se cobra una tarifa por comensal según el turno (almuerzo o cena); las bebidas aparte.
+ * - Se cobra una tarifa por comensal: la de mediodía de lunes a viernes, y la de noche
+ *   en cenas, sábados y domingos (como en los buffets japoneses a la carta reales).
+ * - Bebidas y postres se cobran aparte.
  * - Los platos se piden por rondas, con un máximo de platos por comensal en cada ronda.
  */
 public final class BuffetLibre {
@@ -25,7 +28,9 @@ public final class BuffetLibre {
     }
 
     public static String tarifaDelTurno(Instant momento) {
-        return "Cena".equals(turno(momento)) ? TARIFA_CENA : TARIFA_ALMUERZO;
+        DayOfWeek dia = momento.atZone(ZONA).getDayOfWeek();
+        boolean finDeSemana = dia == DayOfWeek.SATURDAY || dia == DayOfWeek.SUNDAY;
+        return "Cena".equals(turno(momento)) || finDeSemana ? TARIFA_CENA : TARIFA_ALMUERZO;
     }
 
     public static int maximoPlatosPorRonda(int comensales) {

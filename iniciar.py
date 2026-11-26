@@ -97,7 +97,7 @@ def main() -> None:
         if responde(BACKEND_URL):
             sys.exit("Para usar --reset primero detén la demo: python detener.py")
         shutil.rmtree(DATOS, ignore_errors=True)
-        # Datos de demo generados ahora mismo: histórico de 3 semanas y un servicio en curso con horas reales
+        # Datos de demo generados ahora mismo: histórico de 5 semanas y un servicio en curso con horas reales
         subprocess.run([sys.executable, str(RAIZ / "backend" / "scripts" / "generar_datos_demo.py"),
                         "--salida", str(DATOS / "sio-restaurante.json")], check=True)
         print("  Datos de demo regenerados con la fecha y hora actuales.")

@@ -72,12 +72,13 @@ export class CartaBuffet implements OnInit, OnDestroy {
   readonly platosRonda = computed(() =>
     this.seleccion().filter((l) => esComida(l.plato.categoria)).reduce((a, l) => a + l.cantidad, 0),
   );
+  /** Bebidas y postres: no cuentan para el límite de la ronda y se cobran aparte. */
   readonly bebidasRonda = computed(() =>
-    this.seleccion().filter((l) => l.plato.categoria === 'Bebida').reduce((a, l) => a + l.cantidad, 0),
+    this.seleccion().filter((l) => !esComida(l.plato.categoria)).reduce((a, l) => a + l.cantidad, 0),
   );
   readonly importeBebidas = computed(() =>
     this.seleccion()
-      .filter((l) => l.plato.categoria === 'Bebida')
+      .filter((l) => !esComida(l.plato.categoria))
       .reduce((a, l) => a + l.cantidad * Number(l.plato.precio), 0),
   );
 

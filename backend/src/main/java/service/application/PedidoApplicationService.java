@@ -226,7 +226,7 @@ public class PedidoApplicationService {
             if (plato.categoria() == model.Categoria.Buffet) {
                 throw new IllegalArgumentException("La tarifa del buffet se carga al abrir la mesa");
             }
-            if (plato.categoria().esComida()) platosComida += item.cantidad;
+            if (plato.categoria().incluidaEnBuffet()) platosComida += item.cantidad;
         }
         int maximo = service.domain.BuffetLibre.maximoPlatosPorRonda(cuenta.comensales());
         if (platosComida > maximo) {

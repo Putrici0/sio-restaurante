@@ -29,8 +29,8 @@
     }
   </nav>
 
-  @if (filtro() === 'Bebida') {
-    <p class="nota-seccion">Las bebidas no están incluidas en el buffet y se cobran aparte.</p>
+  @if (filtro() === 'Bebida' || filtro() === 'Postre') {
+    <p class="nota-seccion">Las bebidas y los postres no están incluidos en el buffet y se cobran aparte.</p>
   }
 
   <ul class="platos">
@@ -40,7 +40,7 @@
         <div class="plato__texto">
           <h3>{{ p.nombre }}</h3>
           <p>{{ p.descripcion }}</p>
-          @if (p.categoria === 'Bebida') {
+          @if (p.categoria === 'Bebida' || p.categoria === 'Postre') {
             <span class="precio">{{ p.precio | number:'1.2-2' }} €</span>
           } @else {
             <span class="incluido">Incluido</span>
@@ -63,8 +63,8 @@
 @if (seleccion().length > 0) {
   <div class="barra" [class.barra--camarero]="modo === 'camarero'">
     <div>
-      <strong>{{ platosRonda() }} platos@if (bebidasRonda() > 0) { · {{ bebidasRonda() }} bebidas }</strong>
-      <span>@if (bebidasRonda() > 0) { Bebidas: {{ importeBebidas() | number:'1.2-2' }} € } @else { Comida incluida en el buffet }</span>
+      <strong>{{ platosRonda() }} platos@if (bebidasRonda() > 0) { · {{ bebidasRonda() }} bebidas/postres }</strong>
+      <span>@if (bebidasRonda() > 0) { Aparte: {{ importeBebidas() | number:'1.2-2' }} € } @else { Comida incluida en el buffet }</span>
     </div>
     <button type="button" class="sh-btn sh-btn--primario" (click)="revisando.set(true)">Revisar ronda</button>
   </div>
@@ -78,7 +78,7 @@
       @for (l of seleccion(); track l.plato.id) {
         <li>
           <span>{{ l.cantidad }} × {{ l.plato.nombre }}</span>
-          <span>{{ l.plato.categoria === 'Bebida' ? ((l.cantidad * l.plato.precio) | number:'1.2-2') + ' €' : 'incluido' }}</span>
+          <span>{{ l.plato.precio > 0 ? ((l.cantidad * l.plato.precio) | number:'1.2-2') + ' €' : 'incluido' }}</span>
         </li>
       }
     </ul>

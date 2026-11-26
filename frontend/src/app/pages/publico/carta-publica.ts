@@ -40,7 +40,7 @@ type FiltroCarta = CategoriaPlato | 'Todos' | 'MasPedidos';
               <span>por persona</span>
             </div>
           }
-          <p class="tarifas__nota">Comida ilimitada incluida (hasta 5 platos por persona en cada ronda). Bebidas aparte. IGIC incluido.</p>
+          <p class="tarifas__nota">Comida ilimitada incluida (hasta 5 platos por persona en cada ronda). Sábados y domingos se aplica la tarifa de noche. Bebidas y postres aparte. IGIC incluido.</p>
         </section>
 
         <div class="chips">
@@ -72,7 +72,7 @@ type FiltroCarta = CategoriaPlato | 'Todos' | 'MasPedidos';
                   <p class="plato-card__desc">{{ plato.descripcion }}</p>
                   <div class="plato-card__meta">
                     <span>{{ etiquetas[plato.categoria] }}</span>
-                    @if (plato.categoria === 'Bebida') {
+                    @if (plato.categoria === 'Bebida' || plato.categoria === 'Postre') {
                       <span class="plato-card__precio">{{ plato.precio | number:'1.2-2' }} €</span>
                     } @else {
                       <span class="plato-card__incluido">Incluido</span>
