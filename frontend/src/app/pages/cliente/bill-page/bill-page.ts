@@ -135,6 +135,17 @@ export class BillPage implements OnInit, OnDestroy {
     });
   });
 
+  /** Lo que se paga de verdad: los platos incluidos en el buffet (0 €) no se seleccionan. */
+  readonly itemsSeleccionables = computed(() =>
+    this.itemsPendientes().filter((item) => item.precioUnitario > 0),
+  );
+
+  readonly platosIncluidosPendientes = computed(() =>
+    this.itemsPendientes()
+      .filter((item) => item.precioUnitario <= 0)
+      .reduce((acc, item) => acc + item.cantidad, 0),
+  );
+
   readonly itemsPagados = computed(() => {
     const mapa = new Map<string, ItemCuentaAgrupado>();
 
@@ -333,11 +344,8 @@ export class BillPage implements OnInit, OnDestroy {
   }
 
   abrirPagoParcial(): void {
-    const seleccionInicial: Record<string, number> = {};
-    for (const item of this.itemsPendientes()) {
-      seleccionInicial[item.key] = 0;
-    }
-    this.seleccionCantidadPorPlato.set(seleccionInicial);
+    // Por defecto se paga todo lo que ya se puede pagar; para pagar solo una parte se quitan unidades
+    this.seleccionarTodoPago();
     this.vistaPago.set('seleccion');
   }
 
@@ -432,7 +440,8 @@ export class BillPage implements OnInit, OnDestroy {
     const cuenta = this.cuentaActiva();
     const ordenesSeleccionadas = this.ordenesSeleccionadas();
 
-    const totalOrdenesPendientes = this.itemsPendientes().reduce(
+    // Solo cuenta lo que tiene importe: los platos incluidos se cierran solos con el último pago
+    const totalOrdenesPendientes = this.itemsSeleccionables().reduce(
       (acc, item) => acc + item.ordenesIds.length,
       0,
     );

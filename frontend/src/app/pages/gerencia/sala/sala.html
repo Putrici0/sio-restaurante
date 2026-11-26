@@ -66,24 +66,53 @@
         <!-- Cobro en caja -->
         @if (ticket()) {
           <div class="cobrado">
-            <p class="cobrado__ok">✓ Cobro registrado</p>
-            <p>La mesa queda pendiente de limpieza.</p>
+            <p class="cobrado__ok">✓ Cobro registrado: {{ ticket()!.total | number:'1.2-2' }} €</p>
             <button type="button" class="sh-btn sh-btn--primario" (click)="descargarTicket()">Imprimir ticket (PDF)</button>
-            <button type="button" class="sh-btn" (click)="cerrarCobro(); seleccionadaId.set(null)">Terminar</button>
+            @if (restantes() > 0) {
+              <p>Quedan <strong>{{ restantes() | number:'1.2-2' }} €</strong> por cobrar en esta mesa.</p>
+              <button type="button" class="sh-btn sh-btn--primario" (click)="cobrarSiguiente()">Cobrar siguiente parte</button>
+            } @else {
+              <p>Cuenta saldada. La mesa queda pendiente de limpieza.</p>
+              <button type="button" class="sh-btn" (click)="cerrarCobro(); seleccionadaId.set(null)">Terminar</button>
+            }
           </div>
         } @else if (resumen(); as r) {
-          <h3>Cuenta</h3>
-          <ul class="lineas">
-            @for (l of cuentaSeparada().cobrables; track l.descripcion) {
-              <li><span>{{ l.cantidad }} × {{ l.descripcion }}</span><strong>{{ l.importe | number:'1.2-2' }} €</strong></li>
-            }
-            @if (cuentaSeparada().platosIncluidos > 0) {
-              <li class="incluidos"><span>{{ cuentaSeparada().platosIncluidos }} platos del buffet</span><span>incluidos</span></li>
-            }
-          </ul>
-          <p class="total"><span>Total</span><strong>{{ r.total | number:'1.2-2' }} €</strong></p>
+          <div class="modos" role="group" aria-label="Cómo se paga">
+            <button type="button" [class.activo]="modoCobro() === 'todo'" (click)="cambiarModoCobro('todo')">Todo junto</button>
+            <button type="button" [class.activo]="modoCobro() === 'separado'" (click)="cambiarModoCobro('separado')">Por separado</button>
+          </div>
+
+          @if (modoCobro() === 'todo') {
+            <h3>Cuenta</h3>
+            <ul class="lineas">
+              @for (l of cuentaSeparada().cobrables; track l.descripcion) {
+                <li><span>{{ l.cantidad }} × {{ l.descripcion }}</span><strong>{{ l.importe | number:'1.2-2' }} €</strong></li>
+              }
+              @if (cuentaSeparada().platosIncluidos > 0) {
+                <li class="incluidos"><span>{{ cuentaSeparada().platosIncluidos }} platos del buffet</span><span>incluidos</span></li>
+              }
+            </ul>
+            <p class="total"><span>Total</span><strong>{{ r.total | number:'1.2-2' }} €</strong></p>
+          } @else {
+            <h3>¿Qué paga este comensal?</h3>
+            <ul class="lineas lineas--separado">
+              @for (g of pendientesSeparado(); track g.clave) {
+                <li>
+                  <span>{{ g.descripcion }} <small>{{ g.precio | number:'1.2-2' }} €</small></span>
+                  <span class="unidades">
+                    <button type="button" (click)="cambiarUnidades(g, -1)" [disabled]="unidadesSeleccionadas(g.clave) <= 0" aria-label="Una unidad menos">−</button>
+                    <strong>{{ unidadesSeleccionadas(g.clave) }} / {{ g.ids.length }}</strong>
+                    <button type="button" (click)="cambiarUnidades(g, 1)" [disabled]="unidadesSeleccionadas(g.clave) >= g.ids.length" aria-label="Una unidad más">+</button>
+                  </span>
+                </li>
+              } @empty {
+                <li class="incluidos"><span>No queda nada por cobrar.</span></li>
+              }
+            </ul>
+            <p class="total"><span>Paga ahora</span><strong>{{ importeACobrar() | number:'1.2-2' }} €</strong></p>
+          }
           @if (r.total !== r.pendiente) {
-            <p class="nota">Ya pagado desde el móvil: {{ (r.total - r.pendiente) | number:'1.2-2' }} €. Pendiente: {{ r.pendiente | number:'1.2-2' }} €</p>
+            <p class="nota">Ya pagado: {{ (r.total - r.pendiente) | number:'1.2-2' }} €. Pendiente: {{ r.pendiente | number:'1.2-2' }} €</p>
           }
           <div class="metodos" role="group" aria-label="Forma de pago">
             <button type="button" [class.activo]="metodo() === 'TARJETA'" (click)="metodo.set('TARJETA')">💳 Tarjeta (TPV)</button>
@@ -99,8 +128,8 @@
           }
           <div class="acciones">
             <button type="button" class="sh-btn" (click)="cerrarCobro()">Volver</button>
-            <button type="button" class="sh-btn sh-btn--primario" [disabled]="ocupado() || r.pendiente <= 0" (click)="confirmarCobro(m)">
-              Cobrar {{ r.pendiente | number:'1.2-2' }} €
+            <button type="button" class="sh-btn sh-btn--primario" [disabled]="ocupado() || importeACobrar() <= 0" (click)="confirmarCobro(m)">
+              Cobrar {{ importeACobrar() | number:'1.2-2' }} €
             </button>
           </div>
         } @else {

@@ -48,6 +48,11 @@ export class Sala implements OnDestroy {
   readonly metodo = signal<MetodoPago>('TARJETA');
   readonly entregado = signal<number | null>(null);
   readonly ticket = signal<DatosTicket | null>(null);
+  /** 'todo': se cobra la cuenta entera; 'separado': cada comensal paga lo que elija. */
+  readonly modoCobro = signal<'todo' | 'separado'>('todo');
+  readonly seleccionSeparado = signal<Record<string, number>>({});
+  /** Tras un pago parcial: lo que aún queda por cobrar de la mesa. */
+  readonly restantes = signal(0);
 
   readonly seleccionada = computed(() => this.mesas().find((m) => m.id === this.seleccionadaId()) ?? null);
   readonly turno = computed(() => (new Date(this.ahora()).getHours() >= 18 ? 'Cena' : 'Almuerzo'));
@@ -74,10 +79,43 @@ export class Sala implements OnDestroy {
   });
   readonly cuentaSeparada = computed(() => separarIncluidos(this.lineasCobro()));
 
+  /** Líneas con importe que quedan por pagar, agrupadas por plato y precio (para cobrar por separado). */
+  readonly pendientesSeparado = computed(() => {
+    const r = this.resumen();
+    if (!r) return [];
+    const mapa = new Map<string, { clave: string; descripcion: string; precio: number; ids: string[] }>();
+    for (const o of r.ordenes) {
+      const precio = Number(o.precio ?? 0);
+      if (o.ordenEstado === 'Cancelado' || o.pagada || precio <= 0) continue;
+      const descripcion = o.plato?.nombre ?? 'Consumo';
+      const clave = `${descripcion}|${precio}`;
+      const grupo = mapa.get(clave) ?? { clave, descripcion, precio, ids: [] };
+      grupo.ids.push(o.id);
+      mapa.set(clave, grupo);
+    }
+    return [...mapa.values()].sort(
+      (a, b) => Number(b.descripcion.startsWith('Buffet')) - Number(a.descripcion.startsWith('Buffet')),
+    );
+  });
+
+  readonly idsSeleccionados = computed(() => {
+    const sel = this.seleccionSeparado();
+    return this.pendientesSeparado().flatMap((g) => g.ids.slice(0, sel[g.clave] ?? 0));
+  });
+
+  /** Importe del cobro actual: toda la cuenta o solo la parte seleccionada. */
+  readonly importeACobrar = computed(() => {
+    const r = this.resumen();
+    if (!r) return 0;
+    if (this.modoCobro() === 'todo') return Number(r.pendiente);
+    const sel = this.seleccionSeparado();
+    const total = this.pendientesSeparado().reduce((acc, g) => acc + (sel[g.clave] ?? 0) * g.precio, 0);
+    return Number(total.toFixed(2));
+  });
+
   readonly cambio = computed(() => {
     const e = this.entregado();
-    const p = this.resumen()?.pendiente ?? 0;
-    return e == null ? null : Number((e - p).toFixed(2));
+    return e == null ? null : Number((e - this.importeACobrar()).toFixed(2));
   });
 
   constructor() {
@@ -149,14 +187,31 @@ export class Sala implements OnDestroy {
 
   abrirCobro(m: Mesa): void {
     if (!m.cuentaActiva) return;
-    this.ticket.set(null);
+    this.modoCobro.set('todo');
+    this.prepararCobro(m.cuentaActiva.id);
+  }
+
+  /** Tras cobrar una parte, vuelve a la cuenta para cobrar al siguiente comensal. */
+  cobrarSiguiente(): void {
+    const cuentaId = this.resumen()?.cuentaId;
+    if (cuentaId) this.prepararCobro(cuentaId);
+  }
+
+  cambiarModoCobro(modo: 'todo' | 'separado'): void {
+    this.modoCobro.set(modo);
+    this.seleccionSeparado.set({});
     this.entregado.set(null);
-    this.metodo.set('TARJETA');
-    this.cobrando.set(true);
-    this.cuentaApi.obtenerResumenCuenta(m.cuentaActiva.id).subscribe({
-      next: (r) => this.resumen.set(r),
-      error: () => this.error.set('No se ha podido cargar la cuenta.'),
-    });
+    this.error.set(null);
+  }
+
+  unidadesSeleccionadas(clave: string): number {
+    return this.seleccionSeparado()[clave] ?? 0;
+  }
+
+  cambiarUnidades(grupo: { clave: string; ids: string[] }, delta: number): void {
+    const actual = this.unidadesSeleccionadas(grupo.clave);
+    const nueva = Math.max(0, Math.min(grupo.ids.length, actual + delta));
+    this.seleccionSeparado.update((s) => ({ ...s, [grupo.clave]: nueva }));
   }
 
   cerrarCobro(): void {
@@ -168,24 +223,44 @@ export class Sala implements OnDestroy {
   confirmarCobro(m: Mesa): void {
     const r = this.resumen();
     if (!r || !m.cuentaActiva) return;
-    if (this.metodo() === 'EFECTIVO' && (this.entregado() ?? 0) < r.pendiente) {
-      this.error.set('El importe entregado no cubre el total.');
+    const importe = this.importeACobrar();
+    if (importe <= 0) return;
+    if (this.metodo() === 'EFECTIVO' && (this.entregado() ?? 0) < importe) {
+      this.error.set('El importe entregado no cubre lo que se cobra.');
       return;
     }
     const cuenta = m.cuentaActiva;
+    const ids = this.idsSeleccionados();
+    const totalPendientes = this.pendientesSeparado().reduce((acc, g) => acc + g.ids.length, 0);
+    const pagaTodo = this.modoCobro() === 'todo' || ids.length >= totalPendientes;
+    const idsCobrados = new Set(ids);
+    // Ticket: la cuenta entera, o solo lo que paga este comensal
+    const lineas = pagaTodo
+      ? this.lineasCobro()
+      : agruparLineas(
+          r.ordenes
+            .filter((o) => idsCobrados.has(o.id))
+            .map((o) => ({ nombre: o.plato?.nombre ?? 'Consumo', precio: Number(o.precio ?? 0) })),
+        );
+    const peticion = pagaTodo
+      ? this.cuentaApi.pagarCuentaCompleta(r.cuentaId, this.metodo())
+      : this.cuentaApi.pagarCuentaParcial(r.cuentaId, ids, this.metodo());
+
     this.ocupado.set(true);
-    this.cuentaApi.pagarCuentaCompleta(r.cuentaId, this.metodo()).subscribe({
+    this.error.set(null);
+    peticion.subscribe({
       next: () => {
         this.ocupado.set(false);
+        this.restantes.set(pagaTodo ? 0 : Number((Number(r.pendiente) - importe).toFixed(2)));
         this.ticket.set({
           cuentaId: r.cuentaId,
           mesa: m.id,
-          comensales: cuenta.comensales ?? null,
+          comensales: pagaTodo && this.modoCobro() === 'todo' ? (cuenta.comensales ?? null) : null,
           fechaApertura: cuenta.fechaCreacion,
           fechaPago: new Date().toISOString(),
           metodoPago: this.metodo(),
-          lineas: this.lineasCobro(),
-          total: Number(r.total),
+          lineas,
+          total: pagaTodo && this.modoCobro() === 'todo' ? Number(r.total) : importe,
           entregado: this.metodo() === 'EFECTIVO' ? this.entregado() : null,
         });
         this.refrescar();
@@ -219,6 +294,20 @@ export class Sala implements OnDestroy {
         this.ocupado.set(false);
         this.error.set(err?.error?.message ?? 'No se ha podido completar la acción.');
       },
+    });
+  }
+
+  private prepararCobro(cuentaId: string): void {
+    this.ticket.set(null);
+    this.resumen.set(null);
+    this.entregado.set(null);
+    this.seleccionSeparado.set({});
+    this.metodo.set('TARJETA');
+    this.error.set(null);
+    this.cobrando.set(true);
+    this.cuentaApi.obtenerResumenCuenta(cuentaId).subscribe({
+      next: (r) => this.resumen.set(r),
+      error: () => this.error.set('No se ha podido cargar la cuenta.'),
     });
   }
 

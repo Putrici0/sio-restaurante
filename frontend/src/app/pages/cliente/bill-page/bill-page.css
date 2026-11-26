@@ -490,6 +490,19 @@
   cursor: pointer;
 }
 
+.payment-incluidos {
+  margin: 0;
+  padding: 10px 0;
+  font-size: 0.82rem;
+  color: #7b535d;
+}
+
+.payment-ayuda {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+  color: #7b535d;
+}
+
 .payment-row--disabled {
   opacity: 0.5;
   background: #f3f3f3;

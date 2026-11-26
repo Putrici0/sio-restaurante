@@ -33,14 +33,24 @@ def guardar_datos() -> None:
 
 def pids_en_puerto(puerto: int) -> set[int]:
     """Procesos que escuchan en el puerto indicado."""
-    try:
-        if ES_WINDOWS:
+    if ES_WINDOWS:
+        try:
             salida = subprocess.run(["netstat", "-ano", "-p", "TCP"], capture_output=True, text=True).stdout
-            return {int(m.group(1)) for m in re.finditer(rf"[:.]{puerto}\s+\S+\s+LISTENING\s+(\d+)", salida)}
-        salida = subprocess.run(["lsof", "-ti", f"tcp:{puerto}", "-sTCP:LISTEN"], capture_output=True, text=True).stdout
-        return {int(p) for p in salida.split()}
-    except FileNotFoundError:
-        return set()
+        except FileNotFoundError:
+            return set()
+        return {int(m.group(1)) for m in re.finditer(rf"[:.]{puerto}\s+\S+\s+LISTENING\s+(\d+)", salida)}
+    # macOS / Linux: lsof, y si no está instalado, ss o fuser
+    for comando in (["lsof", "-ti", f"tcp:{puerto}", "-sTCP:LISTEN"],
+                    ["ss", "-Hltnp", f"sport = :{puerto}"],
+                    ["fuser", f"{puerto}/tcp"]):
+        try:
+            r = subprocess.run(comando, capture_output=True, text=True)
+        except FileNotFoundError:
+            continue
+        if comando[0] == "ss":
+            return {int(p) for p in re.findall(r"pid=(\d+)", r.stdout)}
+        return {int(p) for p in r.stdout.split() if p.isdigit()}  # lsof y fuser: PIDs en stdout
+    return set()
 
 
 def matar(pid: int) -> bool:

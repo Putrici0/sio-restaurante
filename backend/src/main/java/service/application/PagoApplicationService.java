@@ -191,25 +191,30 @@ public class PagoApplicationService {
             ordenRepository.update(orden.id(), ordenPagada);
         }
 
+        // Solo cuenta como pendiente lo que tiene importe: los platos incluidos en el
+        // buffet (0 €) no obligan a seleccionarlos para poder cerrar la cuenta.
         Set<String> ordenesPagadasEnEstaOperacion = ordenIds.stream().collect(Collectors.toSet());
-        boolean quedaPendiente = ordenesCuenta.stream()
-                .map(orden -> ordenesPagadasEnEstaOperacion.contains(orden.id())
-                        ? new Orden(
-                        orden.id(),
-                        orden.pedido(),
-                        orden.plato(),
-                        orden.precio(),
-                        orden.ordenEstado(),
-                        orden.fecha(),
-                        orden.detalles(),
+        List<Orden> sinPagar = ordenesCuenta.stream()
+                .filter(orden -> !orden.pagada() && !ordenesPagadasEnEstaOperacion.contains(orden.id()))
+                .toList();
+        boolean quedaPendiente = sinPagar.stream().anyMatch(orden -> tieneImporte(orden));
+
+        if (!quedaPendiente) {
+            for (Orden incluida : sinPagar) {
+                ordenRepository.update(incluida.id(), new Orden(
+                        incluida.id(),
+                        incluida.pedido(),
+                        incluida.plato(),
+                        incluida.precio(),
+                        incluida.ordenEstado(),
+                        incluida.fecha(),
+                        incluida.detalles(),
                         true,
                         Optional.of(ahora),
                         Optional.of(metodoPago)
-                )
-                        : orden)
-                .anyMatch(orden -> !orden.pagada());
+                ));
+            }
 
-        if (!quedaPendiente) {
             Cuenta cuentaPagada = new Cuenta(
                     cuenta.id(),
                     cuenta.mesas(),
@@ -229,6 +234,10 @@ public class PagoApplicationService {
         }
 
         return obtenerCuentaPorId(cuentaId);
+    }
+
+    private static boolean tieneImporte(Orden orden) {
+        return orden.precio() != null && orden.precio().compareTo(BigDecimal.ZERO) > 0;
     }
 
     public Cuenta cerrarCuentaSiProcede(String cuentaId) {

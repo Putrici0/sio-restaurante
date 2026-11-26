@@ -5,6 +5,9 @@ Arranca toda la demo de SIGO-RSH (Restaurante Sakura Hanami) con un solo comando
     python iniciar.py            # backend + frontend
     python iniciar.py --reset    # igual, pero regenerando los datos de demo con la hora actual
 
+Funciona en cualquier ordenador con Python 3, Java 21+ y Node.js; no hace falta ningún IDE
+(si Maven no está instalado se descarga solo en .herramientas/).
+
 - Backend (Java/Javalin) en http://localhost:7070, datos en data/sio-restaurante.json
 - Frontend (Angular) en http://localhost:4200
 Los procesos quedan en segundo plano; sus registros están en la carpeta logs/.
@@ -29,7 +32,6 @@ ES_WINDOWS = os.name == "nt"
 
 BACKEND_URL = "http://localhost:7070/health"
 FRONTEND_URL = "http://localhost:4200"
-MAVEN_INTELLIJ = Path(r"C:\Program Files\JetBrains\IntelliJ IDEA 2026.3\plugins\maven-plugin\lib\maven3\bin\mvn.cmd")
 
 
 def responde(url: str) -> bool:
@@ -40,20 +42,22 @@ def responde(url: str) -> bool:
         return False
 
 
-def esperar(url: str, nombre: str, segundos: int) -> bool:
+def esperar(url: str, nombre: str, segundos: int, proceso=None) -> bool:
     print(f"  Esperando a que {nombre} responda", end="", flush=True)
     limite = time.time() + segundos
     while time.time() < limite:
         if responde(url):
             print(" ✓")
             return True
+        if proceso is not None and proceso.poll() is not None:
+            break  # el proceso ha terminado (error de compilación, puerto ocupado…)
         print(".", end="", flush=True)
         time.sleep(2)
     print(" ✗")
     return False
 
 
-def lanzar(comando, log: Path, cwd: Path) -> int:
+def lanzar(comando, log: Path, cwd: Path) -> subprocess.Popen:
     """Lanza un proceso en segundo plano, desligado de esta consola."""
     salida = open(log, "w", encoding="utf-8", errors="replace")
     opciones = {"cwd": str(cwd), "stdout": salida, "stderr": subprocess.STDOUT, "stdin": subprocess.DEVNULL}
@@ -61,26 +65,12 @@ def lanzar(comando, log: Path, cwd: Path) -> int:
         opciones["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
     else:
         opciones["start_new_session"] = True
-    return subprocess.Popen(comando, **opciones).pid
-
-
-def comando_maven() -> str:
-    for candidato in ("mvn.cmd", "mvn") if ES_WINDOWS else ("mvn",):
-        ruta = shutil.which(candidato)
-        if ruta:
-            return ruta
-    if MAVEN_INTELLIJ.exists():
-        return str(MAVEN_INTELLIJ)
-    sys.exit("No se encuentra Maven. Instálalo o añade 'mvn' al PATH.")
+    return subprocess.Popen(comando, **opciones)
 
 
 def comando_backend():
-    if ES_WINDOWS:
-        return ["cmd", "/c", str(RAIZ / "backend" / "scripts" / "run-backend.cmd")]
-    mvn = comando_maven()
-    return ["sh", "-c",
-            f'"{mvn}" -q compile dependency:build-classpath -Dmdep.outputFile=target/classpath.txt '
-            '&& java -cp "target/classes:$(cat target/classpath.txt)" Main']
+    # backend/scripts/backend.py localiza Java y Maven (o descarga Maven) en cualquier ordenador
+    return [sys.executable, "-u", str(RAIZ / "backend" / "scripts" / "backend.py")]
 
 
 def comando_frontend():
@@ -117,8 +107,11 @@ def main() -> None:
         print("• Backend ya estaba en marcha (7070).")
     else:
         print("• Arrancando backend (compila con Maven la primera vez, puede tardar)…")
-        procesos["backend"] = lanzar(comando_backend(), LOGS / "backend.log", RAIZ)
-        if not esperar(BACKEND_URL, "el backend", 180):
+        backend = lanzar(comando_backend(), LOGS / "backend.log", RAIZ)
+        procesos["backend"] = backend.pid
+        PIDS.write_text(json.dumps(procesos, indent=2))
+        # La primera vez puede descargar Maven y las dependencias: margen amplio
+        if not esperar(BACKEND_URL, "el backend", 600, backend):
             sys.exit(f"El backend no arrancó. Revisa {LOGS / 'backend.log'}")
 
     # --- Frontend
@@ -127,11 +120,13 @@ def main() -> None:
     else:
         frontend = RAIZ / "frontend"
         if not (frontend / "node_modules").exists():
-            print("• Instalando dependencias del frontend (solo la primera vez)…")
+            print("• Instalando dependencias del frontend (solo la primera vez)…", flush=True)
             subprocess.run([comando_frontend()[0], "install", "--no-audit", "--no-fund"], cwd=frontend, check=True)
         print("• Arrancando frontend…")
-        procesos["frontend"] = lanzar(comando_frontend(), LOGS / "frontend.log", frontend)
-        if not esperar(FRONTEND_URL, "el frontend", 240):
+        proceso_front = lanzar(comando_frontend(), LOGS / "frontend.log", frontend)
+        procesos["frontend"] = proceso_front.pid
+        PIDS.write_text(json.dumps(procesos, indent=2))
+        if not esperar(FRONTEND_URL, "el frontend", 300, proceso_front):
             sys.exit(f"El frontend no arrancó. Revisa {LOGS / 'frontend.log'}")
 
     PIDS.write_text(json.dumps(procesos, indent=2))

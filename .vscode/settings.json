@@ -1,0 +1,9 @@
+{
+  // Code Runner: ignorar la línea "#!/usr/bin/env python3" (no existe en Windows)
+  // y usar el intérprete de Python seleccionado en VS Code, sea cual sea el ordenador.
+  "code-runner.respectShebang": false,
+  "code-runner.executorMap": {
+    "python": "$pythonPath -u $fullFileName"
+  },
+  "code-runner.runInTerminal": true
+}

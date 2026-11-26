@@ -103,6 +103,14 @@ h3 { margin: 0; font-size: 1.05rem; }
 .lineas { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; max-height: 260px; overflow: auto; }
 .lineas li { display: flex; justify-content: space-between; gap: 10px; font-size: 0.9rem; }
 .total { display: flex; justify-content: space-between; margin: 0; padding-top: 10px; border-top: 1px dashed var(--sh-borde); font-size: 1.15rem; }
+.modos { display: grid; grid-template-columns: 1fr 1fr; padding: 3px; border-radius: 999px; background: #f6e7eb; }
+.modos button { padding: 7px 10px; border: 0; border-radius: 999px; background: transparent; cursor: pointer; font-weight: 600; color: inherit; }
+.modos button.activo { background: #fff; box-shadow: 0 1px 4px rgba(59, 25, 34, 0.15); }
+.lineas--separado li { align-items: center; }
+.lineas--separado small { display: block; color: #7b535d; font-size: 0.78rem; }
+.unidades { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.unidades button { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--sh-borde); background: #fff; cursor: pointer; font-weight: 700; }
+.unidades button:disabled { opacity: 0.4; cursor: not-allowed; }
 .metodos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .metodos button { padding: 10px; border-radius: 12px; border: 1px solid var(--sh-borde); background: #fff; cursor: pointer; font-weight: 600; }
 .metodos button.activo { background: var(--sh-sakura-600); border-color: var(--sh-sakura-600); color: #fff; }

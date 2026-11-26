@@ -201,7 +201,7 @@
             <span>PRECIO</span>
           </div>
 
-          @for (item of itemsPendientes(); track item.key) {
+          @for (item of itemsSeleccionables(); track item.key) {
             <div
               class="payment-row"
               [class.payment-row--disabled]="!puedePagarItem(item)"
@@ -235,7 +235,14 @@
               </span>
             </div>
           }
+          @if (platosIncluidosPendientes() > 0) {
+            <p class="payment-incluidos">
+              + {{ platosIncluidosPendientes() }} {{ platosIncluidosPendientes() === 1 ? 'plato' : 'platos' }}
+              del buffet, incluidos en el precio
+            </p>
+          }
         </div>
+        <p class="payment-ayuda">Quita unidades con «−» si solo quieres pagar tu parte.</p>
 
         <footer class="payment-panel__footer">
           <span>TOTAL A PAGAR:</span>
