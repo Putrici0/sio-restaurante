@@ -46,6 +46,7 @@ export class ReservasPagina implements OnDestroy {
   readonly formulario = signal<Formulario | null>(null);
   readonly llegada = signal<Reserva | null>(null);
   readonly mesaElegida = signal<string | null>(null);
+  readonly ninosLlegada = signal(0);
   readonly error = signal<string | null>(null);
   readonly guardando = signal(false);
 
@@ -146,6 +147,7 @@ export class ReservasPagina implements OnDestroy {
   abrirLlegada(r: Reserva): void {
     this.error.set(null);
     this.llegada.set(r);
+    this.ninosLlegada.set(0);
     this.mesaElegida.set(this.mesasDisponibles()[0]?.id ?? null);
   }
 
@@ -157,7 +159,7 @@ export class ReservasPagina implements OnDestroy {
       return;
     }
     this.guardando.set(true);
-    this.http.post(`${this.apiUrl}/${r.id}/llegada`, { mesaId: mesa }).subscribe({
+    this.http.post(`${this.apiUrl}/${r.id}/llegada`, { mesaId: mesa, ninos: this.ninosLlegada() }).subscribe({
       next: () => {
         this.guardando.set(false);
         this.llegada.set(null);
@@ -168,6 +170,10 @@ export class ReservasPagina implements OnDestroy {
         this.error.set(err?.error?.message ?? 'No se ha podido sentar al cliente.');
       },
     });
+  }
+
+  cambiarNinos(delta: number, r: Reserva): void {
+    this.ninosLlegada.update((n) => Math.max(0, Math.min(r.comensales - 1, n + delta)));
   }
 
   private recargar(): void {

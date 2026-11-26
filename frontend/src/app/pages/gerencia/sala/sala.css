@@ -87,6 +87,10 @@
 .contador button { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--sh-borde); background: #fff; font-size: 1.3rem; cursor: pointer; }
 .contador strong { font-size: 1.8rem; font-family: var(--sh-fuente-titulos); min-width: 32px; text-align: center; }
 .contador span { color: var(--sh-tinta-suave); }
+.contador--ninos button { width: 36px; height: 36px; font-size: 1.1rem; }
+.contador--ninos button:disabled { opacity: 0.4; cursor: not-allowed; }
+.contador--ninos strong { font-size: 1.3rem; }
+.contador--ninos small { display: block; font-size: 0.78rem; }
 .ancho { width: 100%; }
 
 .datos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; }

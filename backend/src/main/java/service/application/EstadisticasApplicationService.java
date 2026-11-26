@@ -307,6 +307,8 @@ public class EstadisticasApplicationService {
      */
     private Extras extras(List<Orden> vendidas, List<Cuenta> sesiones) {
         BigDecimal buffet = BigDecimal.ZERO;
+        BigDecimal buffetInfantil = BigDecimal.ZERO;
+        long ninos = 0;
         BigDecimal bebidas = BigDecimal.ZERO;
         BigDecimal postres = BigDecimal.ZERO;
         long unidadesBebida = 0;
@@ -320,7 +322,14 @@ public class EstadisticasApplicationService {
             Plato plato = o.plato();
             if (plato == null || plato.categoria() == null) continue;
             switch (plato.categoria()) {
-                case Buffet -> buffet = buffet.add(precio(o));
+                case Buffet -> {
+                    if (BuffetLibre.esTarifaInfantil(plato.id())) {
+                        buffetInfantil = buffetInfantil.add(precio(o));
+                        ninos++;
+                    } else {
+                        buffet = buffet.add(precio(o));
+                    }
+                }
                 case Postre -> {
                     postres = postres.add(precio(o));
                     unidadesPostre++;
@@ -344,7 +353,8 @@ public class EstadisticasApplicationService {
         long mesasSinBebida = sesiones.stream().filter(c -> !cuentasConBebida.contains(c.id())).count();
 
         List<Serie> desglose = List.of(
-                new Serie("Buffet (tarifa por comensal)", escala(buffet)),
+                new Serie("Buffet adultos", escala(buffet)),
+                new Serie("Buffet infantil", escala(buffetInfantil)),
                 new Serie("Bebidas", escala(bebidas)),
                 new Serie("Postres", escala(postres)));
         List<Serie> tipos = porTipo.entrySet().stream()
@@ -369,7 +379,8 @@ public class EstadisticasApplicationService {
                 escala(postres),
                 porComensal(postres, comensales),
                 comensales == 0 ? 0 : redondear(unidadesPostre * 100.0 / comensales),
-                porComensal(buffet, comensales));
+                porComensal(buffet.add(buffetInfantil), comensales),
+                ninos);
     }
 
     private static final List<String> TIPOS_BEBIDA = List.of(
@@ -472,5 +483,5 @@ public class EstadisticasApplicationService {
                          BigDecimal bebidaPorComensal, double bebidasPorComensal, double porcentajeMesasSinBebida,
                          List<Serie> bebidasPorTipo, List<ProductoVendido> rankingBebidas,
                          BigDecimal ingresosPostres, BigDecimal postrePorComensal, double porcentajeComensalesConPostre,
-                         BigDecimal buffetPorComensal) {}
+                         BigDecimal buffetPorComensal, long ninos) {}
 }

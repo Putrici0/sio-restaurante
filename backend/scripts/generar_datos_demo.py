@@ -190,13 +190,21 @@ TARIFAS = {
     "Cena": ("buffet-cena", "Buffet libre · noche, sábados y domingos", 22.90,
              "Buffet libre a la carta por la noche y todo el día sábados y domingos. Bebidas y postres no incluidos."),
 }
+# Tarifa infantil (niños de 3 a 10 años; menores de 3, gratis), también por turno
+TARIFAS_INFANTILES = {
+    "Almuerzo": ("buffet-almuerzo-infantil", "Buffet infantil · mediodía (lunes a viernes)", 10.90,
+                 "Niños de 3 a 10 años, de lunes a viernes a mediodía. Menores de 3 años gratis."),
+    "Cena": ("buffet-cena-infantil", "Buffet infantil · noche, sábados y domingos", 12.90,
+             "Niños de 3 a 10 años, por la noche y sábados y domingos. Menores de 3 años gratis."),
+}
 EMOJIS["Buffet"] = "🍱"
-for turno, (tid, tnombre, tprecio, tdesc) in TARIFAS.items():
+for turno, (tid, tnombre, tprecio, tdesc) in [*TARIFAS.items(), *TARIFAS_INFANTILES.items()]:
     platos.append({"id": tid, "nombre": tnombre, "categoria": "Buffet", "descripcion": tdesc,
                    "precio": tprecio, "estaActivo": True, "imagen": "/platos/buffet.svg"})
 FONDOS["Buffet"] = ("#fde8ec", "#f9cfd8")
 (IMAGENES / "buffet.svg").write_text(ilustracion("Buffet", "Buffet"), encoding="utf-8")
 tarifa_por_turno = {t: next(p for p in platos if p["id"] == tid) for t, (tid, *_) in TARIFAS.items()}
+tarifa_infantil_por_turno = {t: next(p for p in platos if p["id"] == tid) for t, (tid, *_) in TARIFAS_INFANTILES.items()}
 plato_por_nombre = {p["nombre"]: p for p in platos}
 
 por_categoria = {c: [(p, w) for p, w in zip(platos, pesos) if p["categoria"] == c]
@@ -257,13 +265,19 @@ def bebida_principal(turno):
     return P(random.choices([n for n, _ in opciones], [w for _, w in opciones])[0])
 
 
-def elegir_consumo(n_comensales, turno):
-    """Comida (incluida), bebidas y postres (de pago) de una mesa de buffet."""
+BEBIDAS_INFANTILES = ["Agua mineral 50 cl", "Agua mineral 50 cl", "Coca-Cola", "Fanta de naranja",
+                      "Fanta de limón", "Nestea", "Zumo de naranja natural", "Ramune", "Ramune"]
+
+
+def elegir_consumo(n_comensales, turno, ninos=0):
+    """Comida (incluida), bebidas y postres (de pago) de una mesa de buffet.
+    Los últimos 'ninos' comensales son niños: comen menos, sin alcohol ni café y piden más postre."""
     cena = turno == "Cena"
+    adultos = n_comensales - ninos
     comida = []
-    for _ in range(n_comensales):
-        # Cada comensal pide de media unas 4-5 raciones (una ración = 2 nigiris, 4 gyozas…)
-        n = max(2, round(random.gauss(4.6, 1.1)))
+    for i in range(n_comensales):
+        # Cada adulto pide de media unas 4-5 raciones (una ración = 2 nigiris, 4 gyozas…); un niño, unas 3
+        n = max(2, round(random.gauss(4.6 if i < adultos else 3.0, 1.1)))
         for _ in range(n):
             cat = "Entrante" if random.random() < 0.36 else "Principal"
             opciones = por_categoria[cat]
@@ -278,7 +292,14 @@ def elegir_consumo(n_comensales, turno):
                                        "Botella de vino tinto Rioja", "Botella de Lambrusco"])))
     if not solo_agua_grifo and n_comensales >= 4 and random.random() < 0.25:
         extras.append(P("Agua mineral 1,5 l"))
-    for _ in range(n_comensales):
+    for i in range(n_comensales):
+        if i >= adultos:  # niño
+            if not solo_agua_grifo:
+                extras.append(P(random.choice(BEBIDAS_INFANTILES)))
+            if random.random() < 0.55:
+                opciones = por_categoria["Postre"]
+                extras.append(random.choices([p for p, _ in opciones], [w for _, w in opciones])[0])
+            continue
         if solo_agua_grifo or (vino_en_botella and random.random() < 0.6):
             pass  # agua del grifo o bebe de la botella de la mesa
         else:
@@ -326,15 +347,20 @@ def crear_sesion(mesa, inicio, duracion_min, estado_sesion, metodo=None):
     cuentas.append(cuenta)
     comensales = comensales_para(mesa)
     cuenta["comensales"] = comensales
+    # Familias: en mesas de 4 o más, a veces 1-2 niños (más en fin de semana)
+    ninos = 0
+    if comensales >= 3 and random.random() < (0.35 if inicio.weekday() >= 5 else 0.18):
+        ninos = min(comensales - 1, random.choice([1, 1, 2]))
     # Tarifa del buffet: una línea por comensal, cargada al abrir la mesa
     turno = "Cena" if inicio.hour >= 18 else "Almuerzo"
-    tarifa = tarifa_por_turno["Cena" if turno == "Cena" or inicio.weekday() >= 5 else "Almuerzo"]
+    tarifa_turno = "Cena" if turno == "Cena" or inicio.weekday() >= 5 else "Almuerzo"
     cubiertos = {"id": uid("ped"), "cuenta": cuenta_snapshot(cuenta), "pedidoEstado": "Listo", "fechaPedido": iso(inicio)}
     pedidos.append(cubiertos)
-    for _ in range(comensales):
+    for i in range(comensales):
+        tarifa = tarifa_por_turno[tarifa_turno] if i < comensales - ninos else tarifa_infantil_por_turno[tarifa_turno]
         nueva_orden(cubiertos, tarifa, inicio, "Entregado", pagada, fin, metodo)
 
-    comida, extras = elegir_consumo(comensales, turno)
+    comida, extras = elegir_consumo(comensales, turno, ninos)
     bebidas = [p for p in extras if p["categoria"] == "Bebida"]
     postres = [p for p in extras if p["categoria"] == "Postre"]
     # Rondas: bebidas en la primera, la comida repartida (máx. 5 platos por comensal y ronda), postres al final

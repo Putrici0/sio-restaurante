@@ -57,3 +57,10 @@
 .opcion-mesa strong { font-family: var(--sh-fuente-titulos); font-size: 1.4rem; }
 .opcion-mesa span { font-size: 0.75rem; color: var(--sh-tinta-suave); }
 .opcion-mesa.activa { border-color: var(--sh-sakura-600); background: var(--sh-sakura-50); }
+
+.contador--ninos { display: flex; align-items: center; gap: 10px; margin: 14px 0 4px; }
+.contador--ninos button { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--sh-borde); background: #fff; font-size: 1.1rem; cursor: pointer; }
+.contador--ninos button:disabled { opacity: 0.4; cursor: not-allowed; }
+.contador--ninos strong { font-size: 1.3rem; min-width: 24px; text-align: center; }
+.contador--ninos span { color: var(--sh-tinta-suave); }
+.contador--ninos small { display: block; font-size: 0.78rem; }

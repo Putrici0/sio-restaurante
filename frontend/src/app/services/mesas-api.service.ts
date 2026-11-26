@@ -82,9 +82,12 @@ export class MesasApiService {
     });
   }
 
-  /** Abre la sesión de la mesa para N comensales (se carga la tarifa del buffet por comensal). */
-  ocuparMesa(id: string, comensales?: number): Observable<CuentaApi> {
-    return this.http.post<CuentaApi>(`${this.apiUrl}/mesas/${id}/ocupar`, comensales ? { comensales } : {});
+  /**
+   * Abre la sesión de la mesa para N comensales, de los que 'ninos' pagan la tarifa infantil
+   * (se carga la tarifa del buffet por comensal).
+   */
+  ocuparMesa(id: string, comensales?: number, ninos = 0): Observable<CuentaApi> {
+    return this.http.post<CuentaApi>(`${this.apiUrl}/mesas/${id}/ocupar`, comensales ? { comensales, ninos } : {});
   }
 
   /** Cierre explícito de sesión: la mesa queda pendiente de cobro. */

@@ -41,6 +41,7 @@ export class Sala implements OnDestroy {
 
   // Apertura
   readonly comensalesApertura = signal(2);
+  readonly ninosApertura = signal(0);
 
   // Cobro en caja
   readonly resumen = signal<CuentaResumenResponse | null>(null);
@@ -145,6 +146,7 @@ export class Sala implements OnDestroy {
   seleccionar(m: Mesa): void {
     this.seleccionadaId.set(this.seleccionadaId() === m.id ? null : m.id);
     this.comensalesApertura.set(Math.min(2, m.capacidad));
+    this.ninosApertura.set(0);
     this.cerrarCobro();
     this.error.set(null);
   }
@@ -162,10 +164,15 @@ export class Sala implements OnDestroy {
 
   cambiarComensales(delta: number, m: Mesa): void {
     this.comensalesApertura.update((n) => Math.max(1, Math.min(m.capacidad, n + delta)));
+    this.ninosApertura.update((n) => Math.min(n, this.comensalesApertura() - 1));
+  }
+
+  cambiarNinos(delta: number, _m: Mesa): void {
+    this.ninosApertura.update((n) => Math.max(0, Math.min(this.comensalesApertura() - 1, n + delta)));
   }
 
   abrir(m: Mesa): void {
-    this.accion(this.mesasApi.ocuparMesa(m.id, this.comensalesApertura()));
+    this.accion(this.mesasApi.ocuparMesa(m.id, this.comensalesApertura(), this.ninosApertura()));
   }
 
   cerrarSesion(m: Mesa): void {

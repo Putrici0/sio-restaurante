@@ -117,6 +117,13 @@
       }
     </div>
 
+    <div class="contador contador--ninos">
+              <button type="button" (click)="cambiarNinos(-1, r)" [disabled]="ninosLlegada() <= 0" aria-label="Un niño menos">−</button>
+              <strong>{{ ninosLlegada() }}</strong>
+              <button type="button" (click)="cambiarNinos(1, r)" [disabled]="ninosLlegada() >= r.comensales - 1" aria-label="Un niño más">+</button>
+              <span>de ellos, niños de 3 a 10 años <small>(tarifa infantil)</small></span>
+            </div>
+
     @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
     <div class="dialogo__acciones">
       <button type="button" class="sh-btn" (click)="llegada.set(null)">Cancelar</button>

@@ -35,12 +35,12 @@ type FiltroCarta = CategoriaPlato | 'Todos' | 'MasPedidos';
         <section class="tarifas" aria-label="Precios del buffet libre">
           @for (t of tarifas(); track t.id) {
             <div class="tarifa">
-              <span class="tarifa__turno">{{ t.nombre.replace('Buffet libre · ', '') }}</span>
+              <span class="tarifa__turno">{{ t.nombre.replace('Buffet libre · ', '').replace('Buffet infantil · ', 'Niños · ') }}</span>
               <strong>{{ t.precio | number:'1.2-2' }} €</strong>
-              <span>por persona</span>
+              <span>{{ t.id.endsWith('infantil') ? 'de 3 a 10 años' : 'por persona' }}</span>
             </div>
           }
-          <p class="tarifas__nota">Comida ilimitada incluida (hasta 5 platos por persona en cada ronda). Sábados y domingos se aplica la tarifa de noche. Bebidas y postres aparte. IGIC incluido.</p>
+          <p class="tarifas__nota">Comida ilimitada incluida (hasta 5 platos por persona en cada ronda). Sábados y domingos se aplica la tarifa de noche. Menores de 3 años, gratis. Bebidas y postres aparte. IGIC incluido.</p>
         </section>
 
         <div class="chips">

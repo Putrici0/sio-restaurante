@@ -70,13 +70,20 @@ public class MesaApplicationService {
         return ocuparMesa(mesaId, obtenerMesa(mesaId).capacidad());
     }
 
-    /**
-     * Abre la sesion de la mesa para un numero de comensales y carga en la cuenta
-     * la tarifa del buffet libre (almuerzo o cena) por cada comensal.
-     */
     public Cuenta ocuparMesa(String mesaId, int comensales) {
+        return ocuparMesa(mesaId, comensales, 0);
+    }
+
+    /**
+     * Abre la sesion de la mesa para un numero de comensales (de los que 'ninos' son niños
+     * con tarifa infantil) y carga en la cuenta la tarifa del buffet por cada uno.
+     */
+    public Cuenta ocuparMesa(String mesaId, int comensales, int ninos) {
         if (comensales < 1) {
             throw new IllegalArgumentException("Indica cuántos comensales se sientan en la mesa");
+        }
+        if (ninos < 0 || ninos >= comensales) {
+            throw new IllegalArgumentException("En la mesa tiene que haber al menos un adulto");
         }
         if (estaOcupada(mesaId)) {
             throw new IllegalArgumentException("La mesa ya está ocupada o forma parte de un grupo ocupado");
@@ -107,18 +114,21 @@ public class MesaApplicationService {
                 null, grupoMesas, false, Optional.empty(), ahora, Optional.empty(),
                 generarPassword(), Optional.empty(), false, comensales
         ));
-        cargarTarifaBuffet(cuenta, comensales, ahora);
+        cargarTarifaBuffet(cuenta, comensales, ninos, ahora);
         return cuenta;
     }
 
-    /** Una linea "Buffet libre" por comensal, ya servida (no pasa por cocina). */
-    private void cargarTarifaBuffet(Cuenta cuenta, int comensales, Instant ahora) {
-        Plato tarifa = platoRepository.findById(BuffetLibre.tarifaDelTurno(ahora)).orElse(null);
-        if (tarifa == null) {
+    /** Una linea "Buffet libre" por adulto y una "Buffet infantil" por niño, ya servidas (no pasan por cocina). */
+    private void cargarTarifaBuffet(Cuenta cuenta, int comensales, int ninos, Instant ahora) {
+        Plato adulto = platoRepository.findById(BuffetLibre.tarifaDelTurno(ahora)).orElse(null);
+        if (adulto == null) {
             return;
         }
+        // Si la carta no tiene tarifa infantil, los niños pagan la de adulto
+        Plato infantil = platoRepository.findById(BuffetLibre.tarifaInfantilDelTurno(ahora)).orElse(adulto);
         Pedido cubiertos = pedidoRepository.save(new Pedido(null, cuenta, PedidoEstado.Listo, ahora));
         for (int i = 0; i < comensales; i++) {
+            Plato tarifa = i < comensales - ninos ? adulto : infantil;
             ordenRepository.save(new Orden(null, cubiertos, tarifa,
                     tarifa.precio() == null ? BigDecimal.ZERO : tarifa.precio(),
                     OrdenEstado.Entregado, ahora, "", false, Optional.empty(), Optional.empty()));

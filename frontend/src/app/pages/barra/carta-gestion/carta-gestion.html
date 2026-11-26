@@ -13,7 +13,7 @@
   <section class="tarifas">
     @for (t of tarifas(); track t.id) {
       <article class="tarifa sh-tarjeta">
-        <span class="sh-eyebrow">{{ t.nombre.replace('Buffet libre · ', 'Buffet · ') }}</span>
+        <span class="sh-eyebrow">{{ t.nombre.replace('Buffet libre · ', 'Adultos · ').replace('Buffet infantil · ', 'Niños 3-10 · ') }}</span>
         <strong>{{ t.precio | number:'1.2-2' }} €</strong>
         <span class="tarifa__nota">por comensal · bebidas y postres aparte</span>
         <button type="button" class="sh-btn editar" (click)="editar(t)">Cambiar precio</button>

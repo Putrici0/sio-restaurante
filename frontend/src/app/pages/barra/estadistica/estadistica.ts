@@ -29,6 +29,7 @@ interface Extras {
   postrePorComensal: number;
   porcentajeComensalesConPostre: number;
   buffetPorComensal: number;
+  ninos: number;
 }
 interface DiaSemana { dia: string; sesiones: number; ingresos: number; }
 

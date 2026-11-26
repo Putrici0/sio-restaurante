@@ -41,6 +41,7 @@ export class MesasCamarero implements OnDestroy {
   readonly mostrarCodigo = signal(false);
   readonly confirmarLiberar = signal(false);
   readonly comensales = signal(2);
+  readonly ninos = signal(0);
   readonly cuentaCobro = signal<CuentaResumenResponse | null>(null);
   readonly cobrado = signal(false);
 
@@ -112,10 +113,16 @@ export class MesasCamarero implements OnDestroy {
     this.cuentaCobro.set(null);
     this.cobrado.set(false);
     this.comensales.set(Math.min(2, m.capacidad));
+    this.ninos.set(0);
   }
 
   cambiarComensales(delta: number, m: Mesa): void {
     this.comensales.update((n) => Math.max(1, Math.min(m.capacidad, n + delta)));
+    this.ninos.update((n) => Math.min(n, this.comensales() - 1));
+  }
+
+  cambiarNinos(delta: number, _m: Mesa): void {
+    this.ninos.update((n) => Math.max(0, Math.min(this.comensales() - 1, n + delta)));
   }
 
   /** Carga el importe pendiente para cobrar desde el móvil (TPV portátil o efectivo). */
@@ -150,7 +157,7 @@ export class MesasCamarero implements OnDestroy {
   }
 
   abrirSesion(m: Mesa): void {
-    this.accion(this.mesasApi.ocuparMesa(m.id, this.comensales()));
+    this.accion(this.mesasApi.ocuparMesa(m.id, this.comensales(), this.ninos()));
   }
 
   cerrarSesion(m: Mesa): void {

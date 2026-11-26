@@ -62,7 +62,8 @@ public class ReservaController {
                         if (!"Pendiente".equals(reserva.estado()) && !"Confirmado".equals(reserva.estado())) {
                             throw new IllegalArgumentException("La reserva ya está " + reserva.estado().toLowerCase());
                         }
-                        mesaApplicationService.ocuparMesa(mesaId.toString(), reserva.comensales());
+                        int ninos = body.get("ninos") instanceof Number n ? n.intValue() : 0;
+                        mesaApplicationService.ocuparMesa(mesaId.toString(), reserva.comensales(), ninos);
                         ctx.json(service.cambiarEstado(reserva.id(), "Finalizado"));
                     }));
 

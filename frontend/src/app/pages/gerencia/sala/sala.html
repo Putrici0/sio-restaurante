@@ -138,12 +138,18 @@
       } @else {
         @switch (m.estado) {
           @case ('libre') {
-            <p class="nota">Indica cuántos comensales se sientan. Se carga la tarifa del buffet del turno por cada uno.</p>
+            <p class="nota">Indica cuántos comensales se sientan y cuántos son niños. Se carga la tarifa del buffet del turno por cada uno.</p>
             <div class="contador">
               <button type="button" (click)="cambiarComensales(-1, m)" aria-label="Un comensal menos">−</button>
               <strong>{{ comensalesApertura() }}</strong>
               <button type="button" (click)="cambiarComensales(1, m)" aria-label="Un comensal más">+</button>
               <span>comensales</span>
+            </div>
+            <div class="contador contador--ninos">
+              <button type="button" (click)="cambiarNinos(-1, m)" [disabled]="ninosApertura() <= 0" aria-label="Un niño menos">−</button>
+              <strong>{{ ninosApertura() }}</strong>
+              <button type="button" (click)="cambiarNinos(1, m)" [disabled]="ninosApertura() >= comensalesApertura() - 1" aria-label="Un niño más">+</button>
+              <span>de ellos, niños de 3 a 10 años <small>(tarifa infantil)</small></span>
             </div>
             <button type="button" class="sh-btn sh-btn--primario ancho" [disabled]="ocupado()" (click)="abrir(m)">Abrir mesa</button>
           }
