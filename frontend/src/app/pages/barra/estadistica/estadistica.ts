@@ -13,7 +13,23 @@ interface RentabilidadMesa {
   mesa: string; capacidad: number; sesiones: number; comensales: number; ingresos: number;
   ingresoMedioSesion: number; ingresoPorComensal: number; ingresoPorPlaza: number; ocupacionMediaMinutos: number;
 }
-interface Turno { turno: string; sesiones: number; comensales: number; ingresos: number; gastoPorComensal: number; }
+interface Turno {
+  turno: string; sesiones: number; comensales: number; ingresos: number; gastoPorComensal: number; bebidaPorComensal: number;
+}
+interface Extras {
+  desgloseIngresos: Serie[];
+  ingresosBebidas: number;
+  unidadesBebidas: number;
+  bebidaPorComensal: number;
+  bebidasPorComensal: number;
+  porcentajeMesasSinBebida: number;
+  bebidasPorTipo: Serie[];
+  rankingBebidas: ProductoVendido[];
+  ingresosPostres: number;
+  postrePorComensal: number;
+  porcentajeComensalesConPostre: number;
+  buffetPorComensal: number;
+}
 interface DiaSemana { dia: string; sesiones: number; ingresos: number; }
 
 export interface CuadroMando {
@@ -31,6 +47,8 @@ export interface CuadroMando {
     ranking: ProductoVendido[];
     categorias: CategoriaVendida[];
     bajaRotacion: ProductoVendido[];
+    raciones: number;
+    racionesPorComensal: number;
   };
   eficiencia: {
     sesiones: number;
@@ -47,6 +65,7 @@ export interface CuadroMando {
     turnos: Turno[];
     diasSemana: DiaSemana[];
   };
+  extras: Extras;
   reservas: { total: number; web: number; canceladas: number; cumplidas: number; comensales: number };
 }
 
@@ -131,6 +150,22 @@ export class EstadisticaComponent implements OnInit {
       (v) => this.euros(v),
     ),
   );
+  /** Reparto de la facturación entre buffet, bebidas y postres (con su porcentaje). */
+  readonly barrasDesglose = computed<Barra[]>(() => {
+    const series = this.datos()?.extras.desgloseIngresos ?? [];
+    const total = series.reduce((a, s) => a + Number(s.valor), 0);
+    return this.aBarras(series, (v) => `${this.euros(v)} · ${total > 0 ? Math.round((v / total) * 100) : 0} %`);
+  });
+  readonly barrasTipoBebida = computed<Barra[]>(() =>
+    this.aBarras(this.datos()?.extras.bebidasPorTipo ?? [], (v) => this.euros(v)),
+  );
+  readonly barrasBebidas = computed<Barra[]>(() =>
+    this.aBarras(
+      (this.datos()?.extras.rankingBebidas ?? []).map((p) => ({ etiqueta: p.nombre, valor: p.ingresos })),
+      (v) => this.euros(v),
+    ),
+  );
+
   readonly pctWeb = computed(() => {
     const r = this.datos()?.reservas;
     return r && r.total > 0 ? Math.round((r.web / r.total) * 100) : 0;

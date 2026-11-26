@@ -270,18 +270,20 @@ def elegir_consumo(n_comensales, turno):
             comida.append(random.choices([p for p, _ in opciones], [w for _, w in opciones])[0])
 
     extras = []
-    vino_en_botella = cena and n_comensales >= 2 and random.random() < 0.14
+    # Algunas mesas solo piden agua del grifo (gratuita por ley desde 2022): no pagan bebida
+    solo_agua_grifo = random.random() < 0.06
+    vino_en_botella = not solo_agua_grifo and cena and n_comensales >= 2 and random.random() < 0.14
     if vino_en_botella:
         extras.append(P(random.choice(["Botella de vino blanco Rueda", "Botella de vino blanco Rueda",
                                        "Botella de vino tinto Rioja", "Botella de Lambrusco"])))
-    if n_comensales >= 4 and random.random() < 0.25:
+    if not solo_agua_grifo and n_comensales >= 4 and random.random() < 0.25:
         extras.append(P("Agua mineral 1,5 l"))
     for _ in range(n_comensales):
-        if vino_en_botella and random.random() < 0.6:
-            pass  # ya bebe de la botella de la mesa
+        if solo_agua_grifo or (vino_en_botella and random.random() < 0.6):
+            pass  # agua del grifo o bebe de la botella de la mesa
         else:
             extras.append(bebida_principal(turno))
-        if random.random() < (0.6 if cena else 0.4):  # segunda ronda de bebida
+        if not solo_agua_grifo and random.random() < (0.6 if cena else 0.4):  # segunda ronda de bebida
             extras.append(bebida_principal(turno))
         if random.random() < 0.3:  # postre (se cobra aparte)
             opciones = por_categoria["Postre"]

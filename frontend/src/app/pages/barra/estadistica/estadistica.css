@@ -34,6 +34,8 @@
 .kpi__nota { font-size: 0.78rem; color: var(--tinta-suave); }
 
 .seccion { font-size: 1.15rem; margin: 28px 0 12px; }
+.seccion small { font-size: 0.8rem; font-weight: 400; color: var(--tinta-suave); margin-left: 6px; }
+.kpi--destacado { border-color: var(--serie); background: #fff5f7; }
 .rejilla { display: grid; gap: 14px; }
 .rejilla--2 { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
 .tarjeta { background: var(--superficie); border: 1px solid var(--borde); border-radius: 16px; padding: 16px 18px; margin-bottom: 14px; }
@@ -46,7 +48,8 @@
 .columna { position: relative; flex: 1; min-width: 14px; height: 100%; display: flex; flex-direction: column; align-items: center; outline: none; }
 .columna__pista { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; }
 .columna__barra { width: min(70%, 28px); min-height: 2px; background: var(--serie); border-radius: 4px 4px 0 0; }
-.columna__eje { font-size: 0.72rem; color: var(--tinta-suave); margin-top: 4px; white-space: nowrap; transform: translateY(100%); position: absolute; bottom: 0; }
+.columna__eje { font-size: 0.72rem; color: var(--tinta-suave); margin-top: 4px; white-space: nowrap; transform: translate(-50%, 100%); position: absolute; bottom: 0; left: 50%; }
+.columnas { padding-inline: 18px; }
 .columnas { margin-bottom: 26px; }
 .columnas--densas { gap: 3px; }
 .columnas--densas .columna { min-width: 6px; }

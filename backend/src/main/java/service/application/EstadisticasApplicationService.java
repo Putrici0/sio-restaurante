@@ -28,7 +28,9 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 
 /**
@@ -82,8 +84,8 @@ public class EstadisticasApplicationService {
                 .filter(c -> c.fechaPago().isPresent() && enRango(c.fechaPago().get(), inicio, fin))
                 .toList();
 
-        return new Cuadro(desde, hasta, ventas(vendidas, desde, hasta), carta(vendidas), eficiencia(sesiones, desde, hasta),
-                sala(vendidas, sesiones), reservas(desde, hasta));
+        return new Cuadro(desde, hasta, ventas(vendidas, desde, hasta), carta(vendidas, sesiones), eficiencia(sesiones, desde, hasta),
+                sala(vendidas, sesiones), extras(vendidas, sesiones), reservas(desde, hasta));
     }
 
     // ---------------------------------------------------------------- ventas
@@ -121,7 +123,7 @@ public class EstadisticasApplicationService {
 
     // ----------------------------------------------------------------- carta
 
-    private Carta carta(List<Orden> vendidas) {
+    private Carta carta(List<Orden> vendidas, List<Cuenta> sesiones) {
         Map<String, ProductoVendido> porPlato = new HashMap<>();
         Map<Categoria, long[]> unidadesCategoria = new LinkedHashMap<>();
         Map<Categoria, BigDecimal> ingresosCategoria = new LinkedHashMap<>();
@@ -139,7 +141,9 @@ public class EstadisticasApplicationService {
             }
         }
 
+        // Platos del buffet más pedidos (la comida incluida: lo que más trabajo y coste genera en cocina)
         List<ProductoVendido> ranking = porPlato.values().stream()
+                .filter(p -> p.categoria() != null && p.categoria().incluidaEnBuffet())
                 .sorted(Comparator.comparingLong(ProductoVendido::unidades).reversed()
                         .thenComparing(ProductoVendido::nombre))
                 .limit(10)
@@ -155,14 +159,20 @@ public class EstadisticasApplicationService {
         // Baja rotación: platos activos de la carta con menos unidades vendidas (incluye los no vendidos)
         List<ProductoVendido> bajaRotacion = platoRepository.findAll().stream()
                 .filter(Plato::estaActivo)
-                .filter(p -> p.categoria() != Categoria.Buffet)
+                .filter(p -> p.categoria() != null && p.categoria().incluidaEnBuffet())
                 .map(p -> porPlato.getOrDefault(p.id(),
                         new ProductoVendido(p.id(), p.nombre(), p.categoria(), 0, BigDecimal.ZERO)))
                 .sorted(Comparator.comparingLong(ProductoVendido::unidades).thenComparing(ProductoVendido::nombre))
                 .limit(5)
                 .toList();
 
-        return new Carta(ranking, categorias, bajaRotacion);
+        long comensales = sesiones.stream().mapToLong(c -> Math.max(0, c.comensales())).sum();
+        long raciones = vendidas.stream()
+                .filter(o -> o.plato() != null && o.plato().categoria() != null && o.plato().categoria().incluidaEnBuffet())
+                .count();
+        double racionesPorComensal = comensales == 0 ? 0 : redondear((double) raciones / comensales);
+
+        return new Carta(ranking, categorias, bajaRotacion, raciones, racionesPorComensal);
     }
 
     // ------------------------------------------------------------ eficiencia
@@ -210,9 +220,18 @@ public class EstadisticasApplicationService {
         Map<String, BigDecimal> mesaIngresos = new HashMap<>();
         Map<String, long[]> turnoSesionesComensales = new LinkedHashMap<>();
         Map<String, BigDecimal> turnoIngresos = new LinkedHashMap<>();
+        Map<String, BigDecimal> turnoBebidas = new LinkedHashMap<>();
         for (String t : List.of("Almuerzo", "Cena")) {
             turnoSesionesComensales.put(t, new long[2]);
             turnoIngresos.put(t, BigDecimal.ZERO);
+            turnoBebidas.put(t, BigDecimal.ZERO);
+        }
+        Map<String, BigDecimal> bebidasPorCuenta = new HashMap<>();
+        for (Orden o : vendidas) {
+            String cuentaId = cuentaId(o);
+            if (cuentaId != null && o.plato() != null && o.plato().categoria() == Categoria.Bebida) {
+                bebidasPorCuenta.merge(cuentaId, precio(o), BigDecimal::add);
+            }
         }
         Map<DayOfWeek, BigDecimal> diaIngresos = new TreeMap<>();
         Map<DayOfWeek, long[]> diaSesiones = new TreeMap<>();
@@ -235,6 +254,7 @@ public class EstadisticasApplicationService {
             t[0]++;
             t[1] += comensales;
             turnoIngresos.merge(turno, ingreso, BigDecimal::add);
+            turnoBebidas.merge(turno, bebidasPorCuenta.getOrDefault(c.id(), BigDecimal.ZERO), BigDecimal::add);
 
             DayOfWeek dia = c.fechaPago().get().atZone(ZONA).getDayOfWeek();
             diaIngresos.merge(dia, ingreso, BigDecimal::add);
@@ -260,7 +280,8 @@ public class EstadisticasApplicationService {
             long[] v = turnoSesionesComensales.get(t);
             BigDecimal ingresos = escala(turnoIngresos.get(t));
             turnos.add(new Turno(t, v[0], v[1], ingresos,
-                    v[1] == 0 ? BigDecimal.ZERO : ingresos.divide(BigDecimal.valueOf(v[1]), 2, RoundingMode.HALF_UP)));
+                    v[1] == 0 ? BigDecimal.ZERO : ingresos.divide(BigDecimal.valueOf(v[1]), 2, RoundingMode.HALF_UP),
+                    v[1] == 0 ? BigDecimal.ZERO : turnoBebidas.get(t).divide(BigDecimal.valueOf(v[1]), 2, RoundingMode.HALF_UP)));
         }
 
         List<DiaSemana> dias = new ArrayList<>();
@@ -276,6 +297,99 @@ public class EstadisticasApplicationService {
                 : redondear(bebidas.multiply(BigDecimal.valueOf(100)).divide(total, 2, RoundingMode.HALF_UP).doubleValue());
 
         return new Sala(comensalesTotales, gastoPorComensal, pctBebidas, mesas, turnos, dias);
+    }
+
+    // ------------------------------------------------- bebidas y extras
+
+    /**
+     * Lo que no va incluido en el buffet: bebidas y postres. Es donde está el margen del
+     * negocio, así que se desglosa por tipo de bebida, por producto y por comensal.
+     */
+    private Extras extras(List<Orden> vendidas, List<Cuenta> sesiones) {
+        BigDecimal buffet = BigDecimal.ZERO;
+        BigDecimal bebidas = BigDecimal.ZERO;
+        BigDecimal postres = BigDecimal.ZERO;
+        long unidadesBebida = 0;
+        long unidadesPostre = 0;
+        Map<String, BigDecimal> porTipo = new LinkedHashMap<>();
+        for (String tipo : TIPOS_BEBIDA) porTipo.put(tipo, BigDecimal.ZERO);
+        Map<String, ProductoVendido> porBebida = new HashMap<>();
+        Set<String> cuentasConBebida = new HashSet<>();
+
+        for (Orden o : vendidas) {
+            Plato plato = o.plato();
+            if (plato == null || plato.categoria() == null) continue;
+            switch (plato.categoria()) {
+                case Buffet -> buffet = buffet.add(precio(o));
+                case Postre -> {
+                    postres = postres.add(precio(o));
+                    unidadesPostre++;
+                }
+                case Bebida -> {
+                    bebidas = bebidas.add(precio(o));
+                    unidadesBebida++;
+                    porTipo.merge(tipoBebida(plato.nombre()), precio(o), BigDecimal::add);
+                    porBebida.merge(plato.id(),
+                            new ProductoVendido(plato.id(), plato.nombre(), plato.categoria(), 1, precio(o)),
+                            (a, b) -> new ProductoVendido(a.platoId(), a.nombre(), a.categoria(),
+                                    a.unidades() + 1, a.ingresos().add(b.ingresos())));
+                    String cuentaId = cuentaId(o);
+                    if (cuentaId != null) cuentasConBebida.add(cuentaId);
+                }
+                default -> { }
+            }
+        }
+
+        long comensales = sesiones.stream().mapToLong(c -> Math.max(0, c.comensales())).sum();
+        long mesasSinBebida = sesiones.stream().filter(c -> !cuentasConBebida.contains(c.id())).count();
+
+        List<Serie> desglose = List.of(
+                new Serie("Buffet (tarifa por comensal)", escala(buffet)),
+                new Serie("Bebidas", escala(bebidas)),
+                new Serie("Postres", escala(postres)));
+        List<Serie> tipos = porTipo.entrySet().stream()
+                .map(e -> new Serie(e.getKey(), escala(e.getValue())))
+                .sorted(Comparator.comparing(Serie::valor).reversed())
+                .toList();
+        List<ProductoVendido> rankingBebidas = porBebida.values().stream()
+                .sorted(Comparator.comparing(ProductoVendido::ingresos).reversed())
+                .limit(10)
+                .map(p -> new ProductoVendido(p.platoId(), p.nombre(), p.categoria(), p.unidades(), escala(p.ingresos())))
+                .toList();
+
+        return new Extras(
+                desglose,
+                escala(bebidas),
+                unidadesBebida,
+                porComensal(bebidas, comensales),
+                comensales == 0 ? 0 : redondear((double) unidadesBebida / comensales),
+                sesiones.isEmpty() ? 0 : redondear(mesasSinBebida * 100.0 / sesiones.size()),
+                tipos,
+                rankingBebidas,
+                escala(postres),
+                porComensal(postres, comensales),
+                comensales == 0 ? 0 : redondear(unidadesPostre * 100.0 / comensales),
+                porComensal(buffet, comensales));
+    }
+
+    private static final List<String> TIPOS_BEBIDA = List.of(
+            "Agua", "Refrescos y zumos", "Cervezas", "Vinos", "Sake y licores", "Cafés y tés");
+
+    /** Agrupa las bebidas de la carta por tipo a partir de su nombre. */
+    static String tipoBebida(String nombre) {
+        String n = nombre == null ? "" : nombre.toLowerCase(new Locale("es", "ES"));
+        if (n.contains("agua")) return "Agua";
+        if (n.contains("cerveza") || n.contains("caña") || n.contains("asahi") || n.contains("sapporo")
+                || n.contains("kirin")) return "Cervezas";
+        if (n.contains("vino") || n.contains("lambrusco") || n.contains("tinto") || n.contains("cava")) return "Vinos";
+        if (n.contains("sake") || n.contains("umeshu") || n.contains("licor") || n.contains("chupito")) return "Sake y licores";
+        if (n.contains("café") || n.contains("cafe") || n.startsWith("té") || n.contains(" té") || n.contains("matcha")
+                || n.contains("infusión")) return "Cafés y tés";
+        return "Refrescos y zumos";
+    }
+
+    private BigDecimal porComensal(BigDecimal importe, long comensales) {
+        return comensales == 0 ? BigDecimal.ZERO : importe.divide(BigDecimal.valueOf(comensales), 2, RoundingMode.HALF_UP);
     }
 
     // ---------------------------------------------------------- reservas
@@ -320,7 +434,7 @@ public class EstadisticasApplicationService {
     // ------------------------------------------------------------------ DTOs
 
     public record Cuadro(LocalDate desde, LocalDate hasta, Ventas ventas, Carta carta, Eficiencia eficiencia,
-                         Sala sala, Reservas reservas) {}
+                         Sala sala, Extras extras, Reservas reservas) {}
 
     public record Serie(String etiqueta, BigDecimal valor) {}
 
@@ -331,7 +445,8 @@ public class EstadisticasApplicationService {
 
     public record CategoriaVendida(Categoria categoria, long unidades, BigDecimal ingresos) {}
 
-    public record Carta(List<ProductoVendido> ranking, List<CategoriaVendida> categorias, List<ProductoVendido> bajaRotacion) {}
+    public record Carta(List<ProductoVendido> ranking, List<CategoriaVendida> categorias, List<ProductoVendido> bajaRotacion,
+                        long raciones, double racionesPorComensal) {}
 
     public record RotacionDia(String fecha, long sesiones, double rotacion) {}
 
@@ -342,7 +457,8 @@ public class EstadisticasApplicationService {
                                    BigDecimal ingresoMedioSesion, BigDecimal ingresoPorComensal,
                                    BigDecimal ingresoPorPlaza, double ocupacionMediaMinutos) {}
 
-    public record Turno(String turno, long sesiones, long comensales, BigDecimal ingresos, BigDecimal gastoPorComensal) {}
+    public record Turno(String turno, long sesiones, long comensales, BigDecimal ingresos, BigDecimal gastoPorComensal,
+                        BigDecimal bebidaPorComensal) {}
 
     public record DiaSemana(String dia, long sesiones, BigDecimal ingresos) {}
 
@@ -350,4 +466,11 @@ public class EstadisticasApplicationService {
                        List<RentabilidadMesa> mesas, List<Turno> turnos, List<DiaSemana> diasSemana) {}
 
     public record Reservas(long total, long web, long canceladas, long cumplidas, long comensales) {}
+
+    /** Bebidas y postres: lo que se cobra aparte del buffet. */
+    public record Extras(List<Serie> desgloseIngresos, BigDecimal ingresosBebidas, long unidadesBebidas,
+                         BigDecimal bebidaPorComensal, double bebidasPorComensal, double porcentajeMesasSinBebida,
+                         List<Serie> bebidasPorTipo, List<ProductoVendido> rankingBebidas,
+                         BigDecimal ingresosPostres, BigDecimal postrePorComensal, double porcentajeComensalesConPostre,
+                         BigDecimal buffetPorComensal) {}
 }

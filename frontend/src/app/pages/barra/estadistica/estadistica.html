@@ -98,17 +98,60 @@
         <article class="kpi">
           <span class="kpi__label">Gasto medio por comensal</span>
           <span class="kpi__valor">{{ euros(d.sala.gastoPorComensal) }}</span>
-          <span class="kpi__nota">buffet + bebidas</span>
+          <span class="kpi__nota">{{ euros(d.extras.buffetPorComensal) }} buffet · {{ euros(d.extras.bebidaPorComensal) }} bebida · {{ euros(d.extras.postrePorComensal) }} postre</span>
         </article>
         <article class="kpi">
-          <span class="kpi__label">Peso de las bebidas</span>
-          <span class="kpi__valor">{{ d.sala.porcentajeBebidas | number:'1.0-1' }} %</span>
-          <span class="kpi__nota">sobre los ingresos</span>
+          <span class="kpi__label">Ingresos por bebidas</span>
+          <span class="kpi__valor">{{ euros(d.extras.ingresosBebidas) }}</span>
+          <span class="kpi__nota">{{ d.sala.porcentajeBebidas | number:'1.0-1' }} % de la facturación</span>
         </article>
         <article class="kpi">
           <span class="kpi__label">Reservas</span>
           <span class="kpi__valor">{{ d.reservas.total }}</span>
           <span class="kpi__nota">{{ pctWeb() }} % online · {{ d.reservas.canceladas }} canceladas</span>
+        </article>
+      </section>
+
+      <!-- Bebidas y extras: lo que se cobra aparte del buffet -->
+      <h2 class="seccion">Bebidas y extras <small>lo que no incluye el buffet</small></h2>
+      <section class="kpis">
+        <article class="kpi kpi--destacado">
+          <span class="kpi__label">Bebida por comensal</span>
+          <span class="kpi__valor">{{ euros(d.extras.bebidaPorComensal) }}</span>
+          <span class="kpi__nota">{{ d.extras.bebidasPorComensal | number:'1.1-1' }} bebidas por persona</span>
+        </article>
+        <article class="kpi">
+          <span class="kpi__label">Bebidas vendidas</span>
+          <span class="kpi__valor">{{ d.extras.unidadesBebidas | number }}</span>
+          <span class="kpi__nota">{{ euros(d.extras.ingresosBebidas) }}</span>
+        </article>
+        <article class="kpi">
+          <span class="kpi__label">Mesas sin bebida</span>
+          <span class="kpi__valor">{{ d.extras.porcentajeMesasSinBebida | number:'1.0-1' }} %</span>
+          <span class="kpi__nota">oportunidad de venta en sala</span>
+        </article>
+        <article class="kpi">
+          <span class="kpi__label">Postres</span>
+          <span class="kpi__valor">{{ euros(d.extras.ingresosPostres) }}</span>
+          <span class="kpi__nota">lo pide el {{ d.extras.porcentajeComensalesConPostre | number:'1.0-0' }} % de los comensales</span>
+        </article>
+      </section>
+      <section class="rejilla rejilla--2">
+        <article class="tarjeta">
+          <h3>De dónde vienen los ingresos</h3>
+          <ng-container *ngTemplateOutlet="horizontales; context: { $implicit: barrasDesglose() }" />
+          <h3 class="subtitulo">Bebidas por tipo</h3>
+          <ng-container *ngTemplateOutlet="horizontales; context: { $implicit: barrasTipoBebida() }" />
+        </article>
+        <article class="tarjeta">
+          <h3>Bebidas que más facturan</h3>
+          @if (verTablas()) {
+            <table><thead><tr><th>Bebida</th><th>Unidades</th><th>Ingresos</th></tr></thead><tbody>
+              @for (p of d.extras.rankingBebidas; track p.platoId) { <tr><td>{{ p.nombre }}</td><td>{{ p.unidades }}</td><td>{{ euros(p.ingresos) }}</td></tr> }
+            </tbody></table>
+          } @else {
+            <ng-container *ngTemplateOutlet="horizontales; context: { $implicit: barrasBebidas() }" />
+          }
         </article>
       </section>
 
@@ -154,10 +197,10 @@
         <article class="tarjeta">
           <h3>Almuerzo frente a cena</h3>
           <table>
-            <thead><tr><th>Turno</th><th>Mesas</th><th>Comensales</th><th>Ingresos</th><th>€/comensal</th></tr></thead>
+            <thead><tr><th>Turno</th><th>Mesas</th><th>Comensales</th><th>Ingresos</th><th>€/comensal</th><th>Bebida/comensal</th></tr></thead>
             <tbody>
               @for (t of d.sala.turnos; track t.turno) {
-                <tr><td>{{ t.turno }}</td><td>{{ t.sesiones }}</td><td>{{ t.comensales }}</td><td>{{ euros(t.ingresos) }}</td><td>{{ euros(t.gastoPorComensal) }}</td></tr>
+                <tr><td>{{ t.turno }}</td><td>{{ t.sesiones }}</td><td>{{ t.comensales }}</td><td>{{ euros(t.ingresos) }}</td><td>{{ euros(t.gastoPorComensal) }}</td><td>{{ euros(t.bebidaPorComensal) }}</td></tr>
               }
             </tbody>
           </table>
@@ -210,7 +253,7 @@
       <h2 class="seccion">Análisis de carta</h2>
       <section class="rejilla rejilla--2">
         <article class="tarjeta">
-          <h3>Ranking de productos más vendidos</h3>
+          <h3>Platos del buffet más pedidos <small>{{ d.carta.racionesPorComensal | number:'1.1-1' }} raciones por comensal</small></h3>
           @if (verTablas()) {
             <table><thead><tr><th>Plato</th><th>Unidades</th><th>Ingresos</th></tr></thead><tbody>
               @for (p of d.carta.ranking; track p.platoId) { <tr><td>{{ p.nombre }}</td><td>{{ p.unidades }}</td><td>{{ euros(p.ingresos) }}</td></tr> }
@@ -228,7 +271,7 @@
           } @else {
             <ng-container *ngTemplateOutlet="horizontales; context: { $implicit: barrasCategoria() }" />
           }
-          <h3 class="subtitulo">Productos de baja rotación</h3>
+          <h3 class="subtitulo">Platos del buffet que casi no se piden</h3>
           <table>
             <thead><tr><th>Plato</th><th>Categoría</th><th>Unidades</th></tr></thead>
             <tbody>
