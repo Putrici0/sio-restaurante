@@ -46,8 +46,12 @@
 .columna { position: relative; flex: 1; min-width: 14px; height: 100%; display: flex; flex-direction: column; align-items: center; outline: none; }
 .columna__pista { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; }
 .columna__barra { width: min(70%, 28px); min-height: 2px; background: var(--serie); border-radius: 4px 4px 0 0; }
-.columna__eje { font-size: 0.68rem; color: var(--tinta-suave); margin-top: 4px; white-space: nowrap; transform: translateY(100%); position: absolute; bottom: 0; }
+.columna__eje { font-size: 0.72rem; color: var(--tinta-suave); margin-top: 4px; white-space: nowrap; transform: translateY(100%); position: absolute; bottom: 0; }
 .columnas { margin-bottom: 26px; }
+.columnas--densas { gap: 3px; }
+.columnas--densas .columna { min-width: 6px; }
+.columnas--densas .columna__barra { width: 80%; }
+.escala { margin: -6px 0 6px; font-size: 0.78rem; color: var(--tinta-suave); }
 .columna:hover .columna__barra, .columna:focus .columna__barra { filter: brightness(0.85); }
 
 .tooltip {

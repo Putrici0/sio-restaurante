@@ -51,7 +51,10 @@ export interface CuadroMando {
 }
 
 /** Barra de un gráfico de barras de una sola serie (alto/ancho en % del máximo). */
-interface Barra { etiqueta: string; valor: number; pct: number; texto: string; }
+interface Barra { etiqueta: string; valor: number; pct: number; texto: string; eje: string; }
+
+/** Como máximo se rotulan unas 10 marcas del eje X; el resto se ve al pasar el ratón. */
+const MAX_ROTULOS_EJE = 10;
 
 type Rango = '7d' | '30d' | 'mes' | 'personalizado';
 
@@ -81,8 +84,9 @@ export class EstadisticaComponent implements OnInit {
 
   readonly barrasDia = computed<Barra[]>(() =>
     this.aBarras(
-      (this.datos()?.ventas.ingresosPorDia ?? []).map((s) => ({ etiqueta: this.diaCorto(s.etiqueta), valor: s.valor })),
+      (this.datos()?.ventas.ingresosPorDia ?? []).map((s) => ({ etiqueta: this.diaLargo(s.etiqueta), valor: s.valor })),
       (v) => this.euros(v),
+      (s, n) => this.diaEje(s, n),
     ),
   );
   readonly barrasHora = computed<Barra[]>(() =>
@@ -102,8 +106,9 @@ export class EstadisticaComponent implements OnInit {
   );
   readonly barrasRotacion = computed<Barra[]>(() =>
     this.aBarras(
-      (this.datos()?.eficiencia.rotacionPorDia ?? []).map((r) => ({ etiqueta: this.diaCorto(r.fecha), valor: r.rotacion })),
+      (this.datos()?.eficiencia.rotacionPorDia ?? []).map((r) => ({ etiqueta: this.diaLargo(r.fecha), valor: r.rotacion })),
       (v) => `${v.toFixed(2)} rot.`,
+      (s, n) => this.diaEje(s, n),
     ),
   );
   /** Mesas ordenadas por ingresos por plaza (rentabilidad independiente del tamaño de la mesa). */
@@ -192,19 +197,38 @@ export class EstadisticaComponent implements OnInit {
     return total > 0 ? Math.round((s.valor / total) * 100) : 0;
   }
 
-  private aBarras(series: Serie[], formato: (v: number) => string): Barra[] {
+  /** Valor máximo de una serie, para rotular la escala del gráfico. */
+  maximo(barras: Barra[]): Barra | null {
+    return barras.length ? barras.reduce((a, b) => (b.valor > a.valor ? b : a)) : null;
+  }
+
+  private aBarras(
+    series: Serie[],
+    formato: (v: number) => string,
+    rotuloEje: (s: Serie, total: number) => string = (s) => s.etiqueta,
+  ): Barra[] {
     const max = Math.max(0, ...series.map((s) => Number(s.valor)));
-    return series.map((s) => ({
+    // Con muchas barras solo se rotula una de cada 'paso' para que el eje no se solape
+    const paso = Math.max(1, Math.ceil(series.length / MAX_ROTULOS_EJE));
+    return series.map((s, i) => ({
       etiqueta: s.etiqueta,
       valor: Number(s.valor),
       pct: max > 0 ? (Number(s.valor) / max) * 100 : 0,
       texto: formato(Number(s.valor)),
+      eje: i % paso === 0 ? rotuloEje(s, series.length) : '',
     }));
   }
 
-  private diaCorto(iso: string): string {
+  /** Fecha completa para el tooltip y las tablas: «lun, 3 nov». */
+  private diaLargo(iso: string): string {
     const d = new Date(`${iso}T00:00:00`);
-    return d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'numeric' });
+    return d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+  }
+
+  /** Rótulo del eje a partir de «lun, 3 nov»: con pocos días «lun 3»; con muchos, «3 nov». */
+  private diaEje(s: Serie, total: number): string {
+    const [semana, dia, mes] = s.etiqueta.replace(',', '').split(' ');
+    return total <= MAX_ROTULOS_EJE ? `${semana} ${dia}` : `${dia} ${mes ?? ''}`.trim();
   }
 
   private isoDia(desplazamiento: number): string {

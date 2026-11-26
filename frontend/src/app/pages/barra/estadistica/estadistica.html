@@ -2,14 +2,19 @@
 
 <!-- Gráfico de columnas (series temporales) -->
 <ng-template #columnas let-barras let-titulo="titulo">
-  <div class="columnas" role="img" [attr.aria-label]="titulo">
+  @if (maximo(barras); as max) {
+    <p class="escala">Máximo: <strong>{{ max.texto }}</strong> ({{ max.etiqueta }})</p>
+  }
+  <div class="columnas" [class.columnas--densas]="barras.length > 14" role="img" [attr.aria-label]="titulo">
     @for (b of barras; track b.etiqueta) {
       <div class="columna" tabindex="0">
         <span class="tooltip">{{ b.etiqueta }} · {{ b.texto }}</span>
         <div class="columna__pista">
           <div class="columna__barra" [style.height.%]="b.pct"></div>
         </div>
-        <span class="columna__eje">{{ b.etiqueta }}</span>
+        @if (b.eje) {
+          <span class="columna__eje">{{ b.eje }}</span>
+        }
       </div>
     }
   </div>
@@ -109,17 +114,17 @@
 
       <!-- Análisis de ventas -->
       <h2 class="seccion">Análisis de ventas</h2>
+      <article class="tarjeta">
+        <h3>Ingresos por día</h3>
+        @if (verTablas()) {
+          <table><thead><tr><th>Día</th><th>Ingresos</th></tr></thead><tbody>
+            @for (b of barrasDia(); track b.etiqueta) { <tr><td>{{ b.etiqueta }}</td><td>{{ b.texto }}</td></tr> }
+          </tbody></table>
+        } @else {
+          <ng-container *ngTemplateOutlet="columnas; context: { $implicit: barrasDia(), titulo: 'Ingresos por día' }" />
+        }
+      </article>
       <section class="rejilla rejilla--2">
-        <article class="tarjeta">
-          <h3>Ingresos por día</h3>
-          @if (verTablas()) {
-            <table><thead><tr><th>Día</th><th>Ingresos</th></tr></thead><tbody>
-              @for (b of barrasDia(); track b.etiqueta) { <tr><td>{{ b.etiqueta }}</td><td>{{ b.texto }}</td></tr> }
-            </tbody></table>
-          } @else {
-            <ng-container *ngTemplateOutlet="columnas; context: { $implicit: barrasDia(), titulo: 'Ingresos por día' }" />
-          }
-        </article>
         <article class="tarjeta">
           <h3>Ingresos por franja horaria</h3>
           @if (verTablas()) {
@@ -132,8 +137,7 @@
             <ng-container *ngTemplateOutlet="columnas; context: { $implicit: barrasHora(), titulo: 'Ingresos por franja horaria' }" />
           }
         </article>
-      </section>
-      <article class="tarjeta tarjeta--compacta">
+        <article class="tarjeta">
         <h3>Ingresos por método de pago</h3>
         <ul class="lista-metodos">
           @for (m of d.ventas.ingresosPorMetodo; track m.etiqueta) {
@@ -144,6 +148,7 @@
           }
         </ul>
       </article>
+      </section>
 
       <section class="rejilla rejilla--2">
         <article class="tarjeta">
@@ -241,7 +246,7 @@
         <h3>Tasa de rotación de mesas por día</h3>
         @if (verTablas()) {
           <table><thead><tr><th>Día</th><th>Sesiones</th><th>Rotación</th></tr></thead><tbody>
-            @for (r of d.eficiencia.rotacionPorDia; track r.fecha) { <tr><td>{{ r.fecha }}</td><td>{{ r.sesiones }}</td><td>{{ r.rotacion | number:'1.2-2' }}</td></tr> }
+            @for (r of d.eficiencia.rotacionPorDia; track r.fecha; let i = $index) { <tr><td>{{ barrasRotacion()[i].etiqueta }}</td><td>{{ r.sesiones }}</td><td>{{ r.rotacion | number:'1.2-2' }}</td></tr> }
           </tbody></table>
         } @else {
           <ng-container *ngTemplateOutlet="columnas; context: { $implicit: barrasRotacion(), titulo: 'Rotación de mesas por día' }" />
