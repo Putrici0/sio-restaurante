@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { forkJoin } from 'rxjs';
-import { PagoCuenta, generarTicketPdf, nombreArchivoTicket, pagosDeCuenta, ticketDePago } from '../../../services/ticket-pdf';
+import { LineaTicket, PagoCuenta, agruparLineas, generarTicketPdf, nombreArchivoTicket, pagosDeCuenta, ticketDePago } from '../../../services/ticket-pdf';
 
 import { Navbar } from '../../../shared/navbar/navbar';
 import {
@@ -184,6 +184,64 @@ export class HistorialComponent {
       },
     });
   }
+  private readonly ordenesValidas = computed(() =>
+    this.ordenesDetalle().filter((o) => o.ordenEstado !== 'Cancelado'),
+  );
+
+  /** Lo que se cobra, por bloques: tarifas del buffet, bebidas y postres. */
+  readonly bloquesConsumo = computed<{ titulo: string; lineas: LineaTicket[]; total: number }[]>(() => {
+    const bloques: { titulo: string; categoria: string }[] = [
+      { titulo: 'Buffet', categoria: 'Buffet' },
+      { titulo: 'Bebidas', categoria: 'Bebida' },
+      { titulo: 'Postres', categoria: 'Postre' },
+    ];
+    return bloques
+      .map((b) => {
+        const lineas = agruparLineas(
+          this.ordenesValidas()
+            .filter((o) => o.plato?.categoria === b.categoria && Number(o.precio) > 0)
+            .map((o) => ({ nombre: o.plato.nombre, precio: Number(o.precio) })),
+        ).sort((x, y) => y.importe - x.importe);
+        return { titulo: b.titulo, lineas, total: lineas.reduce((a, l) => a + l.importe, 0) };
+      })
+      .filter((b) => b.lineas.length > 0);
+  });
+
+  /** Platos del buffet incluidos en la tarifa (0 €), de más a menos pedidos. */
+  readonly platosIncluidos = computed(() =>
+    agruparLineas(
+      this.ordenesValidas()
+        .filter((o) => Number(o.precio) <= 0)
+        .map((o) => ({ nombre: o.plato?.nombre ?? 'Plato', precio: 0 })),
+    ).sort((a, b) => b.cantidad - a.cantidad),
+  );
+  readonly totalIncluidos = computed(() => this.platosIncluidos().reduce((a, l) => a + l.cantidad, 0));
+
+  readonly ninosDetalle = computed(
+    () => this.ordenesValidas().filter((o) => o.plato?.categoria === 'Buffet' && o.plato.id.endsWith('infantil')).length,
+  );
+
+  /** «1 h 15 min» entre la apertura de la mesa y el último cobro. */
+  readonly duracionDetalle = computed(() => {
+    const cuenta = this.cuentaDetalle();
+    const fin = this.cobros().at(-1)?.fechaPago ?? cuenta?.fechaPago;
+    if (!cuenta?.fechaCreacion || !fin) return null;
+    const min = Math.max(0, Math.round((new Date(fin).getTime() - new Date(cuenta.fechaCreacion).getTime()) / 60000));
+    return min >= 60 ? `${Math.floor(min / 60)} h ${min % 60} min` : `${min} min`;
+  });
+
+  hora(iso?: string | null): string {
+    return iso ? new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '';
+  }
+
+  fechaLarga(iso?: string | null): string {
+    return iso ? new Date(iso).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }) : '';
+  }
+
+  metodoTexto(m: string): string {
+    return m === 'TARJETA' ? 'Tarjeta' : m === 'EFECTIVO' ? 'Efectivo' : m;
+  }
+
   /** Cobros de la cuenta (uno por pago parcial o total), cada uno con su ticket. */
   readonly cobros = computed<PagoCuenta[]>(() =>
     pagosDeCuenta(

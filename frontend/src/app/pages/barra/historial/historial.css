@@ -699,3 +699,63 @@
     justify-content: flex-end;
   }
 }
+
+/* ------------------------------------------------------------------ Detalle de cuenta (panel lateral) */
+.det-velo { position: fixed; inset: 0; background: rgba(43, 32, 36, 0.32); z-index: 1400; animation: det-fundido 0.15s ease-out; }
+.det {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 1401;
+  width: min(520px, 100vw); display: flex; flex-direction: column;
+  background: var(--sh-papel); box-shadow: -12px 0 40px rgba(142, 42, 67, 0.18);
+  animation: det-entrada 0.2s ease-out;
+}
+@keyframes det-entrada { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes det-fundido { from { opacity: 0; } to { opacity: 1; } }
+.det__cargando { padding: 32px; color: var(--sh-tinta-suave); }
+.det__cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 22px 24px 10px; }
+.det__cab h2 { margin: 4px 0 0; font-family: var(--sh-fuente-titulos); font-size: 2rem; font-variant-numeric: tabular-nums; }
+.det__cab .sh-eyebrow::first-letter { text-transform: uppercase; }
+.det__cerrar { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--sh-borde); background: var(--sh-superficie); cursor: pointer; font-size: 1rem; }
+.det__datos { list-style: none; margin: 0; padding: 0 24px 14px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; border-bottom: 1px solid var(--sh-borde); }
+.det__datos li { background: var(--sh-superficie); border: 1px solid var(--sh-borde); border-radius: 12px; padding: 8px 10px; display: grid; gap: 2px; }
+.det__datos span { font-size: 0.72rem; color: var(--sh-tinta-suave); text-transform: uppercase; letter-spacing: 0.06em; }
+.det__datos strong { font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+.det__datos small { font-weight: 400; color: var(--sh-tinta-suave); }
+.det__cuerpo { flex: 1; overflow-y: auto; padding: 6px 24px 20px; }
+.det__seccion h3 { margin: 18px 0 10px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--sh-tinta-suave); }
+.det__vacio { color: var(--sh-tinta-suave); }
+
+.det__pagos { display: grid; gap: 10px; }
+.pago { background: var(--sh-superficie); border: 1px solid var(--sh-borde); border-radius: 14px; padding: 12px 14px; display: grid; gap: 8px; }
+.pago__cab { display: flex; align-items: center; gap: 10px; }
+.pago__metodo { font-size: 0.8rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--sh-sakura-100); color: var(--sh-sakura-800); }
+.pago__metodo--efectivo { background: #e7f3ea; color: var(--sh-ok); }
+.pago__hora { font-size: 0.85rem; color: var(--sh-tinta-suave); }
+.pago__importe { margin-left: auto; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.pago__lineas { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-size: 0.86rem; color: var(--sh-tinta-suave); }
+.pago__lineas li { display: flex; justify-content: space-between; gap: 10px; }
+.pago__ticket { justify-self: start; padding: 6px 12px; font-size: 0.85rem; }
+
+.bloque { margin-bottom: 12px; }
+.bloque__titulo { display: flex; justify-content: space-between; margin: 0 0 6px; font-weight: 700; font-size: 0.92rem; }
+.bloque__lineas { list-style: none; margin: 0; padding: 0; background: var(--sh-superficie); border: 1px solid var(--sh-borde); border-radius: 12px; }
+.bloque__lineas li { display: grid; grid-template-columns: 34px 1fr auto; gap: 8px; align-items: center; padding: 8px 12px; font-size: 0.9rem; }
+.bloque__lineas li + li { border-top: 1px solid var(--sh-borde); }
+.bloque__cantidad { font-weight: 700; color: var(--sh-sakura-600); font-variant-numeric: tabular-nums; }
+.bloque__importe { font-variant-numeric: tabular-nums; }
+
+.incluidos { margin-top: 10px; border: 1px dashed var(--sh-borde); border-radius: 12px; background: var(--sh-superficie); }
+.incluidos summary { display: flex; justify-content: space-between; gap: 10px; padding: 10px 12px; cursor: pointer; font-weight: 600; font-size: 0.9rem; list-style: none; }
+.incluidos summary::-webkit-details-marker { display: none; }
+.incluidos summary::after { content: '▾'; color: var(--sh-tinta-suave); }
+.incluidos[open] summary::after { content: '▴'; }
+.incluidos__nota { margin-left: auto; font-weight: 400; color: var(--sh-tinta-suave); }
+.incluidos__lista { list-style: none; margin: 0; padding: 0 12px 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+.incluidos__lista li { font-size: 0.8rem; padding: 4px 9px; border-radius: 999px; background: var(--sh-sakura-50); border: 1px solid var(--sh-borde); }
+.incluidos--cancelados .incluidos__lista li { text-decoration: line-through; color: var(--sh-tinta-suave); }
+
+.det__pie { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 24px; border-top: 1px solid var(--sh-borde); background: var(--sh-superficie); }
+.det__pie strong { font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 560px) {
+  .det__datos { grid-template-columns: repeat(2, 1fr); }
+}

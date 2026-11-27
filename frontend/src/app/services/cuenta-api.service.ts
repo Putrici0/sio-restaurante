@@ -24,6 +24,7 @@ export interface CuentaDetalleResponse {
   fechaPago?: string | null;
   password: string;
   metodoPago?: 'EFECTIVO' | 'TARJETA' | null;
+  comensales?: number;
   mesas: Array<{
     id: string;
     capacidad?: number;

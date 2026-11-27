@@ -87,88 +87,118 @@
   }
 
   @if (mostrarDetalle()) {
-    <div class="historial-modal-overlay" (click)="cerrarDetalle()">
-      <div class="historial-modal" (click)="$event.stopPropagation()">
-        @if (cargandoDetalle()) {
-          <p>Cargando detalle...</p>
-        } @else {
-          <div class="historial-modal__header">
-            <h3>Detalle de la cuenta</h3>
-            <div class="historial-modal__acciones">
-              <button type="button" class="historial-modal__cerrar" (click)="cerrarDetalle()">✕</button>
-            </div>
+    <div class="det-velo" (click)="cerrarDetalle()"></div>
+    <aside class="det" role="dialog" aria-modal="true" aria-labelledby="det-titulo">
+      @if (cargandoDetalle()) {
+        <p class="det__cargando">Cargando cuenta…</p>
+      } @else if (cuentaDetalle(); as c) {
+        <header class="det__cab">
+          <div>
+            <p class="sh-eyebrow">Mesa {{ obtenerMesaDetalle() }} · {{ fechaLarga(c.fechaCreacion) }}</p>
+            <h2 id="det-titulo">{{ totalDetalle() | number:'1.2-2' }} €</h2>
           </div>
+          <button type="button" class="det__cerrar" (click)="cerrarDetalle()" aria-label="Cerrar">✕</button>
+        </header>
 
-          <div class="historial-modal__meta">
-            <p><strong>Mesa:</strong> {{ obtenerMesaDetalle() }}</p>
-          </div>
+        <ul class="det__datos">
+          <li><span>Horario</span><strong>{{ hora(c.fechaCreacion) }} – {{ hora(cobros().at(-1)?.fechaPago ?? c.fechaPago) }}</strong></li>
+          @if (duracionDetalle()) {
+            <li><span>Duración</span><strong>{{ duracionDetalle() }}</strong></li>
+          }
+          @if (c.comensales) {
+            <li>
+              <span>Comensales</span>
+              <strong>{{ c.comensales }}@if (ninosDetalle() > 0) { &nbsp;<small>({{ ninosDetalle() }} {{ ninosDetalle() === 1 ? 'niño' : 'niños' }})</small> }</strong>
+            </li>
+          }
+          <li><span>Pagos</span><strong>{{ cobros().length }}</strong></li>
+        </ul>
 
-          <div class="historial-detalle-lista">
-            <div class="cuenta-general-card">
-              <div class="cuenta-general-titulo">
-                <span>Cuenta general</span>
-                <strong>{{ totalDetalle() | number:'1.2-2' }} €</strong>
-              </div>
-
-              @for (item of detalleAgrupado(); track item.platoId) {
-                <div class="detalle-item">
-                  <span>{{ item.cantidad }}x {{ item.nombre }}</span>
-                  <span>{{ item.subtotal | number:'1.2-2' }} €</span>
-                </div>
-              }
-
-              <details class="pago-acordeon-interno">
-                <summary class="pago-titulo-interno">
-                  <span>Ver pagos</span>
-                </summary>
-
-                <div class="pago-contenido">
-                  @for (pago of cobros(); track pago.clave) {
-                    <div class="pago-bloque">
-                      <h4>
-                        Pago {{ pago.numero }} - {{ pago.metodoPago }} {{ formatearFecha(pago.fechaPago) }}
-                      </h4>
-
-                      @for (l of pago.lineas; track l.descripcion + l.importe) {
-                        <div class="detalle-item">
-                          <span>{{ l.cantidad }}x {{ l.descripcion }}</span>
-                          <span>{{ l.importe | number:'1.2-2' }} €</span>
-                        </div>
-                      }
-
-                      <div class="total-pago">
-                        <strong>Total pago:</strong>
-                        <strong>{{ pago.total | number:'1.2-2' }} €</strong>
-                      </div>
-                      <button type="button" class="historial-modal__accion" (click)="descargarTique(pago)">Ticket de este pago</button>
-                    </div>
-                  }
-                </div>
-              </details>
-
-              @if (canceladosDetalle().length > 0) {
-                <details class="pago-acordeon-interno pago-acordeon-interno--cancelados">
-                  <summary class="pago-titulo-interno">
-                    <span>Ver cancelados</span>
-                  </summary>
-
-                  <div class="pago-contenido">
-                    @for (item of canceladosDetalle(); track item.platoId) {
-                      <div class="detalle-item detalle-item--cancelado">
-                        <span>{{ item.cantidad }}x {{ item.nombre }}</span>
-                        <span>{{ item.subtotal | number:'1.2-2' }} €</span>
-                      </div>
-                    }
+        <div class="det__cuerpo">
+          <section class="det__seccion">
+            <h3>Pagos</h3>
+            <div class="det__pagos">
+              @for (pago of cobros(); track pago.clave) {
+                <article class="pago">
+                  <div class="pago__cab">
+                    <span class="pago__metodo pago__metodo--{{ pago.metodoPago.toLowerCase() }}">
+                      {{ pago.metodoPago === 'TARJETA' ? '💳' : '💶' }} {{ metodoTexto(pago.metodoPago) }}
+                    </span>
+                    <span class="pago__hora">@if (cobros().length > 1) { Pago {{ pago.numero }} · } {{ hora(pago.fechaPago) }}</span>
+                    <strong class="pago__importe">{{ pago.total | number:'1.2-2' }} €</strong>
                   </div>
-                </details>
+                  @if (cobros().length > 1) {
+                    <!-- Con varios pagos se ve qué pagó cada uno; con uno solo coincide con el consumo -->
+                    <ul class="pago__lineas">
+                      @for (l of pago.lineas; track l.descripcion + l.importe) {
+                        @if (l.importe > 0) {
+                          <li><span>{{ l.cantidad }} × {{ l.descripcion }}</span><span>{{ l.importe | number:'1.2-2' }} €</span></li>
+                        }
+                      }
+                    </ul>
+                  }
+                  <button type="button" class="sh-btn pago__ticket" (click)="descargarTique(pago)">⤓ Ticket PDF</button>
+                </article>
+              } @empty {
+                <p class="det__vacio">Esta cuenta no tiene pagos registrados.</p>
               }
             </div>
-          </div>
-        }
-      </div>
-    </div>
-  }
+          </section>
 
+          <section class="det__seccion">
+            <h3>Consumo</h3>
+            @for (b of bloquesConsumo(); track b.titulo) {
+              <div class="bloque">
+                <p class="bloque__titulo"><span>{{ b.titulo }}</span><span>{{ b.total | number:'1.2-2' }} €</span></p>
+                <ul class="bloque__lineas">
+                  @for (l of b.lineas; track l.descripcion + l.importe) {
+                    <li>
+                      <span class="bloque__cantidad">{{ l.cantidad }}</span>
+                      <span class="bloque__nombre">{{ l.descripcion }}</span>
+                      <span class="bloque__importe">{{ l.importe | number:'1.2-2' }} €</span>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+
+            @if (totalIncluidos() > 0) {
+              <details class="incluidos">
+                <summary>
+                  <span>{{ totalIncluidos() }} platos del buffet</span>
+                  <span class="incluidos__nota">incluidos · {{ platosIncluidos().length }} distintos</span>
+                </summary>
+                <ul class="incluidos__lista">
+                  @for (l of platosIncluidos(); track l.descripcion) {
+                    <li><strong>{{ l.cantidad }}×</strong> {{ l.descripcion }}</li>
+                  }
+                </ul>
+              </details>
+            }
+
+            @if (canceladosDetalle().length > 0) {
+              <details class="incluidos incluidos--cancelados">
+                <summary>
+                  <span>{{ canceladosDetalle().length }} productos cancelados</span>
+                  <span class="incluidos__nota">no se cobran</span>
+                </summary>
+                <ul class="incluidos__lista">
+                  @for (item of canceladosDetalle(); track item.platoId) {
+                    <li><strong>{{ item.cantidad }}×</strong> {{ item.nombre }}</li>
+                  }
+                </ul>
+              </details>
+            }
+          </section>
+        </div>
+
+        <footer class="det__pie">
+          <span>Total cobrado</span>
+          <strong>{{ totalDetalle() | number:'1.2-2' }} €</strong>
+        </footer>
+      }
+    </aside>
+  }
 
   @if (showToast()) {
     <div class="mobile-toast" role="status" aria-live="polite">
