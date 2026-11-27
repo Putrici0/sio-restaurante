@@ -17,7 +17,7 @@ import { TarifasBuffet } from './tarifas-buffet';
       <app-publico-nav />
 
       <header class="hero">
-        <div class="hero__petalos" aria-hidden="true">🌸 🌸 🌸</div>
+        <div class="hero__petalos" aria-hidden="true"><span>🌸</span> <span>🌸</span> <span>🌸</span></div>
         <p class="hero__eyebrow">Buffet libre a la carta · Cocina japonesa</p>
         <h1 class="hero__titulo">Sakura Hanami</h1>
         <p class="hero__texto">

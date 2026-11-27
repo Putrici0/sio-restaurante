@@ -53,8 +53,8 @@ type FiltroCarta = CategoriaPlato | 'Todos' | 'MasPedidos';
           <p class="aviso-error">{{ error() }}</p>
         } @else {
           <section class="platos-grid">
-            @for (plato of platosVisibles(); track plato.id) {
-              <article class="plato-card">
+            @for (plato of platosVisibles(); track plato.id; let i = $index) {
+              <article class="plato-card" [style.--i]="i">
                 <div class="plato-card__img">
                   <img [src]="plato.imagen" [alt]="plato.nombre" loading="lazy" />
                   @if (esPopular(plato.id)) { <span class="etiqueta-popular">🌸 Favorito</span> }

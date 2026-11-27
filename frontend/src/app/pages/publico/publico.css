@@ -193,3 +193,57 @@
   line-height: 1.6;
 }
 .estado-carga { color: var(--tinta-suave); }
+
+/* ---- Animaciones de la web pública: suaves, cortas y una sola vez ---- */
+@keyframes pub-aparecer {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes pub-flotar {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-6px) rotate(4deg); }
+}
+
+.pub-titulo, .pub-subtitulo, .pub-seccion, .chips, .form-card, .aviso-ok,
+.hero__eyebrow, .hero__titulo, .hero__texto, .hero__acciones, .info-card, .plato-card {
+  animation: pub-aparecer 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+.pub-subtitulo { animation-delay: 60ms; }
+.chips { animation-delay: 200ms; }
+.form-card { animation-delay: 120ms; }
+.hero__eyebrow { animation-delay: 80ms; }
+.hero__titulo { animation-delay: 160ms; }
+.hero__texto { animation-delay: 240ms; }
+.hero__acciones { animation-delay: 320ms; }
+.info-card:nth-child(2) { animation-delay: 90ms; }
+.info-card:nth-child(3) { animation-delay: 180ms; }
+/* Platos: escalonados, como mucho ~0,5 s aunque la carta sea larga */
+.plato-card { animation-duration: 0.45s; animation-delay: calc(min(var(--i, 0), 12) * 35ms); }
+
+.hero__petalos span { display: inline-block; animation: pub-flotar 6s ease-in-out infinite; }
+.hero__petalos span:nth-child(2) { animation-delay: -2s; }
+.hero__petalos span:nth-child(3) { animation-delay: -4s; }
+
+/* Interacciones */
+.pub-btn, .chip, .pub-links a { transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease; }
+.pub-btn:hover { box-shadow: 0 8px 20px rgba(142, 42, 67, 0.22); }
+.pub-btn:active, .chip:active { transform: scale(0.97); }
+.chip:hover:not(.active) { background: var(--sakura-100); }
+.plato-card, .info-card { transition: transform 0.25s ease, box-shadow 0.25s ease; }
+.plato-card:hover, .info-card:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(142, 42, 67, 0.1); }
+.plato-card img { transition: transform 0.4s ease; }
+.plato-card:hover img { transform: scale(1.04); }
+
+/* Cabecera: el nombre no se parte en dos líneas en el móvil */
+.pub-brand__nombre { white-space: nowrap; }
+@media (max-width: 420px) {
+  .pub-brand__kanji { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pub-titulo, .pub-subtitulo, .pub-seccion, .chips, .form-card, .aviso-ok,
+  .hero__eyebrow, .hero__titulo, .hero__texto, .hero__acciones, .info-card, .plato-card,
+  .hero__petalos span { animation: none; }
+  .plato-card, .info-card, .plato-card img, .pub-btn, .chip { transition: none; }
+  .plato-card:hover, .info-card:hover, .plato-card:hover img { transform: none; }
+}
