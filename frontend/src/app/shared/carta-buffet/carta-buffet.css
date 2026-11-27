@@ -92,3 +92,16 @@
   .buffet__cab, .filtros, .plato, .barra, .velo, .hoja, .toast, .plato__cantidad button:active { animation: none; }
   .ronda__barra i { transition: none; }
 }
+
+/* Ronda anterior aún sin servir: se bloquea la comida hasta que llegue */
+.en-camino {
+  display: flex; gap: 12px; align-items: flex-start; margin: 0 0 14px; padding: 12px 14px;
+  border-radius: 16px; background: #fff6e6; border: 1px solid #f3d39a; color: #6b4600;
+  animation: cb-aparecer 0.35s ease backwards;
+}
+.en-camino__icono { font-size: 1.5rem; line-height: 1; }
+.en-camino__texto { display: grid; gap: 4px; flex: 1; font-size: 0.86rem; }
+.en-camino__texto strong { font-size: 0.92rem; }
+.en-camino__barra { display: block; height: 6px; margin-top: 4px; border-radius: 999px; background: #fde7bf; overflow: hidden; }
+.en-camino__barra i { display: block; height: 100%; border-radius: inherit; background: #e9a23b; transition: width 0.4s ease; }
+@media (prefers-reduced-motion: reduce) { .en-camino { animation: none; } }

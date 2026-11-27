@@ -11,6 +11,8 @@ import service.MesaApplicationService;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class PedidoApplicationService {
     private final PedidoRepository pedidoRepository;
@@ -232,6 +234,39 @@ public class PedidoApplicationService {
         if (platosComida > maximo) {
             throw new IllegalArgumentException("En cada ronda podéis pedir hasta " + maximo
                     + " platos (" + service.domain.BuffetLibre.PLATOS_POR_COMENSAL_Y_RONDA + " por comensal)");
+        }
+        if (platosComida > 0) {
+            validarRondaAnteriorServida(cuenta);
+        }
+    }
+
+    /**
+     * Una ronda nueva de comida solo se puede pedir cuando ya se ha servido en la mesa
+     * toda la comida de la anterior (bebidas y postres se pueden pedir en cualquier momento).
+     */
+    private void validarRondaAnteriorServida(Cuenta cuenta) {
+        List<String> pedidosIds = pedidoRepository.findByCuenta(cuenta).stream()
+                .map(Pedido::id)
+                .filter(id -> id != null && !id.isBlank())
+                .toList();
+        if (pedidosIds.isEmpty()) {
+            return;
+        }
+        List<Orden> comida = ordenRepository.findByPedidosIds(pedidosIds).stream()
+                .filter(o -> o.plato() != null && o.plato().categoria() != null && o.plato().categoria().incluidaEnBuffet())
+                .filter(o -> o.ordenEstado() != OrdenEstado.Cancelado)
+                .toList();
+        long sinServir = comida.stream().filter(o -> o.ordenEstado() != OrdenEstado.Entregado).count();
+        if (sinServir > 0) {
+            // Ronda en curso = pedidos con algún plato aún sin servir
+            Set<String> pedidosEnCurso = comida.stream()
+                    .filter(o -> o.ordenEstado() != OrdenEstado.Entregado && o.pedido() != null)
+                    .map(o -> o.pedido().id())
+                    .collect(Collectors.toSet());
+            long enRonda = comida.stream().filter(o -> o.pedido() != null && pedidosEnCurso.contains(o.pedido().id())).count();
+            throw new IllegalArgumentException("Todavía no os han servido la ronda anterior (" + (enRonda - sinServir)
+                    + " de " + enRonda + " platos en la mesa). Podréis pedir la siguiente cuando llegue todo; "
+                    + "las bebidas y los postres sí se pueden pedir ya.");
         }
     }
 

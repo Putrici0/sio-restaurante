@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
-import { Subscription, catchError, of, switchMap, take, timer } from 'rxjs';
+import { Subject, Subscription, catchError, map, merge, of, switchMap, take, timer } from 'rxjs';
 
 import {
   CATEGORIAS_CARTA,
@@ -12,7 +12,7 @@ import {
 } from '../../models/plato.model';
 import { PlatosApiService } from '../../services/platos-api.service';
 import { PedidosApiService } from '../../services/pedidos-api.service';
-import { CuentaActivaResponse, CuentaApiService } from '../../services/cuenta-api.service';
+import { CuentaActivaResponse, CuentaApiService, OrdenCuentaResponse } from '../../services/cuenta-api.service';
 
 type Filtro = CategoriaPlato | 'MasPedidos';
 
@@ -20,7 +20,8 @@ type Filtro = CategoriaPlato | 'MasPedidos';
  * Carta del buffet libre a la carta, compartida por el cliente (QR de la mesa)
  * y por el camarero (toma de comanda desde su móvil).
  * La comida está incluida en el precio por comensal y se pide por rondas
- * (máximo de platos por comensal en cada ronda); las bebidas se cobran aparte.
+ * (máximo de platos por comensal en cada ronda); la siguiente ronda de comida solo
+ * se puede pedir cuando se ha servido la anterior. Bebidas y postres, en cualquier momento.
  */
 @Component({
   selector: 'app-carta-buffet',
@@ -37,6 +38,7 @@ export class CartaBuffet implements OnInit, OnDestroy {
   private readonly pedidosApi = inject(PedidosApiService);
   private readonly cuentaApi = inject(CuentaApiService);
   private sub?: Subscription;
+  private readonly refrescar$ = new Subject<void>();
 
   readonly etiquetas = ETIQUETA_CATEGORIA;
   readonly filtros: Filtro[] = ['MasPedidos', ...CATEGORIAS_CARTA];
@@ -44,6 +46,7 @@ export class CartaBuffet implements OnInit, OnDestroy {
   readonly platos = signal<PlatoApi[]>([]);
   readonly masPedidos = signal<string[]>([]);
   readonly cuenta = signal<CuentaActivaResponse | null>(null);
+  readonly ordenesCuenta = signal<OrdenCuentaResponse[]>([]);
   readonly cargando = signal(true);
   readonly cantidades = signal<Record<string, number>>({});
   readonly notas = signal('');
@@ -54,6 +57,21 @@ export class CartaBuffet implements OnInit, OnDestroy {
   readonly sesionCerrada = computed(() => !!this.cuenta()?.payed || !!this.cuenta()?.cobroSolicitado);
   readonly comensales = computed(() => this.cuenta()?.comensales || 1);
   readonly maximoRonda = computed(() => this.comensales() * PLATOS_POR_COMENSAL_Y_RONDA);
+
+  /**
+   * Ronda de comida que aún no ha llegado entera a la mesa: platos de los pedidos con algo
+   * sin servir. Mientras exista, no se puede pedir más comida.
+   */
+  readonly rondaEnCamino = computed(() => {
+    const comida = this.ordenesCuenta().filter(
+      (o) => esComida(o.plato?.categoria as CategoriaPlato) && o.ordenEstado !== 'Cancelado',
+    );
+    const pedidosEnCurso = new Set(comida.filter((o) => o.ordenEstado !== 'Entregado').map((o) => o.pedido?.id));
+    if (pedidosEnCurso.size === 0) return null;
+    const enRonda = comida.filter((o) => pedidosEnCurso.has(o.pedido?.id));
+    const servidos = enRonda.filter((o) => o.ordenEstado === 'Entregado').length;
+    return { total: enRonda.length, servidos, pct: Math.round((servidos / enRonda.length) * 100) };
+  });
 
   readonly visibles = computed(() => {
     const f = this.filtro();
@@ -100,9 +118,23 @@ export class CartaBuffet implements OnInit, OnDestroy {
       },
       error: () => undefined,
     });
-    this.sub = timer(0, 5000)
-      .pipe(switchMap(() => this.cuentaApi.obtenerCuentaActivaDeMesa(this.mesaId).pipe(catchError(() => of(null)))))
-      .subscribe((c) => this.cuenta.set(c));
+    // Cuenta y sus platos (para saber si la ronda anterior ya está servida), cada 5 s o al enviar
+    this.sub = merge(timer(0, 5000), this.refrescar$)
+      .pipe(
+        switchMap(() => this.cuentaApi.obtenerCuentaActivaDeMesa(this.mesaId).pipe(catchError(() => of(null)))),
+        switchMap((c) =>
+          c
+            ? this.cuentaApi.obtenerTodasLasOrdenesDeCuenta(c.id).pipe(
+                catchError(() => of([] as OrdenCuentaResponse[])),
+                map((ordenes) => ({ c, ordenes })),
+              )
+            : of({ c: null, ordenes: [] as OrdenCuentaResponse[] }),
+        ),
+      )
+      .subscribe(({ c, ordenes }) => {
+        this.cuenta.set(c);
+        this.ordenesCuenta.set(ordenes);
+      });
   }
 
   ngOnDestroy(): void {
@@ -119,7 +151,8 @@ export class CartaBuffet implements OnInit, OnDestroy {
 
   puedeSumar(p: PlatoApi): boolean {
     if (!this.cuenta() || this.sesionCerrada()) return false;
-    return !esComida(p.categoria) || this.platosRonda() < this.maximoRonda();
+    if (!esComida(p.categoria)) return true; // bebidas y postres, siempre
+    return !this.rondaEnCamino() && this.platosRonda() < this.maximoRonda();
   }
 
   sumar(p: PlatoApi, delta: number): void {
@@ -141,6 +174,7 @@ export class CartaBuffet implements OnInit, OnDestroy {
       next: () => {
         this.enviando.set(false);
         this.vaciar();
+        this.refrescar$.next();
         this.avisar(this.modo === 'cliente' ? '¡Ronda enviada a cocina! Sigue su estado en «Mis platos y cuenta».' : 'Comanda enviada a cocina.', 'ok');
       },
       error: (err) => {

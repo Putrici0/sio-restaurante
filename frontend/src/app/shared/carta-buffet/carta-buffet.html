@@ -1,7 +1,7 @@
 <section class="buffet">
   <header class="buffet__cab">
     <div>
-      <p class="sh-eyebrow">Buffet libre a la carta</p>
+      <p class="sh-eyebrow">Cocina de fusión · sin límites</p>
       <h1>{{ modo === 'cliente' ? '¿Qué os apetece?' : 'Comanda · mesa ' + mesaId }}</h1>
     </div>
     @if (cuenta(); as c) {
@@ -12,7 +12,7 @@
           platos en esta ronda
         </p>
         <span class="ronda__barra" aria-hidden="true"><i [style.width.%]="(platosRonda() / maximoRonda()) * 100"></i></span>
-        <small>{{ comensales() }} comensales × 5 platos</small>
+        <small>{{ comensales() }} {{ comensales() === 1 ? 'comensal' : 'comensales' }} × 5 platos</small>
       </div>
     }
   </header>
@@ -21,6 +21,17 @@
     <p class="aviso">La mesa no tiene una sesión abierta. Pide al personal de sala que la abra.</p>
   } @else if (sesionCerrada()) {
     <p class="aviso">La sesión de esta mesa está cerrada: ya no se pueden pedir más platos.</p>
+  }
+
+  @if (rondaEnCamino(); as r) {
+    <div class="en-camino" role="status">
+      <span class="en-camino__icono" aria-hidden="true">🍣</span>
+      <div class="en-camino__texto">
+        <strong>{{ modo === 'cliente' ? 'Vuestra ronda está en camino' : 'Ronda en camino' }} · {{ r.servidos }} de {{ r.total }} platos en la mesa</strong>
+        <span>{{ modo === 'cliente' ? 'Podréis pedir la siguiente cuando os la sirvan entera.' : 'La siguiente comanda de comida, cuando esté todo servido.' }} Bebidas y postres, cuando queráis.</span>
+        <span class="en-camino__barra" aria-hidden="true"><i [style.width.%]="r.pct"></i></span>
+      </div>
+    </div>
   }
 
   <nav class="filtros" aria-label="Secciones de la carta">
