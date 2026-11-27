@@ -98,7 +98,8 @@
         <section class="bill-list">
           <article
             class="bill-item-card"
-            *ngFor="let item of itemsAgrupados(); trackBy: trackByItemAgrupado"
+            *ngFor="let item of itemsAgrupados(); trackBy: trackByItemAgrupado; let i = index"
+            [style.--i]="i"
             [class.bill-item-card--paid]="item.pagado">
               <div class="bill-item-card__image-wrap">
                 <img
@@ -116,9 +117,13 @@
                     <h2 class="bill-item-card__name">{{ item.nombre }}</h2>
                   </div>
 
-                  <strong class="bill-item-card__subtotal">
-                    {{ item.subtotal | number:'1.2-2' }} €
-                  </strong>
+                  @if (item.precioUnitario > 0) {
+                    <strong class="bill-item-card__subtotal">
+                      {{ item.subtotal | number:'1.2-2' }} €
+                    </strong>
+                  } @else {
+                    <span class="bill-incluido">Incluido</span>
+                  }
                 </div>
 
                 <p class="bill-item-card__description">{{ item.descripcion }}</p>
@@ -129,9 +134,11 @@
                     {{ item.cantidad === 1 ? 'unidad' : 'unidades' }}
                   </span>
 
-                  <span class="bill-badge bill-badge--light">
-                    {{ item.precioUnitario | number:'1.2-2' }} € / ud.
-                  </span>
+                  @if (item.precioUnitario > 0 && item.cantidad > 1) {
+                    <span class="bill-badge bill-badge--light">
+                      {{ item.precioUnitario | number:'1.2-2' }} € / ud.
+                    </span>
+                  }
                 </div>
 
                 <p class="bill-item-card__status">
@@ -142,7 +149,7 @@
                   }
                 </p>
 
-                @if (!item.pagado) {
+                @if (!item.pagado && etaClienteTexto(item) !== 'Servido en la mesa') {
                   <p class="bill-item-card__eta">
                     Tiempo estimado: {{ etaClienteTexto(item) }}
                   </p>
