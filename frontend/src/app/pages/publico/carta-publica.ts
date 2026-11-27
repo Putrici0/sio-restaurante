@@ -10,6 +10,7 @@ import {
 } from '../../models/plato.model';
 import { PlatosApiService } from '../../services/platos-api.service';
 import { PublicoFooter, PublicoNav } from './publico-layout';
+import { TarifasBuffet } from './tarifas-buffet';
 
 type FiltroCarta = CategoriaPlato | 'Todos' | 'MasPedidos';
 
@@ -20,7 +21,7 @@ type FiltroCarta = CategoriaPlato | 'Todos' | 'MasPedidos';
 @Component({
   selector: 'app-carta-publica',
   standalone: true,
-  imports: [CommonModule, RouterLink, PublicoNav, PublicoFooter],
+  imports: [CommonModule, RouterLink, PublicoNav, PublicoFooter, TarifasBuffet],
   styleUrl: './publico.css',
   template: `
     <div class="pub-page">
@@ -32,16 +33,7 @@ type FiltroCarta = CategoriaPlato | 'Todos' | 'MasPedidos';
           preparamos al momento. ¿Aún no tienes mesa? <a routerLink="/reservar">Reserva aquí</a>.
         </p>
 
-        <section class="tarifas" aria-label="Precios del buffet libre">
-          @for (t of tarifas(); track t.id) {
-            <div class="tarifa">
-              <span class="tarifa__turno">{{ t.nombre.replace('Buffet libre · ', '').replace('Buffet infantil · ', 'Niños · ') }}</span>
-              <strong>{{ t.precio | number:'1.2-2' }} €</strong>
-              <span>{{ t.id.endsWith('infantil') ? 'de 3 a 10 años' : 'por persona' }}</span>
-            </div>
-          }
-          <p class="tarifas__nota">Comida ilimitada incluida (hasta 5 platos por persona en cada ronda). Sábados y domingos se aplica la tarifa de noche. Menores de 3 años, gratis. Bebidas y postres aparte. IGIC incluido.</p>
-        </section>
+        <app-tarifas-buffet [tarifas]="tarifas()" />
 
         <div class="chips">
           <button type="button" class="chip" [class.active]="filtro() === 'Todos'" (click)="filtro.set('Todos')">Todos</button>

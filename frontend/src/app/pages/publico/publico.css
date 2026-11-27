@@ -156,17 +156,7 @@
 }
 .plato-card__incluido { font-size: 0.78rem; font-weight: 700; color: #2f7a46; background: #e3f4e8; padding: 2px 10px; border-radius: 999px; }
 
-.tarifas {
-  display: flex; flex-wrap: wrap; gap: 12px; align-items: stretch; margin: -8px 0 26px;
-}
-.tarifa {
-  display: grid; padding: 14px 22px; border-radius: 18px; background: var(--papel); border: 1px solid var(--sakura-200);
-  text-align: center; min-width: 150px;
-}
-.tarifa__turno { text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.74rem; font-weight: 700; color: var(--sakura-800); }
-.tarifa strong { font-family: 'Noto Serif JP', Georgia, serif; font-size: 1.8rem; }
-.tarifa span:last-child { font-size: 0.8rem; color: var(--tinta-suave); }
-.tarifas__nota { flex-basis: 100%; margin: 0; color: var(--tinta-suave); font-size: 0.88rem; }
+.pub-seccion { font-family: 'Noto Serif JP', Georgia, serif; font-size: 1.4rem; margin: 0 0 14px; }
 
 /* ---- Formularios ---- */
 .form-card {

@@ -1,12 +1,16 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { take } from 'rxjs';
+import { PlatoApi } from '../../models/plato.model';
+import { PlatosApiService } from '../../services/platos-api.service';
 import { PublicoFooter, PublicoNav } from './publico-layout';
+import { TarifasBuffet } from './tarifas-buffet';
 
 /** Portada pública del Restaurante Sakura Hanami (SIGO-RSH). */
 @Component({
   selector: 'app-inicio-publico',
   standalone: true,
-  imports: [RouterLink, PublicoNav, PublicoFooter],
+  imports: [RouterLink, PublicoNav, PublicoFooter, TarifasBuffet],
   styleUrls: ['./publico.css', './inicio.css'],
   template: `
     <div class="pub-page">
@@ -28,6 +32,10 @@ import { PublicoFooter, PublicoNav } from './publico-layout';
       </header>
 
       <main class="pub-main">
+        @if (tarifas().length > 0) {
+          <h2 class="pub-seccion">Precios</h2>
+          <app-tarifas-buffet [tarifas]="tarifas()" />
+        }
         <section class="info-grid">
           <article class="info-card">
             <h2>🍣 Buffet libre a la carta</h2>
@@ -48,4 +56,17 @@ import { PublicoFooter, PublicoNav } from './publico-layout';
     </div>
   `,
 })
-export class InicioPublico {}
+export class InicioPublico implements OnInit {
+  private readonly platosApi = inject(PlatosApiService);
+  readonly tarifas = signal<PlatoApi[]>([]);
+
+  ngOnInit(): void {
+    this.platosApi
+      .obtenerPlatos()
+      .pipe(take(1))
+      .subscribe({
+        next: (platos) => this.tarifas.set(platos.filter((p) => p.categoria === 'Buffet')),
+        error: () => this.tarifas.set([]),
+      });
+  }
+}
