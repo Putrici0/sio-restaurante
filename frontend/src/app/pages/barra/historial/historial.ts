@@ -48,8 +48,9 @@ export class HistorialComponent {
   readonly mesaFiltro = signal('');
   readonly cuentas = signal<CuentaPagadaResumenResponse[]>([]);
 
+  readonly filtroMetodo = signal<'todos' | 'TARJETA' | 'EFECTIVO' | 'divididos'>('todos');
   readonly paginaActual = signal(1);
-  readonly pageSize = 10;
+  readonly pageSize = 15;
 
   readonly mostrarDetalle = signal(false);
   readonly cargandoDetalle = signal(false);
@@ -63,17 +64,43 @@ export class HistorialComponent {
 
   readonly cuentasFiltradas = computed(() => {
     const filtroMesa = this.mesaFiltro().trim().toLowerCase();
+    const metodo = this.filtroMetodo();
 
-    if (!filtroMesa) {
-      return this.cuentas();
-    }
+    return this.cuentas().filter((cuenta) => {
+      const mesaOk =
+        !filtroMesa ||
+        this.obtenerMesaResumen(cuenta)
+          .split(',')
+          .map((mesa) => mesa.trim().toLowerCase())
+          .some((mesa) => mesa === filtroMesa);
+      const metodos = cuenta.metodos?.length ? cuenta.metodos : cuenta.metodoPago ? [cuenta.metodoPago] : [];
+      const metodoOk =
+        metodo === 'todos' ||
+        (metodo === 'divididos' ? (cuenta.pagos ?? 1) > 1 : metodos.includes(metodo));
+      return mesaOk && metodoOk;
+    });
+  });
 
-    return this.cuentas().filter((cuenta) =>
-      this.obtenerMesaResumen(cuenta)
-        .split(',')
-        .map((mesa) => mesa.trim().toLowerCase())
-        .some((mesa) => mesa === filtroMesa),
-    );
+  /** Resumen del día (de las cuentas que se están viendo). */
+  readonly resumenDia = computed(() => {
+    const cuentas = this.cuentasFiltradas();
+    const total = cuentas.reduce((a, c) => a + Number(c.importeTotal ?? 0), 0);
+    const comensales = cuentas.reduce((a, c) => a + (c.comensales ?? 0), 0);
+    const ninos = cuentas.reduce((a, c) => a + (c.ninos ?? 0), 0);
+    const extras = cuentas.reduce((a, c) => a + Number(c.extras ?? 0), 0);
+    const conTarjeta = cuentas.filter((c) => (c.metodos ?? [c.metodoPago]).includes('TARJETA')).length;
+    const divididas = cuentas.filter((c) => (c.pagos ?? 1) > 1).length;
+    return {
+      total,
+      cuentas: cuentas.length,
+      ticketMedio: cuentas.length ? total / cuentas.length : 0,
+      comensales,
+      ninos,
+      extras,
+      pctExtras: total > 0 ? Math.round((extras / total) * 100) : 0,
+      pctTarjeta: cuentas.length ? Math.round((conTarjeta / cuentas.length) * 100) : 0,
+      divididas,
+    };
   });
 
   readonly cuentasPaginadas = computed(() => {
@@ -87,8 +114,19 @@ export class HistorialComponent {
 
   readonly textoResumen = computed(() => {
     const total = this.cuentasFiltradas().length;
-    const mostradas = this.cuentasPaginadas().length;
-    return `Mostrando ${mostradas} de ${total} transacciones`;
+    if (total === 0) return '';
+    const desde = (this.paginaActual() - 1) * this.pageSize + 1;
+    const hasta = desde + this.cuentasPaginadas().length - 1;
+    return `${desde}–${hasta} de ${total} cuentas`;
+  });
+
+  readonly esHoy = computed(() => this.fechaFiltro() === this.hoyISO());
+
+  readonly tituloDia = computed(() => {
+    const f = this.fechaFiltro();
+    if (!f) return 'Todas las fechas';
+    if (this.esHoy()) return 'Hoy';
+    return new Date(`${f}T00:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
   });
 
   readonly detalleAgrupado = computed(() =>
@@ -133,10 +171,38 @@ export class HistorialComponent {
 
   actualizarFecha(valor: string): void {
     this.fechaFiltro.set(valor);
+    this.cargarHistorial();
+  }
+
+  /** Día anterior o siguiente. */
+  moverDia(delta: number): void {
+    const base = this.fechaFiltro() ? new Date(`${this.fechaFiltro()}T00:00:00`) : new Date();
+    base.setDate(base.getDate() + delta);
+    this.actualizarFecha(this.iso(base));
+  }
+
+  irAHoy(): void {
+    this.actualizarFecha(this.hoyISO());
   }
 
   actualizarMesa(valor: string): void {
     this.mesaFiltro.set(valor);
+    this.paginaActual.set(1);
+  }
+
+  elegirMetodo(metodo: 'todos' | 'TARJETA' | 'EFECTIVO' | 'divididos'): void {
+    this.filtroMetodo.set(metodo);
+    this.paginaActual.set(1);
+  }
+
+  duracion(c: CuentaPagadaResumenResponse): string {
+    if (!c.fechaApertura) return '';
+    const min = Math.max(0, Math.round((new Date(c.fechaHora).getTime() - new Date(c.fechaApertura).getTime()) / 60000));
+    return min >= 60 ? `${Math.floor(min / 60)} h ${min % 60} min` : `${min} min`;
+  }
+
+  metodosDe(c: CuentaPagadaResumenResponse): string[] {
+    return c.metodos?.length ? c.metodos : c.metodoPago ? [c.metodoPago] : [];
   }
 
   limpiarFiltro(): void {
@@ -411,12 +477,11 @@ export class HistorialComponent {
   }
 
   private hoyISO(): string {
-    const hoy = new Date();
-    const yyyy = hoy.getFullYear();
-    const mm = String(hoy.getMonth() + 1).padStart(2, '0');
-    const dd = String(hoy.getDate()).padStart(2, '0');
+    return this.iso(new Date());
+  }
 
-    return `${yyyy}-${mm}-${dd}`;
+  private iso(d: Date): string {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
   private extraerMensaje(error: unknown): string {

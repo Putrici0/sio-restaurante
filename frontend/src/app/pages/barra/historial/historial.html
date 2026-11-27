@@ -1,90 +1,127 @@
 <app-navbar></app-navbar>
 
-<div class="historial-page">
-  <div class="historial-page__header">
+<main class="fact">
+  <header class="fact__cab">
     <div>
+      <p class="sh-eyebrow">Gerencia</p>
       <h1>Facturación</h1>
-      <p>Cuentas cobradas y comprobantes de pago. Filtra por día o por mesa.</p>
+      <p class="fact__sub">Cuentas cobradas, cómo se pagaron y sus tickets.</p>
     </div>
 
-    <div class="historial-filtros">
-      <label for="fechaFiltro">FECHA</label>
-      <div class="historial-filtros__fila">
-        <input
-          id="fechaFiltro"
-          type="date"
-          [value]="fechaFiltro()"
-          (input)="actualizarFecha($any($event.target).value)"
-        />
-      </div>
-      <label for="mesaFiltro">MESA</label>
-      <div class="historial-filtros__fila">
-        <input
-          id="mesaFiltro"
-          type="text"
-          inputmode="numeric"
-          placeholder="Nº mesa"
-          [value]="mesaFiltro()"
-          (input)="actualizarMesa($any($event.target).value)"
-        />
-        <button type="button" (click)="aplicarFiltro()">Filtrar</button>
-      </div>
+    <div class="fact__dia" role="group" aria-label="Día">
+      <button type="button" class="fact__flecha" (click)="moverDia(-1)" aria-label="Día anterior">‹</button>
+      <label class="fact__fecha">
+        <span>{{ tituloDia() }}</span>
+        <input type="date" [value]="fechaFiltro()" (change)="actualizarFecha($any($event.target).value)" aria-label="Elegir día" />
+      </label>
+      <button type="button" class="fact__flecha" (click)="moverDia(1)" [disabled]="esHoy()" aria-label="Día siguiente">›</button>
+      @if (!esHoy()) {
+        <button type="button" class="sh-btn fact__hoy" (click)="irAHoy()">Hoy</button>
+      }
     </div>
-  </div>
+  </header>
 
   @if (error()) {
-    <p class="historial-error">{{ error() }}</p>
+    <p class="fact__error" role="alert">{{ error() }}</p>
   }
 
-  @if (cargando()) {
-    <p>Cargando historial...</p>
-  } @else {
-    <section class="historial-tabla">
-      <div class="historial-tabla__head">
-        <span>FECHA/HORA</span>
-        <span>MESA</span>
-        <span>IMPORTE TOTAL</span>
-        <span>VER</span>
-      </div>
+  <section class="fact__kpis" aria-label="Resumen del día">
+    <article class="kpi kpi--principal">
+      <span class="kpi__label">Facturado</span>
+      <strong class="kpi__valor">{{ resumenDia().total | number:'1.2-2' }} €</strong>
+      <span class="kpi__nota">{{ resumenDia().cuentas }} cuentas · ticket medio {{ resumenDia().ticketMedio | number:'1.2-2' }} €</span>
+    </article>
+    <article class="kpi">
+      <span class="kpi__label">Comensales</span>
+      <strong class="kpi__valor">{{ resumenDia().comensales }}</strong>
+      <span class="kpi__nota">{{ resumenDia().ninos }} con tarifa infantil</span>
+    </article>
+    <article class="kpi">
+      <span class="kpi__label">Bebidas y postres</span>
+      <strong class="kpi__valor">{{ resumenDia().extras | number:'1.2-2' }} €</strong>
+      <span class="kpi__nota">{{ resumenDia().pctExtras }} % de lo facturado</span>
+    </article>
+    <article class="kpi">
+      <span class="kpi__label">Forma de pago</span>
+      <strong class="kpi__valor">{{ resumenDia().pctTarjeta }} % tarjeta</strong>
+      <span class="kpi__nota">{{ resumenDia().divididas }} {{ resumenDia().divididas === 1 ? 'cuenta pagada' : 'cuentas pagadas' }} por separado</span>
+    </article>
+  </section>
 
-      <div class="historial-tabla__body">
+  <section class="fact__lista sh-tarjeta">
+    <div class="fact__herramientas">
+      <div class="fact__chips" role="group" aria-label="Filtrar por forma de pago">
+        <button type="button" [class.activo]="filtroMetodo() === 'todos'" (click)="elegirMetodo('todos')">Todas</button>
+        <button type="button" [class.activo]="filtroMetodo() === 'TARJETA'" (click)="elegirMetodo('TARJETA')">💳 Tarjeta</button>
+        <button type="button" [class.activo]="filtroMetodo() === 'EFECTIVO'" (click)="elegirMetodo('EFECTIVO')">💶 Efectivo</button>
+        <button type="button" [class.activo]="filtroMetodo() === 'divididos'" (click)="elegirMetodo('divididos')">Pagadas por separado</button>
+      </div>
+      <input
+        class="fact__buscar"
+        type="search"
+        inputmode="numeric"
+        placeholder="Buscar mesa…"
+        aria-label="Buscar por número de mesa"
+        [value]="mesaFiltro()"
+        (input)="actualizarMesa($any($event.target).value)"
+      />
+    </div>
+
+    @if (cargando()) {
+      <p class="fact__vacio">Cargando cuentas…</p>
+    } @else {
+      <div class="fact__tabla" role="table" aria-label="Cuentas cobradas">
+        <div class="fila fila--cab" role="row">
+          <span role="columnheader">Cobro</span>
+          <span role="columnheader">Mesa</span>
+          <span role="columnheader">Comensales</span>
+          <span role="columnheader">Pago</span>
+          <span role="columnheader" class="num">Bebidas y postres</span>
+          <span role="columnheader" class="num">Importe</span>
+        </div>
         @for (cuenta of cuentasPaginadas(); track cuenta.cuentaId) {
-          <div class="historial-tabla__row">
-            <span>{{ formatearFecha(cuenta.fechaHora) }}</span>
-            <span>{{ obtenerMesaResumen(cuenta) }}</span>
-            <span>{{ cuenta.importeTotal | currency:'EUR':'symbol':'1.2-2' }}</span>
-            <button type="button" class="historial-ojo" (click)="abrirDetalle(cuenta.cuentaId)">
-              👁
-            </button>
+          <button type="button" class="fila" role="row" (click)="abrirDetalle(cuenta.cuentaId)"
+                  [attr.aria-label]="'Ver la cuenta de la mesa ' + obtenerMesaResumen(cuenta)">
+            <span class="fila__cobro" role="cell">
+              <strong>{{ formatearFecha(cuenta.fechaHora).split(', ')[1] }}</strong>
+              @if (duracion(cuenta)) { <small>{{ duracion(cuenta) }} en mesa</small> }
+            </span>
+            <span role="cell"><span class="mesa-badge">{{ obtenerMesaResumen(cuenta) }}</span></span>
+            <span role="cell">
+              {{ cuenta.comensales ?? '—' }}
+              @if (cuenta.ninos) { <small class="suave">({{ cuenta.ninos }} {{ cuenta.ninos === 1 ? 'niño' : 'niños' }})</small> }
+            </span>
+            <span role="cell" class="fila__pago">
+              @for (m of metodosDe(cuenta); track m) {
+                <span class="metodo metodo--{{ m.toLowerCase() }}">{{ m === 'TARJETA' ? '💳 Tarjeta' : '💶 Efectivo' }}</span>
+              }
+              @if ((cuenta.pagos ?? 1) > 1) { <span class="dividido">{{ cuenta.pagos }} pagos</span> }
+            </span>
+            <span role="cell" class="num suave">{{ (cuenta.extras ?? 0) | number:'1.2-2' }} €</span>
+            <span role="cell" class="num fila__importe">{{ cuenta.importeTotal | number:'1.2-2' }} €<span class="chevron" aria-hidden="true">›</span></span>
+          </button>
+        } @empty {
+          <div class="fact__vacio">
+            <p><strong>No hay cuentas cobradas</strong></p>
+            <p>Prueba con otro día o quita los filtros.</p>
           </div>
         }
-
-        @if (cuentasPaginadas().length === 0) {
-          <div class="historial-tabla__empty">No hay registros</div>
-        }
       </div>
 
-      <div class="historial-tabla__footer">
-        <span>{{ textoResumen() }}</span>
-
-        <div class="historial-paginacion">
-          <button type="button" (click)="irAPagina(paginaActual() - 1)" [disabled]="paginaActual() === 1">
-            ‹
-          </button>
-
-          <span class="historial-paginacion__actual">{{ paginaActual() }}</span>
-
-          <button
-            type="button"
-            (click)="irAPagina(paginaActual() + 1)"
-            [disabled]="paginaActual() === totalPaginas()"
-          >
-            ›
-          </button>
-        </div>
-      </div>
-    </section>
-  }
+      @if (totalPaginas() > 1 || textoResumen()) {
+        <footer class="fact__pie">
+          <span>{{ textoResumen() }}</span>
+          @if (totalPaginas() > 1) {
+            <div class="paginacion">
+              <button type="button" (click)="irAPagina(paginaActual() - 1)" [disabled]="paginaActual() === 1" aria-label="Página anterior">‹</button>
+              <span>{{ paginaActual() }} / {{ totalPaginas() }}</span>
+              <button type="button" (click)="irAPagina(paginaActual() + 1)" [disabled]="paginaActual() === totalPaginas()" aria-label="Página siguiente">›</button>
+            </div>
+          }
+        </footer>
+      }
+    }
+  </section>
 
   @if (mostrarDetalle()) {
     <div class="det-velo" (click)="cerrarDetalle()"></div>
@@ -199,15 +236,4 @@
       }
     </aside>
   }
-
-  @if (showToast()) {
-    <div class="mobile-toast" role="status" aria-live="polite">
-      <div class="mobile-toast__card" [class.mobile-toast__card--error]="toastTipo() === 'error'">
-        <span class="mobile-toast__icon" [class.mobile-toast__icon--error]="toastTipo() === 'error'">
-          {{ toastTipo() === 'ok' ? '✓' : '!' }}
-        </span>
-        <span class="mobile-toast__text">{{ toastMessage() }}</span>
-      </div>
-    </div>
-  }
-</div>
+</main>

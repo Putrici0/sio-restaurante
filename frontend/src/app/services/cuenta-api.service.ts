@@ -79,6 +79,14 @@ export interface CuentaPagadaResumenResponse {
   }>;
   importeTotal: number;
   metodoPago?: 'EFECTIVO' | 'TARJETA' | null;
+  fechaApertura?: string | null;
+  comensales?: number;
+  ninos?: number;
+  /** Número de cobros (pagos parciales o total). */
+  pagos?: number;
+  metodos?: Array<'EFECTIVO' | 'TARJETA'>;
+  /** Bebidas y postres: lo que se cobra aparte del buffet. */
+  extras?: number;
 }
 
 export interface CuentaResumenResponse {
