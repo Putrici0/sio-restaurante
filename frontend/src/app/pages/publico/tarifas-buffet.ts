@@ -44,7 +44,7 @@ interface TurnoTarifa {
             }
             @if (t.nino; as n) {
               <p class="tb__nino">
-                <span>Niños de 3 a 10 años</span>
+                <span>Niños de 100 a 130 cm</span>
                 <strong>{{ n.precio | number:'1.2-2' }} €</strong>
               </p>
             }
@@ -53,10 +53,11 @@ interface TurnoTarifa {
       </div>
 
       <ul class="tb__incluye">
-        <li><span aria-hidden="true">🍣</span> Comida ilimitada a la carta</li>
-        <li><span aria-hidden="true">🔁</span> Hasta 5 platos por persona en cada ronda</li>
-        <li><span aria-hidden="true">👶</span> Menores de 3 años, gratis</li>
+        <li><span aria-hidden="true">🥢</span> Japonesa, china y tailandesa, sin límites</li>
+        <li><span aria-hidden="true">🔁</span> Pide por rondas: la siguiente, cuando os sirvan la anterior</li>
+        <li><span aria-hidden="true">👶</span> Niños de menos de 100 cm, gratis</li>
         <li class="tb__aparte"><span aria-hidden="true">🥤</span> Bebidas y postres aparte</li>
+        <li class="tb__aparte"><span aria-hidden="true">🍽️</span> +2 € por plato sobrante</li>
         <li><span aria-hidden="true">🧾</span> IGIC incluido</li>
       </ul>
     </section>
@@ -70,11 +71,11 @@ export class TarifasBuffet {
     const porId = new Map(this.tarifas().map((t) => [t.id, t]));
     const turnos: TurnoTarifa[] = [
       {
-        id: 'mediodia', icono: '☀️', titulo: 'Mediodía', dias: 'Lunes a viernes', horario: 'de 13:00 a 16:00',
+        id: 'sakura', icono: '🌸', titulo: 'Menú Sakura', dias: 'Almuerzos de lunes a jueves', horario: 'Una selección de nuestros mejores platos',
         adulto: porId.get('buffet-almuerzo'), nino: porId.get('buffet-almuerzo-infantil'), destacado: false,
       },
       {
-        id: 'noche', icono: '🌙', titulo: 'Noche y fin de semana', dias: 'Cenas de 20:00 a 23:30', horario: 'Sábados y domingos, todo el día',
+        id: 'deluxe', icono: '✨', titulo: 'Menú Deluxe', dias: 'Cenas, viernes, fines de semana y festivos', horario: 'Más de 110 platos para disfrutar sin límites',
         adulto: porId.get('buffet-cena'), nino: porId.get('buffet-cena-infantil'), destacado: true,
       },
     ];

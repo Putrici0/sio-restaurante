@@ -18,12 +18,12 @@ import { TarifasBuffet } from './tarifas-buffet';
 
       <header class="hero">
         <div class="hero__petalos" aria-hidden="true"><span>🌸</span> <span>🌸</span> <span>🌸</span></div>
-        <p class="hero__eyebrow">Buffet libre a la carta · Cocina japonesa</p>
+        <p class="hero__eyebrow">Cocina de fusión japonesa, china y tailandesa</p>
         <h1 class="hero__titulo">Sakura Hanami</h1>
         <p class="hero__texto">
           El Hanami es la tradición japonesa de contemplar la belleza efímera de los cerezos en flor.
-          Con ese espíritu te invitamos a compartir los mejores manjares de la gastronomía nipona
-          con familia y amigos.
+          Con ese espíritu te invitamos a dejarte atrapar por la gastronomía y la cultura oriental:
+          sushi, wok, plancha y más de 110 platos a la carta, sin límites.
         </p>
         <div class="hero__acciones">
           <a class="pub-btn" routerLink="/reservar">Reservar mesa</a>
@@ -38,8 +38,8 @@ import { TarifasBuffet } from './tarifas-buffet';
         }
         <section class="info-grid">
           <article class="info-card">
-            <h2>🍣 Buffet libre a la carta</h2>
-            <p>Sushi, sashimi, tempuras, ramen y platos calientes preparados al momento. Pide desde tu mesa escaneando el código QR.</p>
+            <h2>🍣 Disfruta sin límites</h2>
+            <p>Sushi, sashimi, dim sum, wok, plancha y sabores de Tailandia preparados al momento. Pide desde tu mesa escaneando el código QR.</p>
           </article>
           <article class="info-card">
             <h2>🕐 Horario</h2>
@@ -47,7 +47,7 @@ import { TarifasBuffet } from './tarifas-buffet';
           </article>
           <article class="info-card">
             <h2>📍 Dónde estamos</h2>
-            <p>Calle Pilarillo Seco, 10 (San Telmo)<br />Las Palmas de Gran Canaria</p>
+            <p>Calle Pilarillo Seco, 5 (San Telmo)<br />35002 Las Palmas de Gran Canaria<br />Tel. 928 362 649 · WhatsApp 616 888 899</p>
           </article>
         </section>
       </main>

@@ -29,7 +29,7 @@ export class PublicoNav {}
   styleUrl: './publico.css',
   template: `
     <footer class="pub-footer">
-      <span>Restaurante Sakura Hanami · Buffet libre japonés · Calle Pilarillo Seco, 10 (San Telmo), Las Palmas de Gran Canaria</span>
+      <span>Restaurante Sakura Hanami · Cocina de fusión japonesa, china y tailandesa · Calle Pilarillo Seco, 5 (San Telmo), Las Palmas de Gran Canaria · 928 362 649</span>
       <span>
         Acceso personal:
         <a routerLink="/camarero/login">Sala</a> ·

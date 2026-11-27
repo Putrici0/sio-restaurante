@@ -110,8 +110,13 @@ export function agruparLineas(ordenes: Array<{ nombre: string; precio: number }>
     linea.importe = Number((linea.importe + Number(o.precio)).toFixed(2));
     mapa.set(clave, linea);
   }
-  // Primero los cubiertos del buffet, después bebidas y el resto
-  return [...mapa.values()].sort((a, b) => Number(b.descripcion.startsWith('Buffet')) - Number(a.descripcion.startsWith('Buffet')));
+  // Primero los menús por comensal, después bebidas y el resto
+  return [...mapa.values()].sort((a, b) => Number(esTarifa(b.descripcion)) - Number(esTarifa(a.descripcion)));
+}
+
+/** Líneas de tarifa por comensal («Menú Sakura…», «Menú infantil…»). */
+export function esTarifa(descripcion: string): boolean {
+  return descripcion.startsWith('Menú') || descripcion.startsWith('Buffet');
 }
 
 /** Separa lo que se cobra (buffet por comensal y bebidas) de los platos incluidos en el buffet. */
@@ -162,11 +167,11 @@ export function generarTicketPdf(d: DatosTicket): jsPDF {
   // --- Cabecera
   texto('SAKURA HANAMI', centro, { negrita: true, tam: 13, alinear: 'center' });
   salto(5);
-  texto('Buffet libre japones', centro, { tam: 8, alinear: 'center' });
+  texto('Cocina de fusion asiatica', centro, { tam: 8, alinear: 'center' });
   salto(4);
   texto('SUSHI GARDEN S.L.U.', centro, { tam: 7, alinear: 'center' });
   salto(3.5);
-  texto('C/ Pilarillo Seco, 10 - San Telmo', centro, { tam: 7, alinear: 'center' });
+  texto('C/ Pilarillo Seco, 5 - San Telmo', centro, { tam: 7, alinear: 'center' });
   salto(3.5);
   texto('35002 Las Palmas de Gran Canaria', centro, { tam: 7, alinear: 'center' });
   salto(5);

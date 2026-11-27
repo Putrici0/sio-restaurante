@@ -29,8 +29,9 @@ type FiltroCarta = CategoriaPlato | 'Todos' | 'MasPedidos';
       <main class="pub-main">
         <h1 class="pub-titulo">Nuestra carta</h1>
         <p class="pub-subtitulo">
-          Buffet libre a la carta: pide todo lo que quieras por rondas desde el móvil de tu mesa y te lo
-          preparamos al momento. ¿Aún no tienes mesa? <a routerLink="/reservar">Reserva aquí</a>.
+          Lo mejor de la cocina de fusión japonesa, china y tailandesa, sin límites: pide por rondas desde el móvil
+          de tu mesa y te lo preparamos al momento. Los platos marcados se sirven por unidad; el resto, para compartir.
+          ¿Aún no tienes mesa? <a routerLink="/reservar">Reserva aquí</a>.
         </p>
 
         <app-tarifas-buffet [tarifas]="tarifas()" />

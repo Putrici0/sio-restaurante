@@ -42,8 +42,8 @@ export class CartaGestion implements OnInit {
   readonly turnosTarifa = computed(() => {
     const porId = new Map(this.tarifas().map((t) => [t.id, t]));
     return [
-      { titulo: 'Mediodía', detalle: 'de lunes a viernes', adulto: porId.get('buffet-almuerzo'), nino: porId.get('buffet-almuerzo-infantil') },
-      { titulo: 'Noche y fin de semana', detalle: 'cenas, sábados y domingos', adulto: porId.get('buffet-cena'), nino: porId.get('buffet-cena-infantil') },
+      { titulo: 'Menú Sakura', detalle: 'almuerzos de lunes a jueves', adulto: porId.get('buffet-almuerzo'), nino: porId.get('buffet-almuerzo-infantil') },
+      { titulo: 'Menú Deluxe', detalle: 'cenas, viernes, fines de semana y festivos', adulto: porId.get('buffet-cena'), nino: porId.get('buffet-cena-infantil') },
     ].filter((t) => t.adulto || t.nino);
   });
 

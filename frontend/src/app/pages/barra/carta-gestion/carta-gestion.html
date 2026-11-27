@@ -17,7 +17,7 @@
           <h2>{{ turno.titulo }}</h2>
           <span>{{ turno.detalle }}</span>
         </header>
-        @for (fila of [{ etiqueta: 'Adultos', plato: turno.adulto }, { etiqueta: 'Niños de 3 a 10 años', plato: turno.nino }]; track fila.etiqueta) {
+        @for (fila of [{ etiqueta: 'Adultos', plato: turno.adulto }, { etiqueta: 'Niños de 100 a 130 cm', plato: turno.nino }]; track fila.etiqueta) {
           @if (fila.plato; as t) {
             <div class="tarifa__fila">
               <span class="tarifa__quien">{{ fila.etiqueta }}</span>
@@ -28,7 +28,7 @@
         }
       </article>
     }
-    <p class="tarifas__nota">Precio por comensal, IGIC incluido. Bebidas y postres se cobran aparte; menores de 3 años, gratis.</p>
+    <p class="tarifas__nota">Precio por comensal, IGIC incluido. Bebidas y postres aparte; niños de menos de 100 cm, gratis; +2 € por plato sobrante.</p>
   </section>
 
   <div class="chips" role="group" aria-label="Filtrar por categoría">

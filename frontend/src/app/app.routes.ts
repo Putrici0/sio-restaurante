@@ -27,7 +27,7 @@ import { ReservasSala } from './pages/camarero/reservas/reservas-sala';
 
 export const routes: Routes = [
   // Web pública del restaurante (sin login): portada, carta y reservas online
-  { path: '', component: InicioPublico, pathMatch: 'full', title: 'Sakura Hanami · Buffet japonés' },
+  { path: '', component: InicioPublico, pathMatch: 'full', title: 'Sakura Hanami · Cocina de fusión asiática' },
   { path: 'carta', component: CartaPublica, title: 'Carta · Sakura Hanami' },
   { path: 'reservar', component: ReservaOnline, title: 'Reservas · Sakura Hanami' },
 

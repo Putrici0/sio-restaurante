@@ -66,7 +66,7 @@
               <button type="button" (click)="cambiarNinos(-1, m)" [disabled]="ninos() <= 0" aria-label="Un niño menos">−</button>
               <strong>{{ ninos() }}</strong>
               <button type="button" (click)="cambiarNinos(1, m)" [disabled]="ninos() >= comensales() - 1" aria-label="Un niño más">+</button>
-              <span>de ellos, niños de 3 a 10 años <small>(tarifa infantil)</small></span>
+              <span>de ellos, niños de 100 a 130 cm <small>(tarifa infantil; menos de 100 cm, gratis y no se cuentan)</small></span>
             </div>
           <button type="button" class="sh-btn sh-btn--primario" [disabled]="accionEnCurso()" (click)="abrirSesion(m)">Abrir mesa</button>
         }

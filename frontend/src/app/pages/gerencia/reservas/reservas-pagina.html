@@ -121,7 +121,7 @@
               <button type="button" (click)="cambiarNinos(-1, r)" [disabled]="ninosLlegada() <= 0" aria-label="Un niño menos">−</button>
               <strong>{{ ninosLlegada() }}</strong>
               <button type="button" (click)="cambiarNinos(1, r)" [disabled]="ninosLlegada() >= r.comensales - 1" aria-label="Un niño más">+</button>
-              <span>de ellos, niños de 3 a 10 años <small>(tarifa infantil)</small></span>
+              <span>de ellos, niños de 100 a 130 cm <small>(tarifa infantil; menos de 100 cm, gratis y no se cuentan)</small></span>
             </div>
 
     @if (error()) { <p class="error" role="alert">{{ error() }}</p> }

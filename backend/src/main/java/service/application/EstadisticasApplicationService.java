@@ -317,6 +317,11 @@ public class EstadisticasApplicationService {
         for (String tipo : TIPOS_BEBIDA) porTipo.put(tipo, BigDecimal.ZERO);
         Map<String, ProductoVendido> porBebida = new HashMap<>();
         Set<String> cuentasConBebida = new HashSet<>();
+        // La copia del plato en cada orden no lleva descripción: se toma de la carta
+        Map<String, String> descripciones = new HashMap<>();
+        for (Plato p : platoRepository.findAll()) {
+            if (p.id() != null) descripciones.put(p.id(), p.descripcion() == null ? "" : p.descripcion());
+        }
 
         for (Orden o : vendidas) {
             Plato plato = o.plato();
@@ -337,7 +342,7 @@ public class EstadisticasApplicationService {
                 case Bebida -> {
                     bebidas = bebidas.add(precio(o));
                     unidadesBebida++;
-                    porTipo.merge(tipoBebida(plato.nombre()), precio(o), BigDecimal::add);
+                    porTipo.merge(tipoBebida(plato.nombre() + " · " + descripciones.getOrDefault(plato.id(), "")), precio(o), BigDecimal::add);
                     porBebida.merge(plato.id(),
                             new ProductoVendido(plato.id(), plato.nombre(), plato.categoria(), 1, precio(o)),
                             (a, b) -> new ProductoVendido(a.platoId(), a.nombre(), a.categoria(),
@@ -386,16 +391,17 @@ public class EstadisticasApplicationService {
     private static final List<String> TIPOS_BEBIDA = List.of(
             "Agua", "Refrescos y zumos", "Cervezas", "Vinos", "Sake y licores", "Cafés y tés");
 
-    /** Agrupa las bebidas de la carta por tipo a partir de su nombre. */
-    static String tipoBebida(String nombre) {
-        String n = nombre == null ? "" : nombre.toLowerCase(new Locale("es", "ES"));
-        if (n.contains("agua")) return "Agua";
-        if (n.contains("cerveza") || n.contains("caña") || n.contains("asahi") || n.contains("sapporo")
-                || n.contains("kirin")) return "Cervezas";
-        if (n.contains("vino") || n.contains("lambrusco") || n.contains("tinto") || n.contains("cava")) return "Vinos";
-        if (n.contains("sake") || n.contains("umeshu") || n.contains("licor") || n.contains("chupito")) return "Sake y licores";
-        if (n.contains("café") || n.contains("cafe") || n.startsWith("té") || n.contains(" té") || n.contains("matcha")
-                || n.contains("infusión")) return "Cafés y tés";
+    /** Agrupa las bebidas de la carta por tipo a partir de su nombre y su descripción. */
+    static String tipoBebida(String texto) {
+        String n = texto == null ? "" : texto.toLowerCase(new Locale("es", "ES"));
+        if (n.contains("tónica")) return "Refrescos y zumos";
+        if (n.startsWith("agua")) return "Agua";
+        if (n.contains("café") || n.contains("cafe") || n.contains("infusión") || n.contains("matcha")) return "Cafés y tés";
+        if (n.contains("cerveza") || n.contains("caña")) return "Cervezas";
+        if (n.contains("vino") || n.contains("cava") || n.contains("rosado") || n.contains("lambrusco")
+                || n.contains("tinto")) return "Vinos";
+        if (n.contains("sake") || n.contains("licor") || n.contains("chupito") || n.contains("ron ")
+                || n.contains("ginebra") || n.contains("whisky")) return "Sake y licores";
         return "Refrescos y zumos";
     }
 

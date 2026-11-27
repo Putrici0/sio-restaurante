@@ -54,121 +54,232 @@ def sha(t):
 
 
 # ------------------------------------------------------------------ carta
-# Carta modelada sobre los buffets japoneses "a la carta" reales de Canarias y la Península
-# (p. ej. 17,90 € mediodía L-V y 22,90 € noche/fin de semana; bebida y postre aparte).
-# (nombre, categoría, descripción, precio, emoji, popularidad)
-# La comida (Entrante y Principal) va incluida en la tarifa; postres y bebidas se cobran aparte.
-CARTA = [
-    # --- Entrantes, ensaladas, sopas y fritos (incluidos)
-    ("Edamame", "Entrante", "Vainas de soja verde al vapor con sal en escamas", 0, "🫛", 7),
-    ("Sopa de miso", "Entrante", "Caldo dashi con miso, tofu, wakame y cebollino", 0, "🍲", 6),
-    ("Ensalada de algas wakame", "Entrante", "Algas wakame con sésamo tostado y aliño de vinagre de arroz", 0, "🥗", 5),
-    ("Ensalada de cangrejo", "Entrante", "Kanikama, pepino, mango y mayonesa japonesa", 0, "🥗", 5),
-    ("Ensalada de salmón y aguacate", "Entrante", "Salmón, aguacate, mezclum y salsa de sésamo", 0, "🥗", 4),
-    ("Gyozas de pollo", "Entrante", "Empanadillas a la plancha con salsa ponzu (4 uds.)", 0, "🥟", 9),
-    ("Gyozas de langostino", "Entrante", "Empanadillas de langostino al vapor (4 uds.)", 0, "🥟", 7),
-    ("Gyozas de verduras", "Entrante", "Empanadillas vegetales a la plancha (4 uds.)", 0, "🥟", 3),
-    ("Harumaki", "Entrante", "Rollitos crujientes de verduras con salsa agridulce (2 uds.)", 0, "🌯", 5),
-    ("Takoyaki", "Entrante", "Bolitas de pulpo con salsa okonomi, mayonesa y katsuobushi (4 uds.)", 0, "🐙", 4),
-    ("Pan bao de panceta", "Entrante", "Bollo al vapor con panceta glaseada, pepino y cebolla crujiente", 0, "🥪", 6),
-    ("Karaage", "Entrante", "Pollo frito marinado al estilo japonés con mayonesa de lima", 0, "🍗", 7),
-    ("Alitas de pollo teriyaki", "Entrante", "Alitas glaseadas con salsa teriyaki y sésamo (4 uds.)", 0, "🍗", 5),
-    ("Langostinos en tempura", "Entrante", "Langostinos en tempura ligera con salsa tentsuyu (3 uds.)", 0, "🍤", 9),
-    ("Tempura de verduras", "Entrante", "Calabacín, berenjena, boniato y pimiento en tempura", 0, "🥦", 3),
-    ("Calamares en tempura", "Entrante", "Anillas de calamar en tempura con mayonesa picante", 0, "🦑", 4),
-    ("Shumai de langostino", "Entrante", "Saquitos de langostino al vapor (3 uds.)", 0, "🥟", 3),
-    ("Tartar de salmón", "Entrante", "Salmón picado con aguacate, cebollino y salsa ponzu", 0, "🐟", 6),
-    ("Tartar de atún picante", "Entrante", "Atún con salsa picante, aguacate y tobiko", 0, "🐟", 4),
-    ("Tataki de atún", "Entrante", "Atún marcado en sésamo con salsa ponzu (5 cortes)", 0, "🐟", 4),
-    ("Tataki de salmón", "Entrante", "Salmón marcado con salsa teriyaki y cebolla crujiente", 0, "🐟", 4),
-    ("Berenjena con miso", "Entrante", "Nasu dengaku: berenjena asada glaseada con miso dulce", 0, "🍆", 2),
-    # --- Sushi (incluido)
-    ("Nigiri de salmón", "Principal", "Arroz de sushi con salmón fresco (2 uds.)", 0, "🍣", 12),
-    ("Nigiri de atún", "Principal", "Arroz de sushi con atún (2 uds.)", 0, "🍣", 7),
-    ("Nigiri de pez mantequilla", "Principal", "Pez mantequilla con escamas de sal (2 uds.)", 0, "🍣", 6),
-    ("Nigiri de langostino", "Principal", "Langostino cocido sobre arroz de sushi (2 uds.)", 0, "🍤", 5),
-    ("Nigiri de anguila", "Principal", "Anguila glaseada con salsa kabayaki (2 uds.)", 0, "🍣", 4),
-    ("Nigiri de salmón flambeado", "Principal", "Salmón flambeado con mayonesa japonesa y teriyaki (2 uds.)", 0, "🔥", 10),
-    ("Nigiri de tamago", "Principal", "Tortilla japonesa dulce sobre arroz (2 uds.)", 0, "🥚", 2),
-    ("Nigiri de aguacate", "Principal", "Aguacate con sésamo sobre arroz (2 uds.)", 0, "🥑", 3),
-    ("Gunkan de salmón", "Principal", "Barquito de nori con salmón picado (2 uds.)", 0, "🍣", 5),
-    ("Gunkan de tartar picante", "Principal", "Barquito de nori con tartar de atún picante (2 uds.)", 0, "🌶️", 4),
-    ("Gunkan de masago", "Principal", "Barquito de nori con huevas de capelán (2 uds.)", 0, "🍣", 2),
-    ("Hosomaki de salmón", "Principal", "Rollito fino de nori con salmón (6 uds.)", 0, "🍣", 7),
-    ("Hosomaki de atún", "Principal", "Rollito fino de nori con atún (6 uds.)", 0, "🍣", 4),
-    ("Hosomaki de pepino", "Principal", "Rollito fino de nori con pepino (6 uds.)", 0, "🥒", 3),
-    ("Hosomaki de aguacate", "Principal", "Rollito fino de nori con aguacate (6 uds.)", 0, "🥑", 3),
-    ("Hosomaki de kanikama", "Principal", "Rollito fino de nori con barrita de cangrejo (6 uds.)", 0, "🦀", 3),
-    ("California roll", "Principal", "Uramaki de kanikama, aguacate y pepino con sésamo (4 uds.)", 0, "🍱", 8),
-    ("Philadelphia roll", "Principal", "Uramaki de salmón, queso crema y aguacate (4 uds.)", 0, "🍱", 8),
-    ("Spicy tuna roll", "Principal", "Uramaki de atún picante y cebollino (4 uds.)", 0, "🌶️", 5),
-    ("Ebi tempura roll", "Principal", "Uramaki de langostino en tempura, aguacate y teriyaki (4 uds.)", 0, "🍤", 9),
-    ("Dragon roll", "Principal", "Langostino tempura cubierto de aguacate y salsa de anguila (4 uds.)", 0, "🐉", 6),
-    ("Rainbow roll", "Principal", "California roll cubierto de salmón, atún y pez mantequilla (4 uds.)", 0, "🌈", 5),
-    ("Uramaki Sakura", "Principal", "Especialidad de la casa: salmón, aguacate y queso crema cubierto de salmón flambeado (4 uds.)", 0, "🌸", 11),
-    ("Crispy roll de salmón", "Principal", "Roll de salmón y queso crema rebozado en panko (4 uds.)", 0, "🍱", 7),
-    ("Futomaki", "Principal", "Maki grueso de tortilla, kanikama, pepino y zanahoria (4 uds.)", 0, "🍱", 2),
-    ("Temaki de salmón", "Principal", "Cono de nori con arroz, salmón y aguacate", 0, "🍙", 4),
-    ("Temaki de atún picante", "Principal", "Cono de nori con atún picante y pepino", 0, "🍙", 2),
-    ("Temaki de langostino tempura", "Principal", "Cono de nori con langostino en tempura y mayonesa", 0, "🍙", 3),
-    ("Sashimi de salmón", "Principal", "Cortes de salmón fresco (5 cortes)", 0, "🐟", 9),
-    ("Sashimi de atún", "Principal", "Cortes de atún (5 cortes)", 0, "🐟", 5),
-    ("Sashimi de pez mantequilla", "Principal", "Cortes de pez mantequilla (5 cortes)", 0, "🐟", 4),
-    # --- Platos calientes (incluidos)
-    ("Yakisoba de pollo", "Principal", "Fideos salteados al wok con verduras, pollo y salsa yakisoba", 0, "🍜", 7),
-    ("Yakisoba de langostinos", "Principal", "Fideos salteados al wok con langostinos y verduras", 0, "🍜", 5),
-    ("Udon salteado con ternera", "Principal", "Fideos udon al wok con ternera y salsa de soja", 0, "🍜", 4),
-    ("Ramen tonkotsu", "Principal", "Caldo de cerdo cremoso con fideos, chashu, huevo marinado y nori (media ración)", 0, "🍜", 5),
-    ("Arroz frito japonés", "Principal", "Yakimeshi salteado con huevo, verduras y salsa de soja", 0, "🍚", 6),
-    ("Arroz blanco", "Principal", "Cuenco de arroz japonés al vapor", 0, "🍚", 3),
-    ("Pollo teriyaki", "Principal", "Muslo de pollo a la plancha glaseado con salsa teriyaki", 0, "🍗", 7),
-    ("Salmón teriyaki", "Principal", "Lomo de salmón a la plancha con salsa teriyaki", 0, "🐟", 6),
-    ("Ternera yakiniku", "Principal", "Ternera salteada con cebolla y salsa yakiniku", 0, "🥩", 5),
-    ("Yakitori", "Principal", "Brochetas de pollo y puerro a la brasa con salsa tare (2 uds.)", 0, "🍢", 5),
-    ("Pollo katsu", "Principal", "Pechuga empanada en panko con salsa tonkatsu", 0, "🍛", 4),
-    ("Tonkatsu", "Principal", "Lomo de cerdo empanado en panko con salsa tonkatsu", 0, "🍛", 3),
-    ("Langostinos a la plancha", "Principal", "Langostinos a la plancha con ajo y salsa de soja", 0, "🍤", 5),
-    ("Calamar a la plancha", "Principal", "Calamar a la plancha con salsa teriyaki y sésamo", 0, "🦑", 3),
+# Carta de Sakura Hanami (cocina de fusión japonesa, china y tailandesa), con los
+# nombres, la numeración y los precios publicados en sakurahanami.com. Las descripciones
+# son resúmenes propios de los ingredientes.
+# Menú Sakura 18,95 € (almuerzos de lunes a jueves) · Menú Deluxe 21,95 € (cenas, viernes,
+# fines de semana y festivos) · niños de 100 a 130 cm 10,95 € · bebidas y postres aparte.
+POR_UNIDAD = {8, 9, *range(23, 36), 46, 47}
+
+# (número, nombre, descripción)
+PLATOS_CARTA = [
+    (1, "Carpaccio de atún", "Láminas de atún rojo con tomate cherry, alga y salsa de sésamo"),
+    (2, "Carpaccio de salmón picante", "Salmón con cebollino, tobiko, cacahuete y salsa ponzu"),
+    (3, "Carpaccio sweet", "Salmón con un toque de cacao y salsa sakura dulce"),
+    (4, "Carpaccio de pez limón", "Pez limón con pimiento verde y salsa de wasabi"),
+    (5, "Tartar de salmón", "Salmón con puerro crujiente sobre lámina de arroz y ponzu"),
+    (6, "Tartar de atún", "Atún rojo picado con puerro crujiente y salsa de sésamo"),
+    (7, "Tartar Hawaii", "Tartar con fruta tropical al estilo hawaiano"),
+    (8, "Cono kōn de atún", "Cono crujiente de atún, queso crema y perlas de arroz"),
+    (9, "Cono kōn de salmón", "Cono crujiente de salmón, queso crema y perlas de arroz"),
+    (10, "Crispy taco de atún", "Taco crujiente con tartar de atún, burrata y teriyaki (2 uds.)"),
+    (11, "Crispy taco de salmón", "Taco crujiente con tartar de salmón, burrata y teriyaki (2 uds.)"),
+    (12, "Gunkan de atún", "Tartar de atún sobre arroz con tobiko y salsa barbacoa japonesa"),
+    (13, "Gunkan de salmón", "Tartar de salmón sobre arroz con tobiko y salsa barbacoa"),
+    (14, "Nori crujiente", "Alga nori frita con salmón, trufa y queso crema (2 uds.)"),
+    (15, "Poke mixto", "Bowl con wakame, tomate, edamame, almendra y pescado a elegir"),
+    (16, "Tataki de atún", "Atún marcado con kizami wasabi y salsa del chef"),
+    (17, "Tataki de salmón", "Salmón marcado con polvo de shacha y salsa del chef"),
+    (18, "Maki de vieira", "Maki de vieira envuelto en aguacate con salsa Hanami (8 uds.)"),
+    (19, "Maki yuzu", "Maki de mango, queso crema y perlas de arroz con yuzu (8 uds.)"),
+    (20, "Paraíso Sakura", "Atún, salmón, pez limón y carabinero sobre salsa de burrata"),
+    (21, "Sashimi mixto crudo", "Vieira, atún, cigala, carabinero, salmón, pez limón y huevas"),
+    (22, "Volcán de mango", "Aguacate y mango en forma de volcán (8 uds.)"),
+    (23, "Nigiri de anguila", "Anguila caramelizada con su salsa"),
+    (24, "Nigiri de atún", "Arroz con un corte de atún rojo"),
+    (25, "Nigiri de gamba", "Arroz con gamba"),
+    (26, "Nigiri de pez limón", "Arroz con pez limón"),
+    (27, "Nigiri de pulpo", "Arroz con pulpo y salsa de la casa"),
+    (28, "Nigiri de salmón", "Arroz con salmón noruego"),
+    (29, "Jo Philadelphia", "Arroz envuelto en salmón con queso crema y huevas"),
+    (30, "Jo flambé", "Arroz envuelto en salmón flambeado"),
+    (31, "Jo raíz de loto", "Raíz de loto crujiente con salmón y queso crema"),
+    (32, "Jo de salmón", "Arroz envuelto en salmón relleno de tartar"),
+    (33, "Jo tropical", "Arroz envuelto en salmón con mango"),
+    (34, "Jo de huevas de salmón", "Arroz coronado con huevas de salmón"),
+    (35, "Jo de atún flambeado", "Arroz envuelto en atún flambeado"),
+    (36, "Sashimi de atún", "Cortes de atún rojo"),
+    (37, "Sashimi de hamachi", "Cortes de hamachi"),
+    (38, "Sashimi de pez limón", "Cortes de pez limón"),
+    (39, "Sashimi de salmón", "Cortes de salmón noruego"),
+    (40, "Hosomaki de atún cocido", "Rollito de atún cocido al estilo Tokio (6 uds.)"),
+    (41, "Hosomaki de atún", "Rollito de atún fresco (6 uds.)"),
+    (42, "Hosomaki de rábano y pepino", "Rollito vegetal de rábano y pepino (6 uds.)"),
+    (43, "Hosomaki de salmón Sakura", "Rollito de salmón cocido al estilo Sakura (6 uds.)"),
+    (44, "Hosomaki de salmón", "Rollito de salmón fresco (6 uds.)"),
+    (45, "Hosomaki frito de fruta", "Rollito frito de salmón y fruta con frutos del bosque (8 uds.)"),
+    (46, "Maki sandwich", "Atún o salmón con kataifi crujiente"),
+    (47, "Maki sandwich frito", "Versión frita del maki sandwich"),
+    (48, "Hosomaki de fruta", "Rollito de fruta de temporada con frutos del bosque (8 uds.)"),
+    (49, "Uramaki de atún", "Atún, aguacate y alga frita con sésamo (4 uds.)"),
+    (50, "Uramaki dragón", "Tempura de gamba con teriyaki y kataifi (4 uds.)"),
+    (51, "Uramaki Philadelphia", "Salmón y queso crema con huevas (4 uds.)"),
+    (52, "Uramaki de pistacho", "Salmón, aguacate y queso crema con salsa de mango y pistacho (4 uds.)"),
+    (53, "Uramaki picante de atún", "Atún picante, aguacate y pimiento verde (4 uds.)"),
+    (54, "Uramaki tartufo", "Salmón, aguacate y crema de trufa (4 uds.)"),
+    (55, "Uramaki Hakone picante", "Salmón, guindilla y aguacate (4 uds.)"),
+    (56, "Uramaki Takayama", "Aguacate, salmón y cebolla frita con sésamo (4 uds.)"),
+    (57, "Uramaki tempura", "Gamba en tempura con sésamo y teriyaki (4 uds.)"),
+    (58, "Uramaki vegetal", "Aguacate, alga, pepino y zanahoria (4 uds.)"),
+    (59, "Uramaki Miyama", "Salmón, aguacate, queso crema y puerro frito (4 uds.)"),
+    (60, "Uramaki Narai", "Coco, aguacate, salmón y queso crema (4 uds.)"),
+    (61, "Uramaki Shirakawa", "Cebolla frita, atún y queso crema (4 uds.)"),
+    (62, "Edamame", "Vainas de soja al vapor con sal"),
+    (63, "Ensalada furutsu", "Mango, tomate cherry y salsa Hanami"),
+    (64, "Pan de gamba frita", "Pan crujiente con sabor a gamba"),
+    (65, "Sopa agripicante", "Sopa china ácida y picante"),
+    (66, "Sopa de miso", "Caldo de miso japonés"),
+    (67, "Wakame", "Ensalada de algas con sésamo"),
+    (68, "Ensalada kaisen de marisco", "Algas con pulpo, gambas y pepino"),
+    (69, "Empanadilla de carne", "Empanadillas de carne al estilo oriental (4 uds.)"),
+    (70, "Empanadilla de gamba al vapor", "Empanadillas de gamba al vapor (4 uds.)"),
+    (71, "Gyoza de carne", "Gyozas de carne y verdura (4 uds.)"),
+    (72, "Empanadilla de pollo", "Empanadillas de pollo (4 uds.)"),
+    (73, "Calamar frito con salsa japonesa", "Anillas de calamar con salsa japonesa"),
+    (74, "Gamba empanada", "Gambas con empanado crujiente"),
+    (75, "Gamba rebozada", "Gambas en rebozado esponjoso"),
+    (76, "Tempura de gambas", "Gambas en tempura con su salsa"),
+    (77, "Rollito de primavera", "Rollito crujiente de verduras"),
+    (78, "Tempura vegetal", "Verduras en tempura"),
+    (79, "Pollo estilo japonés", "Pollo a la japonesa"),
+    (80, "Chips", "Patatas chips para compartir"),
+    (81, "Takoyaki de calamar", "Bolitas de calamar con salsa takoyaki"),
+    (82, "Pan chino", "Pan al vapor tradicional chino"),
+    (83, "Pollo empanado", "Pollo empanado con arroz y salsa oriental"),
+    (84, "Wantún de carne frito", "Raviolis chinos fritos rellenos de carne"),
+    (85, "Empanadilla de curry", "Empanadilla rellena al curry"),
+    (86, "Tallarines con marisco", "Tallarines salteados con gambas, calamar y verduras"),
+    (87, "Arroz tres delicias", "Arroz salteado con jamón, tortilla y guisantes"),
+    (88, "Espagueti de arroz", "Fideos de arroz salteados con verdura y huevo"),
+    (89, "Tallarines vegetales", "Tallarines salteados con verduras"),
+    (90, "Arroz salteado con gambas", "Arroz salteado con gambas"),
+    (91, "Arroz blanco", "Arroz blanco con sésamo"),
+    (92, "Arroz especial piña", "Arroz salteado servido en media piña"),
+    (93, "Tallarines con ternera y soja", "Tallarines salteados con ternera y salsa de soja"),
+    (94, "Pollo al curry", "Pollo en salsa de curry"),
+    (95, "Pollo con almendras", "Pollo salteado con almendras"),
+    (96, "Pollo salteado con champiñones", "Pollo y champiñones al wok"),
+    (97, "Verduras salteadas de temporada", "Verduras de temporada al wok"),
+    (98, "Pato Pekín", "Pato a la pequinesa con piel crujiente"),
+    (99, "Gambas salteadas", "Gambas salteadas al wok"),
+    (100, "Gambas con salsa douchi", "Gambas con salsa de frijol negro fermentado"),
+    (101, "Gambas salteadas picantes", "Gambas al wok con salsa picante"),
+    (102, "Ternera en salsa Sakura", "Ternera con salsa de la casa"),
+    (103, "Solomillo con setas y coñac", "Solomillo a la plancha con setas flambeadas al coñac"),
+    (104, "Solomillo salteado sabor Tailandia", "Solomillo con especias tailandesas"),
+    (105, "Calamar salteado con salsa douchi", "Calamar al wok con salsa de frijol negro"),
+    (106, "Calamar salteado Sichuan picante", "Calamar al wok con picante de Sichuan"),
+    (107, "Calamares con salsa de ostras", "Calamares salteados con salsa de ostras"),
+    (108, "Gambas a la plancha", "Gambas a la plancha"),
+    (109, "Pinchito de pescado japonés", "Pescado blanco marinado a la japonesa"),
+    (110, "Pinchito de choco", "Choco marinado a la plancha"),
+    (111, "Pincho de pollo", "Pollo marinado con sésamo"),
+    (112, "Pincho de gamba", "Gambas marinadas a la plancha"),
+    (113, "Pincho de salmón", "Salmón marinado con sésamo"),
+    (114, "Pincho de atún", "Atún rojo marinado con soja y sésamo"),
+    (115, "Tofu frito con salsa de la casa", "Tofu crujiente salteado, apto para vegetarianos"),
+]
+
+
+def categoria_de(n):
+    # Entrantes (62-85); sushi y crudos (1-61) y wok y plancha (86-115) en «Sushi y platos calientes»
+    return "Entrante" if 62 <= n <= 85 else "Principal"
+
+
+def emoji_de(nombre):
+    n = nombre.lower()
+    for clave, e in [("sopa", "🍲"), ("edamame", "🫛"), ("ensalada", "🥗"), ("wakame", "🥗"), ("poke", "🥗"),
+                     ("gyoza", "🥟"), ("empanadilla", "🥟"), ("wantún", "🥟"), ("pan chino", "🥟"), ("pan de gamba", "🍘"),
+                     ("chips", "🍟"), ("takoyaki", "🐙"), ("pulpo", "🐙"), ("rollito", "🌯"), ("tempura vegetal", "🥦"),
+                     ("verduras", "🥦"), ("tofu", "🧈"), ("pato", "🦆"), ("curry", "🍛"), ("tallarines", "🍜"),
+                     ("espagueti", "🍜"), ("piña", "🍍"), ("arroz", "🍚"), ("pollo", "🍗"), ("solomillo", "🥩"),
+                     ("ternera", "🥩"), ("calamar", "🦑"), ("choco", "🦑"), ("gamba", "🍤"), ("pincho", "🍢"),
+                     ("pinchito", "🍢"), ("cono", "🍦"), ("taco", "🌮"), ("volcán", "🌋"), ("mango", "🥭"),
+                     ("fruta", "🍓"), ("sakura", "🌸"), ("paraíso", "🌸"), ("dragón", "🐉"), ("vieira", "🐚"),
+                     ("anguila", "🍣"), ("nigiri", "🍣"), ("jo ", "🍣"), ("sashimi", "🐟"), ("tartar", "🐟"),
+                     ("tataki", "🐟"), ("carpaccio", "🐟"), ("gunkan", "🍙"), ("nori", "🍙"), ("maki", "🍱")]:
+        if clave in n:
+            return e
+    return "🍣"
+
+
+def popularidad(nombre):
+    n = nombre.lower()
+    for clave, peso in [("nigiri de salmón", 12), ("uramaki philadelphia", 10), ("tempura de gambas", 10),
+                        ("jo flambé", 9), ("uramaki dragón", 9), ("arroz tres delicias", 9), ("sashimi de salmón", 8),
+                        ("crispy taco", 7), ("gyoza", 8), ("pato pekín", 7), ("uramaki", 6), ("jo ", 6), ("nigiri", 6),
+                        ("rollito", 6), ("pollo", 5), ("tallarines", 5), ("gamba", 5), ("sashimi", 5), ("tartar", 5),
+                        ("edamame", 6), ("sopa de miso", 5), ("hosomaki", 4)]:
+        if clave in n:
+            return peso
+    return 3
+
+
+CARTA = []
+for n, nombre, desc in PLATOS_CARTA:
+    nota = " · se sirve por unidad" if n in POR_UNIDAD else ""
+    CARTA.append((f"{n}. {nombre}", categoria_de(n), desc + nota, 0, emoji_de(nombre), popularidad(nombre)))
+
+CARTA += [
     # --- Postres (se cobran aparte)
-    ("Mochi variado", "Postre", "Pastelitos de arroz rellenos de helado: té verde, fresa y mango (3 uds.)", 4.50, "🍡", 9),
-    ("Dorayaki", "Postre", "Bizcochitos esponjosos rellenos de pasta dulce de judía roja", 3.90, "🥞", 3),
-    ("Helado de té matcha", "Postre", "Helado artesano de té verde matcha (2 bolas)", 3.90, "🍨", 5),
-    ("Tarta de queso japonesa", "Postre", "Cheesecake estilo japonés, ligera y esponjosa", 4.90, "🍰", 6),
-    ("Helado frito en tempura", "Postre", "Bola de helado de vainilla en tempura crujiente", 4.90, "🍨", 6),
-    ("Coulant de chocolate", "Postre", "Bizcocho de chocolate fundido con helado de vainilla", 5.50, "🍫", 5),
-    ("Fruta natural de temporada", "Postre", "Piña, mango y fresas cortados al momento", 3.50, "🍍", 3),
-    ("Helado artesano", "Postre", "Dos bolas a elegir: vainilla, fresa o chocolate", 3.90, "🍦", 4),
-    # --- Bebidas (se cobran aparte, precios con IGIC)
-    ("Agua mineral 50 cl", "Bebida", "Agua mineral natural en botella de 50 cl", 2.20, "💧", 0),
-    ("Agua con gas 50 cl", "Bebida", "Agua mineral con gas en botella de 50 cl", 2.50, "🫧", 0),
-    ("Agua mineral 1,5 l", "Bebida", "Botella grande de agua mineral para compartir", 3.90, "💧", 0),
-    ("Coca-Cola", "Bebida", "Refresco de cola, lata de 33 cl", 2.80, "🥤", 0),
-    ("Coca-Cola Zero", "Bebida", "Refresco de cola sin azúcar, lata de 33 cl", 2.80, "🥤", 0),
-    ("Fanta de naranja", "Bebida", "Refresco de naranja, lata de 33 cl", 2.80, "🍊", 0),
-    ("Fanta de limón", "Bebida", "Refresco de limón, lata de 33 cl", 2.80, "🍋", 0),
-    ("Nestea", "Bebida", "Té frío al limón, lata de 33 cl", 2.80, "🧊", 0),
-    ("Zumo de naranja natural", "Bebida", "Zumo de naranja recién exprimido", 3.50, "🍊", 0),
-    ("Ramune", "Bebida", "Refresco japonés con canica, sabor original", 3.90, "🫧", 0),
-    ("Té verde japonés", "Bebida", "Tetera de té verde sencha", 2.50, "🍵", 0),
-    ("Matcha latte frío", "Bebida", "Té matcha con leche y hielo", 3.50, "🍵", 0),
-    ("Café solo", "Bebida", "Café espresso", 1.50, "☕", 0),
-    ("Café cortado", "Bebida", "Espresso con un poco de leche", 1.60, "☕", 0),
-    ("Café con leche", "Bebida", "Café con leche caliente", 1.80, "☕", 0),
-    ("Caña de cerveza", "Bebida", "Cerveza de barril Tropical, 25 cl", 2.30, "🍺", 0),
-    ("Cerveza Dorada 33 cl", "Bebida", "Cerveza canaria en botellín", 2.80, "🍺", 0),
-    ("Cerveza sin alcohol", "Bebida", "Botellín de cerveza sin alcohol 33 cl", 2.80, "🍺", 0),
-    ("Asahi Super Dry", "Bebida", "Cerveza japonesa, botella de 33 cl", 3.80, "🍺", 0),
-    ("Sapporo Premium", "Bebida", "Cerveza japonesa, botella de 33 cl", 3.90, "🍺", 0),
-    ("Kirin Ichiban", "Bebida", "Cerveza japonesa, botella de 33 cl", 3.90, "🍺", 0),
-    ("Copa de vino blanco", "Bebida", "Vino blanco D.O. Rueda, copa", 3.50, "🥂", 0),
-    ("Copa de vino tinto", "Bebida", "Vino tinto D.O. Rioja, copa", 3.50, "🍷", 0),
-    ("Tinto de verano", "Bebida", "Vino tinto con gaseosa y hielo", 3.20, "🍷", 0),
-    ("Botella de vino blanco Rueda", "Bebida", "Verdejo D.O. Rueda, botella de 75 cl", 16.90, "🍾", 0),
-    ("Botella de vino tinto Rioja", "Bebida", "Rioja crianza, botella de 75 cl", 18.90, "🍷", 0),
-    ("Botella de Lambrusco", "Bebida", "Lambrusco rosado de aguja, botella de 75 cl", 13.90, "🍾", 0),
-    ("Sake", "Bebida", "Tokkuri de sake de 180 ml, frío o caliente", 6.50, "🍶", 0),
-    ("Umeshu", "Bebida", "Licor japonés de ciruela con hielo", 4.50, "🥃", 0),
-    ("Chupito de licor de lichi", "Bebida", "Licor dulce de lichi, servido frío", 2.50, "🥃", 0),
+    ("Mochis artesanos", "Postre", "Pastelitos japoneses de arroz rellenos", 4.50, "🍡", 9),
+    ("Copa sensación de turrón", "Postre", "Helado de turrón con caramelo y almendra garrapiñada", 4.10, "🍨", 4),
+    ("Tarta de queso y dulce de leche", "Postre", "Tarta de queso con dulce de leche", 4.60, "🍰", 6),
+    ("Fondant Baileys", "Postre", "Chocolate belga con corazón de Baileys", 4.60, "🍫", 6),
+    ("Muerte por chocolate", "Postre", "Tarta de bizcocho y crema de chocolate", 4.60, "🍫", 5),
+    ("Crema catalana", "Postre", "Helado de mantecado con yema quemada", 4.60, "🍮", 3),
+    ("Copa de limón", "Postre", "Helado y sorbete de limón", 4.10, "🍋", 4),
+    ("Tarta de queso con arándanos", "Postre", "Tarta de queso horneada con arándanos", 4.60, "🍰", 5),
+    ("Helado de té verde", "Postre", "Helado japonés de té verde", 4.50, "🍵", 6),
+    ("Copa helado tricolor con nueces", "Postre", "Tres sabores a elegir con nueces", 4.50, "🍨", 3),
+    # --- Cervezas
+    ("Mahou Cinco Estrellas", "Bebida", "Cerveza dorada, 5,5 %", 2.55, "🍺", 0),
+    ("Mahou Radler", "Bebida", "Cerveza con limón, 3,2 %", 2.55, "🍺", 0),
+    ("Alhambra Reserva 1925", "Bebida", "Pilsen bohemia, 6,4 %", 3.20, "🍺", 0),
+    ("Alhambra Reserva Roja", "Bebida", "Cerveza bock, 7,2 %", 3.20, "🍺", 0),
+    ("1906 Reserva Especial", "Bebida", "Cerveza de maltas tostadas, 6,5 %", 3.15, "🍺", 0),
+    ("Estrella Galicia Especial", "Bebida", "Cerveza dorada, 5,5 %", 2.85, "🍺", 0),
+    ("Tropical Pilsen", "Bebida", "Cerveza canaria, 4,7 %", 2.85, "🍺", 0),
+    ("Tropical Limón", "Bebida", "Cerveza canaria con limón, 2,0 %", 2.85, "🍺", 0),
+    ("Dorada Especial", "Bebida", "Cerveza canaria, 5,7 %", 3.15, "🍺", 0),
+    ("Heineken", "Bebida", "Cerveza lager, 5,0 %", 2.45, "🍺", 0),
+    ("Kirin Ichiban", "Bebida", "Cerveza japonesa premium, 5,0 %", 3.05, "🍺", 0),
+    ("Sapporo Premium", "Bebida", "Cerveza japonesa, 4,9 %", 3.15, "🍺", 0),
+    # --- Vinos
+    ("Copa de vino Rioja", "Bebida", "Blanco o tinto", 3.60, "🍷", 0),
+    ("Vino Sakura Hanami", "Bebida", "Tinto Rioja de la casa, botella", 11.10, "🍷", 0),
+    ("Ibéricos Crianza", "Bebida", "Tinto Rioja, botella", 15.60, "🍷", 0),
+    ("Viña Pomal Crianza", "Bebida", "Tinto Rioja, botella", 16.60, "🍷", 0),
+    ("Ramón Bilbao Crianza", "Bebida", "Tinto Rioja, botella", 17.10, "🍷", 0),
+    ("Marqués de Riscal", "Bebida", "Tinto Rioja, botella", 25.65, "🍷", 0),
+    ("Celeste Roble", "Bebida", "Tinto Ribera del Duero, botella", 16.60, "🍷", 0),
+    ("Verdejo D.O. Rueda", "Bebida", "Vino blanco, botella", 15.60, "🥂", 0),
+    ("Viña Esmeralda", "Bebida", "Vino blanco D.O. Cataluña, botella", 16.60, "🥂", 0),
+    ("Viña Esmeralda 3/8", "Bebida", "Vino blanco D.O. Cataluña, media botella", 9.85, "🥂", 0),
+    ("Vino Sushi", "Bebida", "Vino blanco japonés, botella", 13.60, "🥂", 0),
+    ("El Grifo", "Bebida", "Vino blanco D.O. Lanzarote, botella", 29.10, "🥂", 0),
+    ("Mateus Rosé", "Bebida", "Vino rosado de Portugal, botella", 16.50, "🍾", 0),
+    ("Lambrusco", "Bebida", "Vino de aguja italiano, botella", 16.50, "🍾", 0),
+    ("Anna de Codorníu", "Bebida", "Cava, botella", 19.30, "🍾", 0),
+    # --- Agua, refrescos, café y licores
+    ("Agua 50 cl", "Bebida", "Agua mineral", 2.85, "💧", 0),
+    ("Coca-Cola", "Bebida", "Refresco", 2.85, "🥤", 0),
+    ("Coca-Cola Zero", "Bebida", "Refresco sin azúcar", 2.85, "🥤", 0),
+    ("Fanta de naranja", "Bebida", "Refresco", 2.85, "🍊", 0),
+    ("Fanta de limón", "Bebida", "Refresco", 2.85, "🍋", 0),
+    ("Nestea", "Bebida", "Té frío al limón", 2.85, "🧊", 0),
+    ("Aquarius", "Bebida", "Bebida isotónica", 2.85, "🥤", 0),
+    ("Appletiser", "Bebida", "Zumo de manzana con gas", 2.85, "🍏", 0),
+    ("Tónica", "Bebida", "Agua tónica", 2.85, "🫧", 0),
+    ("Zumo", "Bebida", "Zumos variados", 2.85, "🧃", 0),
+    ("Café o té", "Bebida", "Café a tu gusto, té japonés o chino, o infusión", 1.30, "☕", 0),
+    ("Licor de sake", "Bebida", "Licor japonés de sake", 7.05, "🍶", 0),
+    ("Licor de fruta", "Bebida", "Chupito de licor de fruta", 4.00, "🥃", 0),
+    ("Licor de hierbas", "Bebida", "Chupito de licor de hierbas", 4.00, "🥃", 0),
+    ("Baileys", "Bebida", "Crema de whisky", 4.30, "🥃", 0),
+    ("Ron Arehucas", "Bebida", "Ron canario", 4.20, "🥃", 0),
+    ("Ron miel", "Bebida", "Ron miel canario", 4.50, "🥃", 0),
+    ("Ginebra Beefeater", "Bebida", "Copa de ginebra", 4.95, "🍸", 0),
 ]
 EMOJIS = {nombre: emoji for nombre, _, _, _, emoji, _ in CARTA}
 
@@ -183,19 +294,19 @@ for i, (nombre, cat, desc, precio, _, peso) in enumerate(CARTA, start=1):
     IMAGENES.mkdir(parents=True, exist_ok=True)
     (IMAGENES / f"plato-{i:03d}.svg").write_text(ilustracion(nombre, cat), encoding="utf-8")
     pesos.append(peso)
-# Tarifas del buffet libre por comensal: mediodía de lunes a viernes; noche, sábados y domingos
+# Tarifas por comensal: Menú Sakura (almuerzos de lunes a jueves) y Menú Deluxe (resto)
 TARIFAS = {
-    "Almuerzo": ("buffet-almuerzo", "Buffet libre · mediodía (lunes a viernes)", 17.90,
-                 "Buffet libre a la carta de lunes a viernes a mediodía. Bebidas y postres no incluidos."),
-    "Cena": ("buffet-cena", "Buffet libre · noche, sábados y domingos", 22.90,
-             "Buffet libre a la carta por la noche y todo el día sábados y domingos. Bebidas y postres no incluidos."),
+    "Almuerzo": ("buffet-almuerzo", "Menú Sakura", 18.95,
+                 "Almuerzos de lunes a jueves: una selección de nuestros mejores platos, sin límites. Bebidas y postres no incluidos."),
+    "Cena": ("buffet-cena", "Menú Deluxe", 21.95,
+             "Cenas, viernes, fines de semana y festivos: más de 110 platos para disfrutar sin límites. Bebidas y postres no incluidos."),
 }
-# Tarifa infantil (niños de 3 a 10 años; menores de 3, gratis), también por turno
+# Niños de 100 a 130 cm (los de menos de 100 cm no pagan)
 TARIFAS_INFANTILES = {
-    "Almuerzo": ("buffet-almuerzo-infantil", "Buffet infantil · mediodía (lunes a viernes)", 10.90,
-                 "Niños de 3 a 10 años, de lunes a viernes a mediodía. Menores de 3 años gratis."),
-    "Cena": ("buffet-cena-infantil", "Buffet infantil · noche, sábados y domingos", 12.90,
-             "Niños de 3 a 10 años, por la noche y sábados y domingos. Menores de 3 años gratis."),
+    "Almuerzo": ("buffet-almuerzo-infantil", "Menú infantil Sakura", 10.95,
+                 "Niños de 100 a 130 cm de altura. Menos de 100 cm, gratis."),
+    "Cena": ("buffet-cena-infantil", "Menú infantil Deluxe", 10.95,
+             "Niños de 100 a 130 cm de altura. Menos de 100 cm, gratis."),
 }
 EMOJIS["Buffet"] = "🍱"
 for turno, (tid, tnombre, tprecio, tdesc) in [*TARIFAS.items(), *TARIFAS_INFANTILES.items()]:
@@ -209,7 +320,6 @@ plato_por_nombre = {p["nombre"]: p for p in platos}
 
 por_categoria = {c: [(p, w) for p, w in zip(platos, pesos) if p["categoria"] == c]
                  for c in ("Entrante", "Principal", "Postre")}
-
 
 # ------------------------------------------------------------------ mesas (15)
 # Comedor: 15 mesas fijas (no se juntan), 60 plazas
@@ -254,19 +364,19 @@ def bebida_principal(turno):
     """Primera bebida de un comensal: en las cenas se pide más cerveza y vino."""
     cena = turno == "Cena"
     opciones = [
-        ("Agua mineral 50 cl", 24), ("Agua con gas 50 cl", 3),
-        ("Coca-Cola", 11), ("Coca-Cola Zero", 8), ("Fanta de naranja", 4), ("Fanta de limón", 3), ("Nestea", 4),
-        ("Zumo de naranja natural", 2), ("Ramune", 3), ("Té verde japonés", 3), ("Matcha latte frío", 1),
-        ("Caña de cerveza", 12 if cena else 9), ("Cerveza Dorada 33 cl", 6 if cena else 4),
-        ("Cerveza sin alcohol", 2), ("Asahi Super Dry", 8 if cena else 4), ("Sapporo Premium", 3 if cena else 1),
-        ("Kirin Ichiban", 2 if cena else 1), ("Copa de vino blanco", 4 if cena else 2),
-        ("Copa de vino tinto", 3 if cena else 1), ("Tinto de verano", 2),
+        ("Agua 50 cl", 26), ("Coca-Cola", 11), ("Coca-Cola Zero", 8), ("Fanta de naranja", 4),
+        ("Fanta de limón", 3), ("Nestea", 4), ("Aquarius", 2), ("Appletiser", 1), ("Zumo", 2), ("Tónica", 1),
+        ("Tropical Pilsen", 10 if cena else 8), ("Dorada Especial", 6 if cena else 4),
+        ("Mahou Cinco Estrellas", 4), ("Heineken", 4), ("Estrella Galicia Especial", 3),
+        ("Tropical Limón", 2), ("Mahou Radler", 1), ("Alhambra Reserva 1925", 3 if cena else 1),
+        ("Kirin Ichiban", 4 if cena else 2), ("Sapporo Premium", 3 if cena else 1),
+        ("Copa de vino Rioja", 6 if cena else 3),
     ]
     return P(random.choices([n for n, _ in opciones], [w for _, w in opciones])[0])
 
 
-BEBIDAS_INFANTILES = ["Agua mineral 50 cl", "Agua mineral 50 cl", "Coca-Cola", "Fanta de naranja",
-                      "Fanta de limón", "Nestea", "Zumo de naranja natural", "Ramune", "Ramune"]
+BEBIDAS_INFANTILES = ["Agua 50 cl", "Agua 50 cl", "Coca-Cola", "Fanta de naranja",
+                      "Fanta de limón", "Nestea", "Zumo", "Zumo", "Aquarius"]
 
 
 def elegir_consumo(n_comensales, turno, ninos=0):
@@ -288,10 +398,11 @@ def elegir_consumo(n_comensales, turno, ninos=0):
     solo_agua_grifo = random.random() < 0.06
     vino_en_botella = not solo_agua_grifo and cena and n_comensales >= 2 and random.random() < 0.14
     if vino_en_botella:
-        extras.append(P(random.choice(["Botella de vino blanco Rueda", "Botella de vino blanco Rueda",
-                                       "Botella de vino tinto Rioja", "Botella de Lambrusco"])))
+        extras.append(P(random.choice(["Vino Sakura Hanami", "Vino Sakura Hanami", "Verdejo D.O. Rueda",
+                                       "Viña Esmeralda", "Viña Pomal Crianza", "Lambrusco", "Vino Sushi",
+                                       "Mateus Rosé", "Ramón Bilbao Crianza", "El Grifo"])))
     if not solo_agua_grifo and n_comensales >= 4 and random.random() < 0.25:
-        extras.append(P("Agua mineral 1,5 l"))
+        extras.append(P("Agua 50 cl"))
     for i in range(n_comensales):
         if i >= adultos:  # niño
             if not solo_agua_grifo:
@@ -310,11 +421,11 @@ def elegir_consumo(n_comensales, turno, ninos=0):
             opciones = por_categoria["Postre"]
             extras.append(random.choices([p for p, _ in opciones], [w for _, w in opciones])[0])
         if random.random() < (0.28 if not cena else 0.14):  # café al terminar
-            extras.append(P(random.choice(["Café solo", "Café cortado", "Café cortado", "Café con leche"])))
+            extras.append(P("Café o té"))
     if random.random() < (0.10 if cena else 0.04):
-        extras.append(P("Sake"))
-    if cena and random.random() < 0.06:
-        extras.append(P("Umeshu"))
+        extras.append(P("Licor de sake"))
+    if cena and random.random() < 0.08:
+        extras.append(P(random.choice(["Licor de fruta", "Licor de hierbas", "Baileys", "Ron miel"])))
     return comida, extras
 
 
@@ -353,7 +464,8 @@ def crear_sesion(mesa, inicio, duracion_min, estado_sesion, metodo=None):
         ninos = min(comensales - 1, random.choice([1, 1, 2]))
     # Tarifa del buffet: una línea por comensal, cargada al abrir la mesa
     turno = "Cena" if inicio.hour >= 18 else "Almuerzo"
-    tarifa_turno = "Cena" if turno == "Cena" or inicio.weekday() >= 5 else "Almuerzo"
+    # Menú Sakura solo en almuerzos de lunes a jueves; Menú Deluxe en cenas, viernes y fines de semana
+    tarifa_turno = "Cena" if turno == "Cena" or inicio.weekday() >= 4 else "Almuerzo"
     cubiertos = {"id": uid("ped"), "cuenta": cuenta_snapshot(cuenta), "pedidoEstado": "Listo", "fechaPedido": iso(inicio)}
     pedidos.append(cubiertos)
     for i in range(comensales):

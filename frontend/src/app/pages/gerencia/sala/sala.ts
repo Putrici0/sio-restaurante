@@ -9,7 +9,7 @@ import { Reserva } from '../../../models/reserva.model';
 import { MesasApiService } from '../../../services/mesas-api.service';
 import { CuentaApiService, CuentaResumenResponse } from '../../../services/cuenta-api.service';
 import { ReservasApiService } from '../../../services/reservas-api.service';
-import { DatosTicket, agruparLineas, generarTicketPdf, nombreArchivoTicket, pagosDeCuenta, separarIncluidos } from '../../../services/ticket-pdf';
+import { DatosTicket, agruparLineas, esTarifa, generarTicketPdf, nombreArchivoTicket, pagosDeCuenta, separarIncluidos } from '../../../services/ticket-pdf';
 
 type MetodoPago = 'EFECTIVO' | 'TARJETA';
 
@@ -95,7 +95,7 @@ export class Sala implements OnDestroy {
       mapa.set(clave, grupo);
     }
     return [...mapa.values()].sort(
-      (a, b) => Number(b.descripcion.startsWith('Buffet')) - Number(a.descripcion.startsWith('Buffet')),
+      (a, b) => Number(esTarifa(b.descripcion)) - Number(esTarifa(a.descripcion)),
     );
   });
 
