@@ -13,7 +13,7 @@
         <span class="cab__llamada">🔔 Camarero avisado</span>
       } @else {
         <button type="button" class="sh-btn sh-btn--primario cab__llamar" [disabled]="enviando()" (click)="llamarCamarero()">
-          🔔 Llamar camarero
+          🔔 Llamar<span class="cab__llamar-extra"> camarero</span>
         </button>
       }
     }

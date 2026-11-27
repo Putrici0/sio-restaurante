@@ -56,3 +56,22 @@
   font-weight: 600;
   z-index: 100;
 }
+
+/* Nada se parte en dos líneas; en pantallas estrechas el botón se acorta */
+.cab__marca strong, .cab__llamar, .cab__llamada, .cab__nav a { white-space: nowrap; }
+@media (max-width: 400px) {
+  .cab__llamar-extra { display: none; }
+}
+
+/* Animaciones suaves */
+@keyframes cab-aviso { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes cab-pop { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.cab__nav a { transition: color 0.2s ease, border-color 0.2s ease; }
+.cab__llamar { transition: background-color 0.2s ease, transform 0.15s ease; }
+.cab__llamar:active:not(:disabled) { transform: scale(0.96); }
+.cab__llamada { animation: cab-pop 0.3s cubic-bezier(0.2, 0.8, 0.2, 1.2); }
+.cab__toast { animation: cab-aviso 0.25s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .cab__llamada, .cab__toast { animation: none; }
+  .cab__llamar:active:not(:disabled) { transform: none; }
+}

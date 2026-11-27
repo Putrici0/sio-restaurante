@@ -5,10 +5,15 @@
       <h1>{{ modo === 'cliente' ? '¿Qué os apetece?' : 'Comanda · mesa ' + mesaId }}</h1>
     </div>
     @if (cuenta(); as c) {
-      <p class="ronda">
-        <strong>{{ platosRonda() }} / {{ maximoRonda() }}</strong>
-        <span>platos en esta ronda<br />({{ comensales() }} comensales × {{ 5 }})</span>
-      </p>
+      <div class="ronda" [class.ronda--llena]="platosRonda() >= maximoRonda()"
+           [attr.aria-label]="platosRonda() + ' de ' + maximoRonda() + ' platos en esta ronda'">
+        <p class="ronda__texto">
+          <strong>{{ platosRonda() }}<span>/{{ maximoRonda() }}</span></strong>
+          platos en esta ronda
+        </p>
+        <span class="ronda__barra" aria-hidden="true"><i [style.width.%]="(platosRonda() / maximoRonda()) * 100"></i></span>
+        <small>{{ comensales() }} comensales × 5 platos</small>
+      </div>
     }
   </header>
 
@@ -34,8 +39,8 @@
   }
 
   <ul class="platos">
-    @for (p of visibles(); track p.id) {
-      <li class="plato" [class.plato--elegido]="cantidad(p) > 0">
+    @for (p of visibles(); track p.id; let i = $index) {
+      <li class="plato" [class.plato--elegido]="cantidad(p) > 0" [style.--i]="i">
         <img [src]="p.imagen" alt="" loading="lazy" />
         <div class="plato__texto">
           <h3>{{ p.nombre }}</h3>

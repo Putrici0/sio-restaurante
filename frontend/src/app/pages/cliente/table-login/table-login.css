@@ -26,3 +26,15 @@ form { display: grid; gap: 14px; text-align: left; }
 .campo input { text-align: center; font-size: 1.4rem; letter-spacing: 0.4em; }
 .error-message { margin: 0; color: var(--sh-error); font-weight: 600; text-align: center; }
 button { width: 100%; }
+
+/* El ancho al 100 % incluye el relleno: la tarjeta ya no se sale de la pantalla en el móvil */
+.login-card, .login-card * { box-sizing: border-box; }
+
+/* Entrada suave de la tarjeta y la flor */
+@keyframes acceso-aparecer { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes acceso-florecer { from { opacity: 0; transform: scale(0.6) rotate(-25deg); } to { opacity: 1; transform: none; } }
+.login-card { animation: acceso-aparecer 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) backwards; }
+.logo { animation: acceso-florecer 0.7s cubic-bezier(0.2, 0.8, 0.2, 1.2) 0.15s backwards; }
+@media (prefers-reduced-motion: reduce) {
+  .login-card, .logo { animation: none; }
+}

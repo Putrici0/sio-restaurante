@@ -1,9 +1,16 @@
 .buffet { max-width: 760px; margin: 0 auto; padding: 16px 16px 120px; }
-.buffet__cab { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 14px; }
+.buffet__cab { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 14px; }
 .buffet__cab h1 { margin: 2px 0 0; font-size: 1.6rem; }
-.ronda { display: flex; align-items: center; gap: 8px; margin: 0; padding: 8px 12px; border-radius: 14px; background: var(--sh-superficie); border: 1px solid var(--sh-borde); }
-.ronda strong { font-family: var(--sh-fuente-titulos); font-size: 1.3rem; color: var(--sh-sakura-800); }
-.ronda span { font-size: 0.7rem; line-height: 1.2; color: var(--sh-tinta-suave); }
+/* Ronda: cuántos platos se llevan pedidos, con barra de progreso */
+.ronda { display: grid; gap: 6px; min-width: 190px; padding: 10px 14px; border-radius: 16px; background: var(--sh-superficie); border: 1px solid var(--sh-borde); }
+.ronda__texto { display: flex; align-items: baseline; gap: 6px; margin: 0; font-size: 0.82rem; color: var(--sh-tinta-suave); white-space: nowrap; }
+.ronda__texto strong { font-family: var(--sh-fuente-titulos); font-size: 1.35rem; color: var(--sh-sakura-800); font-variant-numeric: tabular-nums; }
+.ronda__texto strong span { font-size: 0.85rem; color: var(--sh-tinta-suave); }
+.ronda__barra { display: block; height: 6px; border-radius: 999px; background: var(--sh-sakura-100); overflow: hidden; }
+.ronda__barra i { display: block; height: 100%; border-radius: inherit; background: var(--sh-sakura-600); transition: width 0.35s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.ronda small { font-size: 0.72rem; color: var(--sh-tinta-suave); }
+.ronda--llena .ronda__barra i { background: var(--sh-ok); }
+@media (max-width: 480px) { .ronda { flex: 1 1 100%; } }
 .aviso { background: #fff6e6; color: #8a5a00; padding: 12px 14px; border-radius: 14px; font-weight: 600; list-style: none; }
 .nota-seccion { margin: 0 0 10px; color: var(--sh-tinta-suave); font-size: 0.88rem; }
 
@@ -62,3 +69,26 @@
   text-align: center; font-weight: 600;
 }
 .toast--error { background: var(--sh-error); }
+
+/* ---- Animaciones (suaves y cortas) ---- */
+@keyframes cb-aparecer { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes cb-subir { from { opacity: 0; transform: translate(-50%, 24px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes cb-hoja { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes cb-fundido { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cb-bajar { from { opacity: 0; transform: translate(-50%, -12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes cb-rebote { 0% { transform: scale(1); } 40% { transform: scale(0.88); } 100% { transform: scale(1); } }
+
+.buffet__cab, .filtros { animation: cb-aparecer 0.4s ease backwards; }
+.plato { animation: cb-aparecer 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) backwards; animation-delay: calc(min(var(--i, 0), 10) * 35ms); transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+.filtros button { transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease; }
+.plato__cantidad button { transition: background-color 0.2s ease, transform 0.15s ease; }
+.plato__cantidad button:active:not(:disabled) { animation: cb-rebote 0.25s ease; }
+.barra { animation: cb-subir 0.3s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.velo { animation: cb-fundido 0.2s ease; }
+.hoja { animation: cb-hoja 0.3s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.toast { animation: cb-bajar 0.25s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  .buffet__cab, .filtros, .plato, .barra, .velo, .hoja, .toast, .plato__cantidad button:active { animation: none; }
+  .ronda__barra i { transition: none; }
+}

@@ -247,3 +247,13 @@
   .plato-card, .info-card, .plato-card img, .pub-btn, .chip { transition: none; }
   .plato-card:hover, .info-card:hover, .plato-card:hover img { transform: none; }
 }
+
+/* Cabecera en el móvil: todo en una línea */
+.pub-links a { white-space: nowrap; }
+@media (max-width: 480px) {
+  .pub-nav { padding: 10px 14px; gap: 8px; }
+  .pub-brand__flor { font-size: 1.3rem; }
+  .pub-brand__nombre { font-size: 1rem; }
+  .pub-links { flex-wrap: nowrap; gap: 4px; }
+  .pub-links a { padding: 7px 11px; font-size: 0.85rem; }
+}
