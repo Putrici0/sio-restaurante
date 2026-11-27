@@ -10,10 +10,13 @@
 
     <div class="fact__dia" role="group" aria-label="Día">
       <button type="button" class="fact__flecha" (click)="moverDia(-1)" aria-label="Día anterior">‹</button>
-      <label class="fact__fecha">
-        <span>{{ tituloDia() }}</span>
-        <input type="date" [value]="fechaFiltro()" (change)="actualizarFecha($any($event.target).value)" aria-label="Elegir día" />
-      </label>
+      <!-- Pulsar en el día abre el calendario para saltar directamente a cualquier fecha -->
+      <button type="button" class="fact__fecha" (click)="abrirCalendario(calendario)" aria-label="Elegir día en el calendario">
+        <span aria-hidden="true">📅</span>
+        <span class="fact__fecha-texto">{{ tituloDia() }}</span>
+      </button>
+      <input #calendario class="fact__calendario" type="date" tabindex="-1" aria-hidden="true"
+             [value]="fechaFiltro()" [max]="hoy" (change)="actualizarFecha($any($event.target).value)" />
       <button type="button" class="fact__flecha" (click)="moverDia(1)" [disabled]="esHoy()" aria-label="Día siguiente">›</button>
       @if (!esHoy()) {
         <button type="button" class="sh-btn fact__hoy" (click)="irAHoy()">Hoy</button>

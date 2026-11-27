@@ -8,9 +8,12 @@
 .fact__dia { display: flex; align-items: center; gap: 8px; }
 .fact__flecha { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--sh-borde); background: var(--sh-superficie); font-size: 1.3rem; cursor: pointer; color: var(--sh-tinta); }
 .fact__flecha:disabled { opacity: 0.35; cursor: not-allowed; }
-.fact__fecha { position: relative; display: grid; place-items: center; min-width: 200px; height: 40px; padding: 0 16px; border-radius: 999px; background: var(--sh-superficie); border: 1px solid var(--sh-borde); font-weight: 700; cursor: pointer; }
-.fact__fecha span::first-letter { text-transform: uppercase; }
-.fact__fecha input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.fact__dia { position: relative; }
+.fact__fecha { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 220px; height: 40px; padding: 0 16px; border-radius: 999px; background: var(--sh-superficie); border: 1px solid var(--sh-borde); font: inherit; font-weight: 700; color: var(--sh-tinta); cursor: pointer; }
+.fact__fecha:hover { border-color: var(--sh-sakura-400); background: var(--sh-sakura-50); }
+.fact__fecha-texto::first-letter { text-transform: uppercase; }
+/* Input nativo oculto: solo se usa para mostrar el calendario del navegador bajo el botón */
+.fact__calendario { position: absolute; left: 50%; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
 .fact__hoy { height: 40px; }
 
 .fact__kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; }

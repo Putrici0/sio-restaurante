@@ -181,6 +181,19 @@ export class HistorialComponent {
     this.actualizarFecha(this.iso(base));
   }
 
+  /** Fecha máxima del calendario: no hay cuentas cobradas en el futuro. */
+  readonly hoy = this.hoyISO();
+
+  /** Abre el calendario del navegador para elegir cualquier día de una vez. */
+  abrirCalendario(input: HTMLInputElement): void {
+    try {
+      input.showPicker();
+    } catch {
+      input.focus(); // navegadores sin showPicker: al menos deja el campo listo
+      input.click();
+    }
+  }
+
   irAHoy(): void {
     this.actualizarFecha(this.hoyISO());
   }
