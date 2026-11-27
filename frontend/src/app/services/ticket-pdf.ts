@@ -18,6 +18,82 @@ export interface DatosTicket {
   total: number;
   entregado?: number | null;
   atendidoPor?: string | null;
+  /** Cuando la cuenta se paga en varias veces: «Pago 1 de 3» (o «Pago 2» si aún no se sabe cuántos habrá). */
+  pago?: { numero: number; de?: number | null } | null;
+}
+
+/** Una orden de la cuenta, con lo mínimo para repartirla en tickets por pago. */
+export interface OrdenParaTicket {
+  nombre: string;
+  precio: number;
+  pagada?: boolean;
+  cancelada?: boolean;
+  fechaPago?: string | null;
+  metodoPago?: string | null;
+}
+
+/** Un cobro de la cuenta: lo que se pagó a la vez y con el mismo método. */
+export interface PagoCuenta {
+  clave: string;
+  numero: number;
+  fechaPago: string;
+  metodoPago: string;
+  total: number;
+  lineas: LineaTicket[];
+}
+
+/** Clave de un cobro: mismo segundo y mismo método de pago. */
+function clavePago(o: OrdenParaTicket): string {
+  return `${(o.fechaPago ?? '').slice(0, 19)}|${o.metodoPago ?? ''}`;
+}
+
+/**
+ * Reparte las órdenes pagadas de una cuenta en cobros (uno por pago parcial o total),
+ * ordenados del primero al último.
+ */
+export function pagosDeCuenta(ordenes: OrdenParaTicket[]): PagoCuenta[] {
+  const mapa = new Map<string, OrdenParaTicket[]>();
+  for (const o of ordenes) {
+    if (!o.pagada || o.cancelada || !o.fechaPago) continue;
+    const clave = clavePago(o);
+    mapa.set(clave, [...(mapa.get(clave) ?? []), o]);
+  }
+  return [...mapa.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([clave, grupo], i) => ({
+      clave,
+      numero: i + 1,
+      fechaPago: grupo[0].fechaPago!,
+      metodoPago: grupo[0].metodoPago ?? 'TARJETA',
+      total: Number(grupo.reduce((acc, o) => acc + Number(o.precio), 0).toFixed(2)),
+      lineas: agruparLineas(grupo),
+    }));
+}
+
+/** Un ticket por cada cobro de la cuenta. */
+export function ticketsPorPago(
+  base: Pick<DatosTicket, 'cuentaId' | 'mesa' | 'comensales' | 'fechaApertura'>,
+  ordenes: OrdenParaTicket[],
+): DatosTicket[] {
+  const pagos = pagosDeCuenta(ordenes);
+  return pagos.map((p) => ticketDePago(base, p, pagos.length));
+}
+
+export function ticketDePago(
+  base: Pick<DatosTicket, 'cuentaId' | 'mesa' | 'comensales' | 'fechaApertura'>,
+  pago: PagoCuenta,
+  totalPagos: number,
+): DatosTicket {
+  return {
+    ...base,
+    // Con varios pagos, los comensales solo tienen sentido en la cuenta completa
+    comensales: totalPagos > 1 ? null : base.comensales ?? null,
+    fechaPago: pago.fechaPago,
+    metodoPago: pago.metodoPago,
+    lineas: pago.lineas,
+    total: pago.total,
+    pago: totalPagos > 1 ? { numero: pago.numero, de: totalPagos } : null,
+  };
 }
 
 /** IGIC general aplicado a la restauración en Canarias (precios con impuesto incluido). */
@@ -46,10 +122,11 @@ export function separarIncluidos(lineas: LineaTicket[]): { cobrables: LineaTicke
   };
 }
 
+/** Número de factura simplificada: distinto para cada cobro (cuenta + momento del pago). */
 export function numeroFactura(cuentaId: string, fechaPago: string): string {
   const fecha = new Date(fechaPago);
   let hash = 0;
-  for (const c of cuentaId) hash = (hash * 31 + c.charCodeAt(0)) >>> 0;
+  for (const c of `${cuentaId}|${fechaPago.slice(0, 19)}`) hash = (hash * 31 + c.charCodeAt(0)) >>> 0;
   return `FS${fecha.getFullYear()}-${String(hash % 1000000).padStart(6, '0')}`;
 }
 
@@ -103,6 +180,7 @@ export function generarTicketPdf(d: DatosTicket): jsPDF {
   salto();
   texto(`Mesa: ${d.mesa}`, izq);
   if (d.comensales) texto(`Comensales: ${d.comensales}`, der, { alinear: 'right' });
+  if (d.pago) texto(d.pago.de ? `Pago ${d.pago.numero} de ${d.pago.de}` : `Pago ${d.pago.numero}`, der, { alinear: 'right' });
   salto();
   if (d.atendidoPor) {
     texto(`Le atendio: ${d.atendidoPor}`, izq);
@@ -169,5 +247,6 @@ export function generarTicketPdf(d: DatosTicket): jsPDF {
 }
 
 export function nombreArchivoTicket(d: DatosTicket): string {
-  return `ticket-sakura-hanami-mesa-${d.mesa}-${numeroFactura(d.cuentaId, d.fechaPago)}.pdf`;
+  const pago = d.pago ? `-pago-${d.pago.numero}` : '';
+  return `ticket-sakura-hanami-mesa-${d.mesa}-${numeroFactura(d.cuentaId, d.fechaPago)}${pago}.pdf`;
 }

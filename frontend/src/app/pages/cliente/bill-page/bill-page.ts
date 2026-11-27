@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { agruparLineas, generarTicketPdf, nombreArchivoTicket, DatosTicket } from '../../../services/ticket-pdf';
+import { generarTicketPdf, nombreArchivoTicket, pagosDeCuenta, ticketDePago, DatosTicket } from '../../../services/ticket-pdf';
 import { catchError, forkJoin, of, take } from 'rxjs';
 import { Header } from '../../../shared/header/header';
 import {
@@ -478,8 +478,8 @@ export class BillPage implements OnInit, OnDestroy {
         const fechaPago = cuentaPagada?.fechaPago ?? cuentaActual?.fechaPago ?? new Date().toISOString();
         const metodoPago = cuentaPagada?.metodoPago ?? 'TARJETA';
         const ordenesSnapshot = this.ordenes().map((o) => {
-          if (o.ordenEstado === 'Cancelado') {
-            return { ...o };
+          if (o.ordenEstado === 'Cancelado' || o.pagada) {
+            return { ...o }; // lo pagado antes conserva su fecha y método (otro ticket)
           }
           const fuePagadaEnEstaOperacion =
             ordenesSeleccionadas.length === totalOrdenesPendientes ||
@@ -529,25 +529,34 @@ export class BillPage implements OnInit, OnDestroy {
 
   descargarTique(): void {
     const datos = this.datosTicket();
-    generarTicketPdf(datos).save(nombreArchivoTicket(datos));
+    if (datos) generarTicketPdf(datos).save(nombreArchivoTicket(datos));
   }
 
-  /** Factura simplificada con todo lo consumido en la mesa (formato de la caja del restaurante). */
-  private datosTicket(): DatosTicket {
+  /** Factura simplificada del pago que se acaba de hacer (cada pago tiene su propio ticket). */
+  private datosTicket(): DatosTicket | null {
     const cuenta = this.cuentaActiva();
-    const ordenes = this.ordenesParaTicket().filter((o) => o.ordenEstado !== 'Cancelado');
-    const pagadas = ordenes.filter((o) => o.pagada);
-    const ultimoPago = pagadas.map((o) => o.fechaPago).filter((f): f is string => !!f).sort().pop();
-    const metodo = pagadas.find((o) => o.metodoPago)?.metodoPago ?? 'TARJETA';
-    return {
-      cuentaId: this.cuentaIdTicketSnapshot() ?? cuenta?.id ?? this.mesaId,
-      mesa: this.mesaId,
-      comensales: cuenta?.comensales ?? null,
-      fechaPago: ultimoPago ?? new Date().toISOString(),
-      metodoPago: metodo,
-      lineas: agruparLineas(ordenes.map((o) => ({ nombre: o.plato.nombre, precio: Number(o.precio) }))),
-      total: Number(ordenes.reduce((a, o) => a + Number(o.precio), 0).toFixed(2)),
-    };
+    const pagos = pagosDeCuenta(
+      this.ordenesParaTicket().map((o) => ({
+        nombre: o.plato.nombre,
+        precio: Number(o.precio),
+        pagada: o.pagada,
+        cancelada: o.ordenEstado === 'Cancelado',
+        fechaPago: o.fechaPago,
+        metodoPago: o.metodoPago,
+      })),
+    );
+    const fechaPago = this.fechaPagoTicketSnapshot()?.slice(0, 19);
+    const pago = pagos.find((p) => p.fechaPago.slice(0, 19) === fechaPago) ?? pagos[pagos.length - 1];
+    if (!pago) return null;
+    return ticketDePago(
+      {
+        cuentaId: this.cuentaIdTicketSnapshot() ?? cuenta?.id ?? this.mesaId,
+        mesa: this.mesaId,
+        comensales: cuenta?.comensales ?? null,
+      },
+      pago,
+      pagos.length,
+    );
   }
   formatearFecha(fechaIso: string): string {
     const fecha = new Date(fechaIso);

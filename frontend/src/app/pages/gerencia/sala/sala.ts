@@ -9,7 +9,7 @@ import { Reserva } from '../../../models/reserva.model';
 import { MesasApiService } from '../../../services/mesas-api.service';
 import { CuentaApiService, CuentaResumenResponse } from '../../../services/cuenta-api.service';
 import { ReservasApiService } from '../../../services/reservas-api.service';
-import { DatosTicket, agruparLineas, generarTicketPdf, nombreArchivoTicket, separarIncluidos } from '../../../services/ticket-pdf';
+import { DatosTicket, agruparLineas, generarTicketPdf, nombreArchivoTicket, pagosDeCuenta, separarIncluidos } from '../../../services/ticket-pdf';
 
 type MetodoPago = 'EFECTIVO' | 'TARJETA';
 
@@ -241,14 +241,20 @@ export class Sala implements OnDestroy {
     const totalPendientes = this.pendientesSeparado().reduce((acc, g) => acc + g.ids.length, 0);
     const pagaTodo = this.modoCobro() === 'todo' || ids.length >= totalPendientes;
     const idsCobrados = new Set(ids);
-    // Ticket: la cuenta entera, o solo lo que paga este comensal
-    const lineas = pagaTodo
-      ? this.lineasCobro()
-      : agruparLineas(
-          r.ordenes
-            .filter((o) => idsCobrados.has(o.id))
-            .map((o) => ({ nombre: o.plato?.nombre ?? 'Consumo', precio: Number(o.precio ?? 0) })),
-        );
+    // Ticket de este cobro: lo que queda pendiente (todo junto) o solo lo que paga este comensal
+    const lineas = agruparLineas(
+      r.ordenes
+        .filter((o) => o.ordenEstado !== 'Cancelado' && !o.pagada && (pagaTodo || idsCobrados.has(o.id)))
+        .map((o) => ({ nombre: o.plato?.nombre ?? 'Consumo', precio: Number(o.precio ?? 0) })),
+    );
+    // Pagos anteriores (p. ej. desde el móvil) para numerar este: «Pago 2 de 2»
+    const pagosPrevios = pagosDeCuenta(
+      r.ordenes.map((o) => ({
+        nombre: o.plato?.nombre ?? 'Consumo', precio: Number(o.precio ?? 0), pagada: o.pagada,
+        cancelada: o.ordenEstado === 'Cancelado', fechaPago: o.fechaPago, metodoPago: o.metodoPago,
+      })),
+    ).length;
+    const unicoPago = pagaTodo && pagosPrevios === 0;
     const peticion = pagaTodo
       ? this.cuentaApi.pagarCuentaCompleta(r.cuentaId, this.metodo())
       : this.cuentaApi.pagarCuentaParcial(r.cuentaId, ids, this.metodo());
@@ -262,13 +268,14 @@ export class Sala implements OnDestroy {
         this.ticket.set({
           cuentaId: r.cuentaId,
           mesa: m.id,
-          comensales: pagaTodo && this.modoCobro() === 'todo' ? (cuenta.comensales ?? null) : null,
+          comensales: unicoPago ? (cuenta.comensales ?? null) : null,
           fechaApertura: cuenta.fechaCreacion,
           fechaPago: new Date().toISOString(),
           metodoPago: this.metodo(),
           lineas,
-          total: pagaTodo && this.modoCobro() === 'todo' ? Number(r.total) : importe,
+          total: importe,
           entregado: this.metodo() === 'EFECTIVO' ? this.entregado() : null,
+          pago: unicoPago ? null : { numero: pagosPrevios + 1, de: pagaTodo ? pagosPrevios + 1 : null },
         });
         this.refrescar();
       },

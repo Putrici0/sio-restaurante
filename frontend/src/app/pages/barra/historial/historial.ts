@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { forkJoin } from 'rxjs';
-import { agruparLineas, generarTicketPdf, nombreArchivoTicket } from '../../../services/ticket-pdf';
+import { PagoCuenta, generarTicketPdf, nombreArchivoTicket, pagosDeCuenta, ticketDePago } from '../../../services/ticket-pdf';
 
 import { Navbar } from '../../../shared/navbar/navbar';
 import {
@@ -184,19 +184,34 @@ export class HistorialComponent {
       },
     });
   }
-  descargarTique(): void {
+  /** Cobros de la cuenta (uno por pago parcial o total), cada uno con su ticket. */
+  readonly cobros = computed<PagoCuenta[]>(() =>
+    pagosDeCuenta(
+      this.ordenesDetalle().map((o) => ({
+        nombre: o.plato?.nombre ?? 'Consumo',
+        precio: Number(o.precio ?? 0),
+        pagada: o.pagada,
+        cancelada: o.ordenEstado === 'Cancelado',
+        fechaPago: o.fechaPago,
+        metodoPago: o.metodoPago,
+      })),
+    ),
+  );
+
+  /** Descarga el ticket (factura simplificada) de un cobro concreto. */
+  descargarTique(pago: PagoCuenta): void {
     const cuenta = this.cuentaDetalle();
     if (!cuenta) return;
-    const ordenes = this.ordenesDetalle().filter((o) => o.ordenEstado !== 'Cancelado');
-    const datos = {
-      cuentaId: cuenta.id,
-      mesa: this.obtenerMesaDetalle(),
-      comensales: (cuenta as { comensales?: number }).comensales ?? null,
-      fechaPago: (cuenta as { fechaPago?: string | null }).fechaPago ?? new Date().toISOString(),
-      metodoPago: ordenes.find((o) => o.metodoPago)?.metodoPago ?? 'TARJETA',
-      lineas: agruparLineas(ordenes.map((o) => ({ nombre: o.plato?.nombre ?? 'Consumo', precio: Number(o.precio) }))),
-      total: Number(ordenes.reduce((a, o) => a + Number(o.precio), 0).toFixed(2)),
-    };
+    const datos = ticketDePago(
+      {
+        cuentaId: cuenta.id,
+        mesa: this.obtenerMesaDetalle(),
+        comensales: (cuenta as { comensales?: number }).comensales ?? null,
+        fechaApertura: (cuenta as { fechaCreacion?: string }).fechaCreacion ?? null,
+      },
+      pago,
+      this.cobros().length,
+    );
     generarTicketPdf(datos).save(nombreArchivoTicket(datos));
   }
   cerrarDetalle(): void {

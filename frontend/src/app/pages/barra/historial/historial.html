@@ -95,9 +95,6 @@
           <div class="historial-modal__header">
             <h3>Detalle de la cuenta</h3>
             <div class="historial-modal__acciones">
-              <button type="button" class="historial-modal__accion" (click)="descargarTique()">
-                Descargar ticket
-              </button>
               <button type="button" class="historial-modal__cerrar" (click)="cerrarDetalle()">✕</button>
             </div>
           </div>
@@ -126,19 +123,16 @@
                 </summary>
 
                 <div class="pago-contenido">
-                  @for (pago of pagosDetalle(); track pago.clave) {
+                  @for (pago of cobros(); track pago.clave) {
                     <div class="pago-bloque">
                       <h4>
-                        Pago {{ pago.numero }} - {{ pago.metodoPago }}
-                        @if (pago.fechaPago) {
-                          {{ formatearFecha(pago.fechaPago) }}
-                        }
+                        Pago {{ pago.numero }} - {{ pago.metodoPago }} {{ formatearFecha(pago.fechaPago) }}
                       </h4>
 
-                      @for (item of pago.items; track item.platoId) {
+                      @for (l of pago.lineas; track l.descripcion + l.importe) {
                         <div class="detalle-item">
-                          <span>{{ item.cantidad }}x {{ item.nombre }}</span>
-                          <span>{{ item.subtotal | number:'1.2-2' }} €</span>
+                          <span>{{ l.cantidad }}x {{ l.descripcion }}</span>
+                          <span>{{ l.importe | number:'1.2-2' }} €</span>
                         </div>
                       }
 
@@ -146,6 +140,7 @@
                         <strong>Total pago:</strong>
                         <strong>{{ pago.total | number:'1.2-2' }} €</strong>
                       </div>
+                      <button type="button" class="historial-modal__accion" (click)="descargarTique(pago)">Ticket de este pago</button>
                     </div>
                   }
                 </div>
