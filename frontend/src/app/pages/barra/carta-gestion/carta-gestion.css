@@ -34,10 +34,18 @@ tr.inactivo td:nth-last-child(-n+2) { opacity: 1; }
 .check { display: flex; gap: 8px; align-items: center; font-weight: 600; }
 .acciones { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
 
-.tarifas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
-.tarifa { display: grid; gap: 2px; padding: 14px 18px; min-width: 220px; }
-.tarifa strong { font-family: var(--sh-fuente-titulos); font-size: 1.9rem; }
-.tarifa__nota { font-size: 0.8rem; color: var(--sh-tinta-suave); margin-bottom: 6px; }
+/* Tarifas del buffet: una tarjeta por turno, mismo ancho y misma estructura */
+.tarifas { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 18px; max-width: 900px; }
+.tarifa { display: grid; align-content: start; padding: 16px 18px; }
+.tarifa__cab { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--sh-borde); }
+.tarifa__cab h2 { margin: 0; font-family: var(--sh-fuente-titulos); font-size: 1.15rem; }
+.tarifa__cab span { font-size: 0.8rem; color: var(--sh-tinta-suave); }
+.tarifa__fila { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 14px; padding: 12px 0; }
+.tarifa__fila + .tarifa__fila { border-top: 1px dashed var(--sh-borde); }
+.tarifa__quien { font-weight: 600; }
+.tarifa__precio { font-family: var(--sh-fuente-titulos); font-size: 1.7rem; font-variant-numeric: tabular-nums; min-width: 6ch; text-align: right; }
+.tarifa__editar { padding: 6px 14px; font-size: 0.85rem; }
+.tarifas__nota { grid-column: 1 / -1; margin: 0; font-size: 0.82rem; color: var(--sh-tinta-suave); }
 .incluido { font-size: 0.75rem; font-weight: 700; color: var(--sh-ok); background: #e3f4e8; padding: 2px 10px; border-radius: 999px; }
 
 .velo { background: rgba(43, 32, 36, 0.5); }

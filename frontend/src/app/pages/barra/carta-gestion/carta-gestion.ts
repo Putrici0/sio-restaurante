@@ -38,6 +38,15 @@ export class CartaGestion implements OnInit {
   readonly esComida = esComida;
   readonly tarifas = computed(() => this.platos().filter((p) => p.categoria === 'Buffet'));
 
+  /** Tarifas agrupadas por turno: una tarjeta por turno con el precio de adultos y el de niños. */
+  readonly turnosTarifa = computed(() => {
+    const porId = new Map(this.tarifas().map((t) => [t.id, t]));
+    return [
+      { titulo: 'Mediodía', detalle: 'de lunes a viernes', adulto: porId.get('buffet-almuerzo'), nino: porId.get('buffet-almuerzo-infantil') },
+      { titulo: 'Noche y fin de semana', detalle: 'cenas, sábados y domingos', adulto: porId.get('buffet-cena'), nino: porId.get('buffet-cena-infantil') },
+    ].filter((t) => t.adulto || t.nino);
+  });
+
   readonly visibles = computed(() => {
     const f = this.filtro();
     return this.platos()
