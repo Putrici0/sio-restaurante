@@ -3,11 +3,17 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { take } from 'rxjs';
 import {
+  ALERGENOS,
   CATEGORIAS_CARTA,
   CategoriaPlato,
   ETIQUETA_CATEGORIA,
   PlatoApi,
+  aptoPara,
+  coincideBusqueda,
+  porUnidad,
 } from '../../models/plato.model';
+import { Alergenos } from '../../shared/alergenos/alergenos';
+import { DetallePlato } from '../../shared/detalle-plato/detalle-plato';
 import { PlatosApiService } from '../../services/platos-api.service';
 import { PublicoFooter, PublicoNav } from './publico-layout';
 import { TarifasBuffet } from './tarifas-buffet';
@@ -21,7 +27,7 @@ type FiltroCarta = CategoriaPlato | 'Todos' | 'MasPedidos';
 @Component({
   selector: 'app-carta-publica',
   standalone: true,
-  imports: [CommonModule, RouterLink, PublicoNav, PublicoFooter, TarifasBuffet],
+  imports: [CommonModule, RouterLink, PublicoNav, PublicoFooter, TarifasBuffet, Alergenos, DetallePlato],
   styleUrl: './publico.css',
   template: `
     <div class="pub-page">
@@ -35,6 +41,27 @@ type FiltroCarta = CategoriaPlato | 'Todos' | 'MasPedidos';
         </p>
 
         <app-tarifas-buffet [tarifas]="tarifas()" />
+
+        <div class="herramientas-carta">
+          <input class="buscar-carta" type="search" placeholder="Buscar plato por nombre o número…" aria-label="Buscar plato"
+                 [value]="busqueda()" (input)="busqueda.set($any($event.target).value)" />
+          <button type="button" class="chip" [class.active]="evitar().length > 0" [attr.aria-expanded]="panelAlergenos()"
+                  (click)="panelAlergenos.set(!panelAlergenos())">
+            ⚠ Alérgenos@if (evitar().length > 0) { ({{ evitar().length }}) }
+          </button>
+        </div>
+        @if (panelAlergenos()) {
+          <div class="panel-alergenos-pub">
+            <p>Marca lo que quieres <strong>evitar</strong>:</p>
+            <div class="chips">
+              @for (a of listaAlergenos; track a.clave) {
+                <button type="button" class="chip" [class.active]="evitar().includes(a.clave)" [attr.aria-pressed]="evitar().includes(a.clave)"
+                        (click)="alternarAlergeno(a.clave)">{{ a.icono }} {{ a.nombre }}</button>
+              }
+            </div>
+            <small>También ocultamos los platos sin información de alérgenos. Ante cualquier duda, pregunta en el restaurante.</small>
+          </div>
+        }
 
         <div class="chips">
           <button type="button" class="chip" [class.active]="filtro() === 'Todos'" (click)="filtro.set('Todos')">Todos</button>
@@ -55,14 +82,17 @@ type FiltroCarta = CategoriaPlato | 'Todos' | 'MasPedidos';
         } @else {
           <section class="platos-grid">
             @for (plato of platosVisibles(); track plato.id; let i = $index) {
-              <article class="plato-card" [style.--i]="i">
+              <article class="plato-card" [style.--i]="i" tabindex="0" role="button" [attr.aria-label]="'Ver ' + plato.nombre"
+                       (click)="detalle.set(plato)" (keydown.enter)="detalle.set(plato)">
                 <div class="plato-card__img">
                   <img [src]="plato.imagen" [alt]="plato.nombre" loading="lazy" />
                   @if (esPopular(plato.id)) { <span class="etiqueta-popular">🌸 Favorito</span> }
+                  @if (porUnidad(plato)) { <span class="etiqueta-unidad">por unidad</span> }
                 </div>
                 <div class="plato-card__body">
                   <h3 class="plato-card__nombre">{{ plato.nombre }}</h3>
                   <p class="plato-card__desc">{{ plato.descripcion }}</p>
+                  <app-alergenos [alergenos]="plato.alergenos" />
                   <div class="plato-card__meta">
                     <span>{{ etiquetas[plato.categoria] }}</span>
                     @if (plato.categoria === 'Bebida' || plato.categoria === 'Postre') {
@@ -74,9 +104,12 @@ type FiltroCarta = CategoriaPlato | 'Todos' | 'MasPedidos';
                 </div>
               </article>
             } @empty {
-              <p class="estado-carga">No hay platos en esta sección.</p>
+              <p class="estado-carga">{{ busqueda().trim() ? 'No hay platos que coincidan con la búsqueda.' : 'No hay platos en esta sección.' }}</p>
             }
           </section>
+        }
+        @if (detalle(); as d) {
+          <app-detalle-plato [plato]="d" [pedir]="false" (cerrar)="detalle.set(null)" />
         }
       </main>
       <app-publico-footer />
@@ -95,8 +128,25 @@ export class CartaPublica implements OnInit {
   readonly cargando = signal(true);
   readonly error = signal<string | null>(null);
 
-  readonly platosVisibles = computed(() => {
-    const filtro = this.filtro();
+  readonly listaAlergenos = ALERGENOS;
+  readonly porUnidad = porUnidad;
+  readonly busqueda = signal('');
+  readonly evitar = signal<string[]>([]);
+  readonly panelAlergenos = signal(false);
+  readonly detalle = signal<PlatoApi | null>(null);
+
+  readonly platosVisibles = computed(() =>
+    this.platosDeSeccion()
+      .filter((p) => coincideBusqueda(p, this.busqueda()))
+      .filter((p) => aptoPara(p, this.evitar())),
+  );
+
+  alternarAlergeno(clave: string): void {
+    this.evitar.update((l) => (l.includes(clave) ? l.filter((a) => a !== clave) : [...l, clave]));
+  }
+
+  private readonly platosDeSeccion = computed(() => {
+    const filtro = this.busqueda().trim() ? 'Todos' : this.filtro();
     const lista = this.platos();
     if (filtro === 'Todos') {
       return [...lista].sort(

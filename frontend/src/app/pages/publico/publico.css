@@ -257,3 +257,28 @@
   .pub-links { flex-wrap: nowrap; gap: 4px; }
   .pub-links a { padding: 7px 11px; font-size: 0.85rem; }
 }
+
+/* ---- Carta: búsqueda, alérgenos y detalle ---- */
+.herramientas-carta { display: flex; gap: 8px; margin-bottom: 12px; }
+.buscar-carta {
+  flex: 1; min-width: 0; padding: 10px 16px; border-radius: 999px; border: 1px solid var(--sakura-200);
+  background: #fff; font: inherit; color: var(--tinta);
+}
+.panel-alergenos-pub { display: grid; gap: 6px; margin-bottom: 16px; padding: 14px 16px; border-radius: 18px; background: var(--papel); border: 1px solid var(--sakura-100); }
+.panel-alergenos-pub p { margin: 0; }
+.panel-alergenos-pub .chips { margin: 0; }
+.panel-alergenos-pub small { color: var(--tinta-suave); }
+.plato-card { cursor: pointer; }
+.plato-card:focus-visible { outline: 3px solid var(--sakura-400); outline-offset: 2px; }
+.plato-card img { background: #111; }
+.etiqueta-unidad {
+  position: absolute; right: 10px; top: 10px; padding: 3px 9px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92); font-size: 0.72rem; font-weight: 700; color: var(--tinta);
+}
+@media (max-width: 520px) {
+  .platos-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .plato-card img { height: auto; aspect-ratio: 1; }
+  .plato-card__desc { display: none; }
+  .plato-card__body { padding: 10px 12px 12px; }
+  .plato-card__nombre { font-size: 0.95rem; }
+}
