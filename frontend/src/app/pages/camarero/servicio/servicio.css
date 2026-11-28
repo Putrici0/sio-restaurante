@@ -15,10 +15,13 @@ h1 { margin: 4px 0 4px; font-size: 1.6rem; }
   border-top: 1px solid var(--sh-sakura-100);
 }
 .linea:first-of-type { border-top: none; }
-.linea div { display: grid; }
+.linea__texto { display: grid; flex: 1; min-width: 0; }
 .linea small { color: var(--sh-tinta-suave); }
 .linea .sh-btn { min-height: 40px; padding: 6px 16px; flex-shrink: 0; }
 
 .recientes { font-size: 1rem; margin: 26px 0 8px; color: var(--sh-tinta-suave); }
 .lista-servidas { padding: 4px 16px; }
 .linea--servida strong { font-weight: 600; color: var(--sh-tinta-suave); }
+
+.miniatura { width: 44px; height: 44px; flex: none; border-radius: 10px; object-fit: cover; background: #111; }
+.servir-todo { margin-left: auto; min-height: 34px; padding: 4px 12px; font-size: 0.85rem; }

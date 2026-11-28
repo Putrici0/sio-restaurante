@@ -74,6 +74,11 @@ export class ServicioSala implements OnInit, OnDestroy {
     this.cambiar(o, this.ordenesApi.marcarEntregada(o.id), 'Entregado');
   }
 
+  /** Marca como servidos todos los platos de la mesa (cuando se lleva la ronda entera). */
+  servirTodo(ordenes: OrdenCocinaResponse[]): void {
+    for (const o of ordenes) this.servir(o);
+  }
+
   deshacer(o: OrdenCocinaResponse): void {
     const peticion = this.tipo === 'platos'
       ? this.ordenesApi.deshacerEntregaPlato(o.id)

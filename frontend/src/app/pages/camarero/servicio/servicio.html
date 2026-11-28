@@ -14,10 +14,18 @@
   } @else {
     @for (grupo of porServir(); track grupo.mesa) {
       <section class="mesa sh-tarjeta">
-        <h2>Mesa {{ grupo.mesa }} <span class="sh-chip">{{ grupo.ordenes.length }}</span></h2>
+        <h2>
+          Mesa {{ grupo.mesa }} <span class="sh-chip">{{ grupo.ordenes.length }}</span>
+          @if (grupo.ordenes.length > 1) {
+            <button type="button" class="sh-btn servir-todo" [disabled]="!!actualizandoId()" (click)="servirTodo(grupo.ordenes)">
+              Servir todo
+            </button>
+          }
+        </h2>
         @for (o of grupo.ordenes; track o.id) {
           <div class="linea">
-            <div>
+            @if (o.plato.imagen) { <img class="miniatura" [src]="o.plato.imagen" alt="" loading="lazy" /> }
+            <div class="linea__texto">
               <strong>{{ o.plato.nombre }}</strong>
               <small>{{ hora(o) }}@if (o.detalles) { · {{ o.detalles }} }</small>
             </div>
@@ -36,7 +44,7 @@
       <section class="sh-tarjeta lista-servidas">
         @for (o of servidas(); track o.id) {
           <div class="linea linea--servida">
-            <div>
+            <div class="linea__texto">
               <strong>{{ o.plato.nombre }}</strong>
               <small>Mesa {{ mesaDe(o) }}</small>
             </div>
