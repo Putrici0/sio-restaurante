@@ -58,3 +58,14 @@ tr.inactivo td:nth-last-child(-n+2) { opacity: 1; }
 .precio { display: flex; align-items: center; gap: 8px; }
 .precio input { width: 140px; }
 .precio span { font-weight: 700; }
+
+/* Editor de alérgenos */
+.alergenos-editor { display: grid; gap: 8px; margin: 0; padding: 10px 12px; border: 1px solid var(--sh-borde); border-radius: 12px; }
+.alergenos-editor legend { padding: 0 6px; font-weight: 700; font-size: 0.9rem; }
+.alergenos-editor small { color: var(--sh-tinta-suave); }
+.alergenos-editor__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.alergenos-editor__chips button {
+  padding: 6px 11px; border-radius: 999px; border: 1px solid var(--sh-borde); background: #fff;
+  font: inherit; font-size: 0.85rem; cursor: pointer;
+}
+.alergenos-editor__chips button.activo { background: #fff1d6; border-color: #e9a23b; color: #8a5a00; font-weight: 700; }

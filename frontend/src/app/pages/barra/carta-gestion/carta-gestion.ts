@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Navbar } from '../../../shared/navbar/navbar';
-import { CATEGORIAS_CARTA, CategoriaPlato, ETIQUETA_CATEGORIA, PlatoApi, esComida } from '../../../models/plato.model';
+import { ALERGENOS, CATEGORIAS_CARTA, CategoriaPlato, ETIQUETA_CATEGORIA, PlatoApi, esComida } from '../../../models/plato.model';
 
 interface Borrador {
   id: string | null;
@@ -13,6 +13,8 @@ interface Borrador {
   precio: number;
   estaActivo: boolean;
   imagen: string;
+  /** null = sin información de alérgenos («consultar al personal»). */
+  alergenos?: string[] | null;
 }
 
 /** Configuración de productos y precios de la carta (perfil Gerente). */
@@ -69,15 +71,28 @@ export class CartaGestion implements OnInit {
   }
 
   nuevo(): void {
-    this.borrador.set({ id: null, nombre: '', categoria: 'Principal', descripcion: '', precio: 0, estaActivo: true, imagen: '' });
+    this.borrador.set({ id: null, nombre: '', categoria: 'Principal', descripcion: '', precio: 0, estaActivo: true, imagen: '', alergenos: null });
   }
 
   editar(p: PlatoApi): void {
-    this.borrador.set({ ...p, id: p.id, precio: Number(p.precio) });
+    this.borrador.set({ ...p, id: p.id, precio: Number(p.precio), alergenos: p.alergenos ? [...p.alergenos] : null });
   }
 
   alternarActivo(p: PlatoApi): void {
     this.guardar({ ...p, id: p.id, precio: Number(p.precio), estaActivo: !p.estaActivo }, false);
+  }
+
+  readonly listaAlergenos = ALERGENOS;
+
+  /** Marca o desmarca un alérgeno del plato que se está editando. */
+  alternarAlergeno(b: Borrador, clave: string): void {
+    const actuales = b.alergenos ?? [];
+    this.borrador.set({ ...b, alergenos: actuales.includes(clave) ? actuales.filter((a) => a !== clave) : [...actuales, clave] });
+  }
+
+  /** «Sin información» (null) frente a una lista declarada (aunque esté vacía = sin alérgenos). */
+  cambiarInformacionAlergenos(b: Borrador, informada: boolean): void {
+    this.borrador.set({ ...b, alergenos: informada ? (b.alergenos ?? []) : null });
   }
 
   guardarBorrador(): void {
@@ -104,6 +119,8 @@ export class CartaGestion implements OnInit {
       precio: esComida(b.categoria) ? '0.00' : Number(b.precio).toFixed(2),
       estaActivo: b.estaActivo,
       imagen: b.imagen || '/logo.svg',
+      // Solo se envían si se han declarado; si no, el backend conserva los que tenga el plato
+      ...(b.alergenos != null ? { alergenos: b.alergenos } : {}),
     };
     const peticion = b.id ? this.http.put(`${this.apiUrl}/${b.id}`, cuerpo) : this.http.post(this.apiUrl, cuerpo);
     peticion.subscribe({

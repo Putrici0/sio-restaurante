@@ -99,6 +99,24 @@
     @if (b.categoria !== 'Buffet') {
       <label class="campo">Descripción <textarea rows="3" [(ngModel)]="b.descripcion" name="descripcion"></textarea></label>
       <label class="check"><input type="checkbox" [(ngModel)]="b.estaActivo" name="activo" /> Visible en la carta</label>
+      <fieldset class="alergenos-editor">
+        <legend>Alérgenos</legend>
+        <label class="check">
+          <input type="checkbox" [checked]="b.alergenos != null" (change)="cambiarInformacionAlergenos(b, $any($event.target).checked)" />
+          Información de alérgenos declarada
+        </label>
+        @if (b.alergenos != null) {
+          <div class="alergenos-editor__chips">
+            @for (a of listaAlergenos; track a.clave) {
+              <button type="button" [class.activo]="b.alergenos.includes(a.clave)" [attr.aria-pressed]="b.alergenos.includes(a.clave)"
+                      (click)="alternarAlergeno(b, a.clave)">{{ a.icono }} {{ a.nombre }}</button>
+            }
+          </div>
+          @if (b.alergenos.length === 0) { <small>Se mostrará como «sin alérgenos declarados».</small> }
+        } @else {
+          <small>Los clientes verán «consulta los alérgenos al personal».</small>
+        }
+      </fieldset>
     }
     @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
     <div class="acciones">
