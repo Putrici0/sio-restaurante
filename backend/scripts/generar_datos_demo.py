@@ -286,10 +286,21 @@ EMOJIS = {nombre: emoji for nombre, _, _, _, emoji, _ in CARTA}
 platos, pesos = [], []
 for f in IMAGENES.glob("plato-*.svg"):  # se regeneran todas las ilustraciones
     f.unlink()
+FOTOS = IMAGENES / "fotos"  # fotos reales de Sakura Hanami (con su permiso), por número de plato
+
+
+def imagen_de(i, nombre):
+    """Foto real del plato numerado si la hay (fotos/NNN.webp); si no, la ilustración generada."""
+    numero = nombre.split(".", 1)[0]
+    if numero.isdigit() and (FOTOS / f"{int(numero):03d}.webp").exists():
+        return f"/platos/fotos/{int(numero):03d}.webp"
+    return f"/platos/plato-{i:03d}.svg"
+
+
 for i, (nombre, cat, desc, precio, _, peso) in enumerate(CARTA, start=1):
     platos.append({
         "id": f"plato-{i:03d}", "nombre": nombre, "categoria": cat, "descripcion": desc,
-        "precio": float(precio), "estaActivo": True, "imagen": f"/platos/plato-{i:03d}.svg",
+        "precio": float(precio), "estaActivo": True, "imagen": imagen_de(i, nombre),
     })
     IMAGENES.mkdir(parents=True, exist_ok=True)
     (IMAGENES / f"plato-{i:03d}.svg").write_text(ilustracion(nombre, cat), encoding="utf-8")
