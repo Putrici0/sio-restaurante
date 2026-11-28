@@ -11,6 +11,8 @@
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
+        <!-- Opciones extra de la JVM en los tests (las rellena el perfil de Java 23+) -->
+        <surefire.opcionesJvm></surefire.opcionesJvm>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>5.11.0</junit.version>
     </properties>
@@ -120,18 +122,23 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.2.5</version>
                 <configuration>
-                    <argLine>
-                        --enable-native-access=ALL-UNNAMED
-                        --sun-misc-unsafe-memory-access=allow
-                    </argLine>
+                    <argLine>${surefire.opcionesJvm}</argLine>
                 </configuration>
             </plugin>
         </plugins>
     </build>
+
+    <!-- Opciones de la JVM para los tests: solo existen a partir de Java 23 (con Java 21 la JVM no arrancaría) -->
+    <profiles>
+        <profile>
+            <id>java-23-o-superior</id>
+            <activation>
+                <jdk>[23,)</jdk>
+            </activation>
+            <properties>
+                <surefire.opcionesJvm>--enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow</surefire.opcionesJvm>
+            </properties>
+        </profile>
+    </profiles>
 </project>

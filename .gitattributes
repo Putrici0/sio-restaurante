@@ -1,0 +1,16 @@
+# Saltos de línea iguales en cualquier ordenador (Windows, macOS, Linux):
+# en el repositorio siempre LF; cada sistema los adapta al hacer checkout.
+* text=auto
+
+# Scripts de Windows con CRLF; scripts de Unix y Python con LF
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.sh  text eol=lf
+*.py  text eol=lf
+
+# Binarios
+*.webp binary
+*.png  binary
+*.jpg  binary
+*.ico  binary
+*.jar  binary

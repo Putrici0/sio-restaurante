@@ -14,6 +14,7 @@ Los procesos quedan en segundo plano; sus registros están en la carpeta logs/.
 Para pararlo todo:  python detener.py
 """
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -24,10 +25,16 @@ import urllib.request
 import webbrowser
 from pathlib import Path
 
+if sys.version_info < (3, 9):
+    sys.exit("Hace falta Python 3.9 o superior (tienes " + sys.version.split()[0] + "). Descárgalo en https://www.python.org")
+
 RAIZ = Path(__file__).resolve().parent
 LOGS = RAIZ / "logs"
 PIDS = RAIZ / ".sio-procesos.json"
 DATOS = RAIZ / "data"
+FICHERO_DATOS = DATOS / "sio-restaurante.json"
+VERSION_DATOS = DATOS / ".version"
+GENERADOR = RAIZ / "backend" / "scripts" / "generar_datos_demo.py"
 ES_WINDOWS = os.name == "nt"
 
 BACKEND_URL = "http://localhost:7070/health"
@@ -80,6 +87,75 @@ def comando_frontend():
     return [npm, "run", "start"]
 
 
+def comprobar_node() -> None:
+    """Angular 21 necesita Node.js 20.19+, 22.12+ o 24+."""
+    node = shutil.which("node")
+    if not node:
+        sys.exit("No se encuentra Node.js. Instálalo desde https://nodejs.org (versión LTS).")
+    salida = subprocess.run([node, "-v"], capture_output=True, text=True).stdout.strip()
+    try:
+        mayor, menor = (int(x) for x in salida.lstrip("v").split(".")[:2])
+    except ValueError:
+        return
+    valida = mayor >= 24 or (mayor == 22 and menor >= 12) or (mayor == 20 and menor >= 19)
+    if not valida:
+        sys.exit(f"Node.js {salida} es demasiado antiguo para Angular 21: instala la versión LTS desde https://nodejs.org")
+
+
+def huella(*ficheros: Path) -> str:
+    """Huella de unos ficheros, igual en Windows, macOS y Linux (ignora CRLF/LF)."""
+    h = hashlib.sha256()
+    for f in ficheros:
+        if f.exists():
+            h.update(f.read_bytes().replace(b"\r\n", b"\n"))
+    return h.hexdigest()[:16]
+
+
+def preparar_datos(reset: bool) -> None:
+    """
+    Los datos de la demo (data/, no se suben a git) se generan en cada ordenador con la
+    fecha de hoy. Se regeneran solos si faltan o si el generador ha cambiado tras un
+    'git pull' (carta, precios, imágenes…); los anteriores se guardan en data/anteriores/.
+    """
+    version_actual = huella(GENERADOR)
+    version_local = VERSION_DATOS.read_text().strip() if VERSION_DATOS.exists() else None
+    faltan = not FICHERO_DATOS.exists()
+    desfasados = not faltan and version_local != version_actual
+    if not (reset or faltan or desfasados):
+        return
+
+    if responde(BACKEND_URL):
+        if reset:
+            sys.exit("Para usar --reset primero detén la demo: python detener.py")
+        print("⚠ La demo en marcha usa datos de una versión anterior (carta, precios o imágenes).\n"
+              "  Para actualizarlos: python detener.py  y después  python iniciar.py")
+        return
+
+    if FICHERO_DATOS.exists():
+        copia = DATOS / "anteriores" / f"sio-restaurante-{time.strftime('%Y%m%d-%H%M%S')}.json"
+        copia.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(FICHERO_DATOS), copia)
+        print(f"  Datos anteriores guardados en {copia.relative_to(RAIZ)}")
+    motivo = ("se ha pedido --reset" if reset else "es la primera vez en este ordenador" if faltan
+              else "la carta o el generador han cambiado desde la última vez")
+    print(f"• Generando los datos de la demo ({motivo})…", flush=True)
+    # Histórico de 5 semanas y un servicio en curso con la fecha y hora actuales
+    subprocess.run([sys.executable, str(GENERADOR), "--salida", str(FICHERO_DATOS)], check=True)
+    VERSION_DATOS.write_text(version_actual)
+
+
+def instalar_dependencias_frontend(frontend: Path) -> None:
+    """npm install la primera vez y cada vez que cambie package-lock.json (p. ej. tras un pull)."""
+    marca = frontend / "node_modules" / ".sio-dependencias"
+    version = huella(frontend / "package.json", frontend / "package-lock.json")
+    if marca.exists() and marca.read_text().strip() == version:
+        return
+    primera = not (frontend / "node_modules").exists()
+    print(f"• Instalando dependencias del frontend ({'primera vez' if primera else 'han cambiado'})…", flush=True)
+    subprocess.run([comando_frontend()[0], "install", "--no-audit", "--no-fund", "--loglevel=error"], cwd=frontend, check=True)
+    marca.write_text(version)
+
+
 def main() -> None:
     # Consola de Windows: permitir emojis y tildes
     if hasattr(sys.stdout, "reconfigure"):
@@ -93,14 +169,7 @@ def main() -> None:
     LOGS.mkdir(exist_ok=True)
     procesos = json.loads(PIDS.read_text()) if PIDS.exists() else {}
 
-    if args.reset:
-        if responde(BACKEND_URL):
-            sys.exit("Para usar --reset primero detén la demo: python detener.py")
-        shutil.rmtree(DATOS, ignore_errors=True)
-        # Datos de demo generados ahora mismo: histórico de 5 semanas y un servicio en curso con horas reales
-        subprocess.run([sys.executable, str(RAIZ / "backend" / "scripts" / "generar_datos_demo.py"),
-                        "--salida", str(DATOS / "sio-restaurante.json")], check=True)
-        print("  Datos de demo regenerados con la fecha y hora actuales.")
+    preparar_datos(args.reset)
 
     # --- Backend
     if responde(BACKEND_URL):
@@ -119,9 +188,8 @@ def main() -> None:
         print("• Frontend ya estaba en marcha (4200).")
     else:
         frontend = RAIZ / "frontend"
-        if not (frontend / "node_modules").exists():
-            print("• Instalando dependencias del frontend (solo la primera vez)…", flush=True)
-            subprocess.run([comando_frontend()[0], "install", "--no-audit", "--no-fund"], cwd=frontend, check=True)
+        comprobar_node()
+        instalar_dependencias_frontend(frontend)
         print("• Arrancando frontend…")
         proceso_front = lanzar(comando_frontend(), LOGS / "frontend.log", frontend)
         procesos["frontend"] = proceso_front.pid

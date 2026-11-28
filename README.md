@@ -1,102 +1,84 @@
-# 🍽️ PS Restaurante
+# 🌸 SIGO-RSH · Restaurante Sakura Hanami
 
-Aplicación de gestión de restaurante con:
+Sistema de gestión del restaurante **Sakura Hanami** (Las Palmas de Gran Canaria), cocina de fusión
+japonesa, china y tailandesa a la carta sin límites: web pública con carta y reservas, pedidos desde
+el móvil de la mesa (QR), cocina, sala y caja, móvil del camarero, facturación y cuadro de mando.
 
-* **Backend:** Java + Maven + Javalin + Firebase/Firestore
-* **Frontend:** Angular
-
----
-
-## Requisitos previos
-
-Antes de ejecutar el proyecto, asegúrate de tener instalado:
-
-* **Java JDK 26**
-* **Maven**
-* **Node.js**
-* **npm**
----
-
-## Importante antes de arrancar el backend
-
-El backend usa **Firebase** y busca un archivo llamado:
-
-```bash
-firebase-key.json
-```
-
-Este archivo debe estar disponible en:
-
-```bash
-backend/src/main/resources/firebase-key.json
-```
-
-Si no existe, el backend lanzará un error al iniciar.
+* **Backend:** Java 21 + Javalin, datos en un fichero JSON (`data/sio-restaurante.json`)
+* **Frontend:** Angular 21
 
 ---
 
-# 1. Ejecutar el backend
+## Requisitos
 
-## Ejecutar el backend
+| Herramienta | Versión | Comprobar |
+|---|---|---|
+| Python | 3.9 o superior | `python --version` (en Windows también `py --version`) |
+| Java (JDK) | 21 o superior | `java -version` |
+| Node.js | 20.19+, 22.12+ o 24+ | `node -v` |
 
-Ejecutar el `Main.java`.
-
-## Puerto del backend
-
-El backend arranca en:
-
-```bash
-http://localhost:7070
-```
+No hace falta instalar **Maven** ni ningún IDE: si no está instalado, `iniciar.py` descarga Maven
+automáticamente en `.herramientas/` (si tienes IntelliJ, usa el Maven que trae).
 
 ---
 
-# 2. Ejecutar el frontend
+## Arrancar y parar
 
-## Entrar en la carpeta del frontend
-
-```bash
-cd frontend
-```
-
-## Instalar dependencias
+Desde la carpeta del proyecto, en cualquier sistema (Windows, macOS o Linux):
 
 ```bash
-npm install
+python iniciar.py      # arranca backend y frontend en segundo plano y abre el navegador
+python detener.py      # guarda los datos y lo para todo
 ```
+
+En Windows puedes usar `py` en lugar de `python`. Opciones útiles:
+
+```bash
+python iniciar.py --reset          # vuelve a la demo original (con la fecha y hora de hoy)
+python iniciar.py --sin-navegador  # no abre el navegador
+```
+
+La primera vez tarda más (descarga dependencias de Maven y npm). Los registros quedan en `logs/`.
+
+### Después de un `git pull`
+
+Basta con parar y volver a arrancar:
+
+```bash
+python detener.py
+python iniciar.py
+```
+
+`iniciar.py` detecta lo que ha cambiado y lo pone al día solo:
+
+* **Datos de la demo** (`data/`, que no se sube a git): si la carta, los precios o las imágenes han
+  cambiado, los regenera con la fecha de hoy y guarda los anteriores en `data/anteriores/`.
+* **Dependencias del frontend**: si ha cambiado `package-lock.json`, ejecuta `npm install`.
+* **Backend**: se recompila en cada arranque.
 
 ---
 
-## Opción para build de producción
+## Direcciones
 
-Compilar:
+| Pantalla | URL |
+|---|---|
+| Web pública (carta y reservas) | http://localhost:4200/ |
+| Sala, reservas, carta, facturación y estadísticas | http://localhost:4200/mesas |
+| Cocina | http://localhost:4200/cocina |
+| Móvil del camarero | http://localhost:4200/camarero (`camarero1` / `sakura`) |
+| Mesa del cliente (código en Sala) | http://localhost:4200/acceso/1 |
+| API | http://localhost:7070/ |
 
-```bash
-npm run build
-```
-
-Luego servir la carpeta generada con `serve`:
-
-```bash
-npm install -g serve
-cd dist/frontend/browser
-serve -s . -l 80
-```
-
-Esto dejará el frontend accesible en:
-
-```bash
-http://localhost/mesas
-http://localhost/bebidas
-http://localhost/platos
-http://localhost/historial
-http://localhost/acceso/:id
-http://localhost/admin/generar-qr
-http://localhost/menu/:id
-http://localhost/cuenta/:id
-http://localhost/cocina
-```
 ---
+
+## Desarrollo
+
+* Tests del backend: `mvn test` (o con el Maven descargado: `.herramientas/apache-maven-3.9.9/bin/mvn test`).
+* Regenerar la semilla de datos (`backend/src/main/resources/datos-iniciales.json`) e ilustraciones:
+  `python backend/scripts/generar_datos_demo.py`.
+* Las fotos de los platos (`frontend/public/platos/fotos/`) son del restaurante Sakura Hanami y se
+  usan con su permiso.
+* En VS Code, el botón ▶ (Code Runner) ejecuta `iniciar.py` con el Python seleccionado.
 
 ---
 
@@ -108,5 +90,3 @@ http://localhost/cocina
 - Joan Martínez Perdomo
 - Esther Viera Rivero
 - Juan López Ramírez
-
-
