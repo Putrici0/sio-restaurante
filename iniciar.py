@@ -13,10 +13,13 @@ Funciona en cualquier ordenador con Python 3, Java 21+ y Node.js; no hace falta 
 Los procesos quedan en segundo plano; sus registros están en la carpeta logs/.
 Para pararlo todo:  python detener.py
 """
+from __future__ import annotations
+
 import argparse
 import hashlib
 import json
 import os
+import socket
 import shutil
 import subprocess
 import sys
@@ -37,23 +40,57 @@ VERSION_DATOS = DATOS / ".version"
 GENERADOR = RAIZ / "backend" / "scripts" / "generar_datos_demo.py"
 ES_WINDOWS = os.name == "nt"
 
-BACKEND_URL = "http://localhost:7070/health"
-FRONTEND_URL = "http://localhost:4200"
+PUERTO_BACKEND = 7070          # fijo: el frontend llama a la API en este puerto
+PUERTO_FRONTEND = 4200         # preferido; si lo usa otra aplicación se elige el siguiente libre
 
 
-def responde(url: str) -> bool:
+def leer(url: str) -> str | None:
     try:
         with urllib.request.urlopen(url, timeout=2) as r:
-            return r.status < 500
+            return r.read(200_000).decode("utf-8", "replace") if r.status < 500 else None
     except Exception:
-        return False
+        return None
 
 
-def esperar(url: str, nombre: str, segundos: int, proceso=None) -> bool:
+def es_nuestro_backend() -> bool:
+    """El backend de Sakura Hanami (no otra aplicación que use el mismo puerto)."""
+    datos = leer(f"http://127.0.0.1:{PUERTO_BACKEND}/platos")
+    return bool(datos) and "buffet-cena" in datos
+
+
+def es_nuestro_frontend(puerto: int) -> bool:
+    for host in ("127.0.0.1", "[::1]"):
+        html = leer(f"http://{host}:{puerto}/")
+        if html and "Sakura Hanami" in html:
+            return True
+    return False
+
+
+def puerto_ocupado(puerto: int) -> bool:
+    """¿Escucha algo en el puerto, por IPv4 o por IPv6? (localhost puede ir a cualquiera de los dos)."""
+    for familia, host in ((socket.AF_INET, "127.0.0.1"), (socket.AF_INET6, "::1")):
+        try:
+            with socket.socket(familia, socket.SOCK_STREAM) as s:
+                s.settimeout(0.5)
+                if s.connect_ex((host, puerto)) == 0:
+                    return True
+        except OSError:
+            pass
+    return False
+
+
+def elegir_puerto_frontend(anterior: int | None) -> int:
+    for puerto in [p for p in (anterior, PUERTO_FRONTEND) if p] + list(range(PUERTO_FRONTEND + 1, PUERTO_FRONTEND + 20)):
+        if not puerto_ocupado(puerto):
+            return puerto
+    sys.exit("No hay ningún puerto libre entre 4200 y 4219 para el frontend.")
+
+
+def esperar(comprobar, nombre: str, segundos: int, proceso=None) -> bool:
     print(f"  Esperando a que {nombre} responda", end="", flush=True)
     limite = time.time() + segundos
     while time.time() < limite:
-        if responde(url):
+        if comprobar():
             print(" ✓")
             return True
         if proceso is not None and proceso.poll() is not None:
@@ -80,11 +117,16 @@ def comando_backend():
     return [sys.executable, "-u", str(RAIZ / "backend" / "scripts" / "backend.py")]
 
 
-def comando_frontend():
-    npm = shutil.which("npm.cmd" if ES_WINDOWS else "npm") or shutil.which("npm")
-    if not npm:
+def npm() -> str:
+    ruta = shutil.which("npm.cmd" if ES_WINDOWS else "npm") or shutil.which("npm")
+    if not ruta:
         sys.exit("No se encuentra npm. Instala Node.js (https://nodejs.org).")
-    return [npm, "run", "start"]
+    return ruta
+
+
+def comando_frontend(puerto: int):
+    # Mismo servidor que «npm start», pero en el puerto elegido
+    return [npm(), "exec", "--", "ng", "serve", "--host", "0.0.0.0", "--port", str(puerto)]
 
 
 def comprobar_node() -> None:
@@ -124,7 +166,7 @@ def preparar_datos(reset: bool) -> None:
     if not (reset or faltan or desfasados):
         return
 
-    if responde(BACKEND_URL):
+    if es_nuestro_backend():
         if reset:
             sys.exit("Para usar --reset primero detén la demo: python detener.py")
         print("⚠ La demo en marcha usa datos de una versión anterior (carta, precios o imágenes).\n"
@@ -152,7 +194,7 @@ def instalar_dependencias_frontend(frontend: Path) -> None:
         return
     primera = not (frontend / "node_modules").exists()
     print(f"• Instalando dependencias del frontend ({'primera vez' if primera else 'han cambiado'})…", flush=True)
-    subprocess.run([comando_frontend()[0], "install", "--no-audit", "--no-fund", "--loglevel=error"], cwd=frontend, check=True)
+    subprocess.run([npm(), "install", "--no-audit", "--no-fund", "--loglevel=error"], cwd=frontend, check=True)
     marca.write_text(version)
 
 
@@ -171,43 +213,56 @@ def main() -> None:
 
     preparar_datos(args.reset)
 
-    # --- Backend
-    if responde(BACKEND_URL):
-        print("• Backend ya estaba en marcha (7070).")
+    # --- Backend (puerto fijo: lo usa el frontend)
+    if es_nuestro_backend():
+        print(f"• Backend ya estaba en marcha ({PUERTO_BACKEND}).")
     else:
+        if puerto_ocupado(PUERTO_BACKEND):
+            sys.exit(f"El puerto {PUERTO_BACKEND} lo está usando otra aplicación. Ciérrala y vuelve a ejecutar "
+                     "python iniciar.py (el backend de Sakura Hanami necesita ese puerto).")
         print("• Arrancando backend (compila con Maven la primera vez, puede tardar)…")
         backend = lanzar(comando_backend(), LOGS / "backend.log", RAIZ)
         procesos["backend"] = backend.pid
         PIDS.write_text(json.dumps(procesos, indent=2))
         # La primera vez puede descargar Maven y las dependencias: margen amplio
-        if not esperar(BACKEND_URL, "el backend", 600, backend):
+        if not esperar(es_nuestro_backend, "el backend", 600, backend):
             sys.exit(f"El backend no arrancó. Revisa {LOGS / 'backend.log'}")
 
-    # --- Frontend
-    if responde(FRONTEND_URL):
-        print("• Frontend ya estaba en marcha (4200).")
+    # --- Frontend (4200 o, si otra aplicación lo usa, el siguiente libre)
+    puerto = procesos.get("puertoFrontend")
+    if puerto and es_nuestro_frontend(puerto):
+        print(f"• Frontend ya estaba en marcha ({puerto}).")
+    elif es_nuestro_frontend(PUERTO_FRONTEND):
+        puerto = PUERTO_FRONTEND
+        print(f"• Frontend ya estaba en marcha ({puerto}).")
     else:
         frontend = RAIZ / "frontend"
         comprobar_node()
         instalar_dependencias_frontend(frontend)
+        puerto = elegir_puerto_frontend(None)
+        if puerto != PUERTO_FRONTEND:
+            print(f"  El puerto {PUERTO_FRONTEND} lo usa otra aplicación: el frontend usará el {puerto}.")
         print("• Arrancando frontend…")
-        proceso_front = lanzar(comando_frontend(), LOGS / "frontend.log", frontend)
+        proceso_front = lanzar(comando_frontend(puerto), LOGS / "frontend.log", frontend)
         procesos["frontend"] = proceso_front.pid
+        procesos["puertoFrontend"] = puerto
         PIDS.write_text(json.dumps(procesos, indent=2))
-        if not esperar(FRONTEND_URL, "el frontend", 300, proceso_front):
+        if not esperar(lambda: es_nuestro_frontend(puerto), "el frontend", 300, proceso_front):
             sys.exit(f"El frontend no arrancó. Revisa {LOGS / 'frontend.log'}")
 
+    procesos["puertoFrontend"] = puerto
     PIDS.write_text(json.dumps(procesos, indent=2))
 
+    web = f"http://localhost:{puerto}"
     print("\nTodo listo:")
-    print("  Web pública ........ http://localhost:4200/")
-    print("  Sala y gerencia .... http://localhost:4200/mesas")
-    print("  Cocina ............. http://localhost:4200/cocina")
-    print("  Móvil del camarero . http://localhost:4200/camarero  (camarero1 / sakura)")
-    print("  API ................ http://localhost:7070/")
+    print(f"  Web pública ........ {web}/")
+    print(f"  Sala y gerencia .... {web}/mesas")
+    print(f"  Cocina ............. {web}/cocina")
+    print(f"  Móvil del camarero . {web}/camarero  (camarero1 / sakura)")
+    print(f"  API ................ http://localhost:{PUERTO_BACKEND}/")
     print("\nPara pararlo todo:  python detener.py")
     if not args.sin_navegador:
-        webbrowser.open("http://localhost:4200/mesas")
+        webbrowser.open(f"{web}/mesas")
 
 
 if __name__ == "__main__":

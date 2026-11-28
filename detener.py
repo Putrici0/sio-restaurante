@@ -5,8 +5,12 @@ Detiene la demo de SIGO-RSH arrancada con iniciar.py (backend y frontend):
     python detener.py
 
 Antes de apagar el backend le pide que guarde en disco los cambios pendientes.
-Si algún proceso se arrancó a mano, también lo localiza por su puerto (7070 y 4200).
+Solo para procesos de Sakura Hanami: los que lanzó iniciar.py y, si se arrancaron a mano,
+los que escuchan en sus puertos Y responden como Sakura Hanami. Nunca cierra otras
+aplicaciones que usen los mismos puertos.
 """
+from __future__ import annotations
+
 import json
 import os
 import re
@@ -19,38 +23,65 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent
 PIDS = RAIZ / ".sio-procesos.json"
 ES_WINDOWS = os.name == "nt"
-PUERTOS = {"backend": 7070, "frontend": 4200}
+PUERTO_BACKEND = 7070
+
+
+def leer(url: str) -> str | None:
+    try:
+        with urllib.request.urlopen(url, timeout=2) as r:
+            return r.read(200_000).decode("utf-8", "replace")
+    except Exception:
+        return None
 
 
 def guardar_datos() -> None:
     try:
-        peticion = urllib.request.Request("http://localhost:7070/sistema/guardar", method="POST")
+        peticion = urllib.request.Request(f"http://127.0.0.1:{PUERTO_BACKEND}/sistema/guardar", method="POST")
         urllib.request.urlopen(peticion, timeout=5)
         print("• Datos guardados en data/sio-restaurante.json")
     except Exception:
         pass
 
 
-def pids_en_puerto(puerto: int) -> set[int]:
-    """Procesos que escuchan en el puerto indicado."""
-    if ES_WINDOWS:
-        try:
+def es_nuestro(nombre: str, host: str, puerto: int) -> bool:
+    """¿Lo que responde en host:puerto es Sakura Hanami?"""
+    if nombre == "backend":
+        datos = leer(f"http://{host}:{puerto}/platos")
+        return bool(datos) and "buffet-cena" in datos
+    html = leer(f"http://{host}:{puerto}/")
+    return bool(html) and "Sakura Hanami" in html
+
+
+def escuchando(puerto: int) -> list[tuple[int, str]]:
+    """(pid, host para probarlo) de cada proceso que escucha en el puerto, por IPv4 o IPv6."""
+    resultado = []
+    try:
+        if ES_WINDOWS:
             salida = subprocess.run(["netstat", "-ano", "-p", "TCP"], capture_output=True, text=True).stdout
-        except FileNotFoundError:
-            return set()
-        return {int(m.group(1)) for m in re.finditer(rf"[:.]{puerto}\s+\S+\s+LISTENING\s+(\d+)", salida)}
-    # macOS / Linux: lsof, y si no está instalado, ss o fuser
-    for comando in (["lsof", "-ti", f"tcp:{puerto}", "-sTCP:LISTEN"],
-                    ["ss", "-Hltnp", f"sport = :{puerto}"],
-                    ["fuser", f"{puerto}/tcp"]):
-        try:
+            salida += subprocess.run(["netstat", "-ano", "-p", "TCPv6"], capture_output=True, text=True).stdout
+            for m in re.finditer(rf"(\S+):{puerto}\s+\S+\s+LISTENING\s+(\d+)", salida):
+                resultado.append((int(m.group(2)), "[::1]" if m.group(1).startswith("[") else "127.0.0.1"))
+            return resultado
+        for comando in (["lsof", "-nP", f"-iTCP:{puerto}", "-sTCP:LISTEN", "-Fpn"],):
             r = subprocess.run(comando, capture_output=True, text=True)
-        except FileNotFoundError:
-            continue
-        if comando[0] == "ss":
-            return {int(p) for p in re.findall(r"pid=(\d+)", r.stdout)}
-        return {int(p) for p in r.stdout.split() if p.isdigit()}  # lsof y fuser: PIDs en stdout
-    return set()
+            pid = None
+            for linea in r.stdout.splitlines():
+                if linea.startswith("p"):
+                    pid = int(linea[1:])
+                elif linea.startswith("n") and pid:
+                    resultado.append((pid, "[::1]" if linea[1:].startswith("[") else "127.0.0.1"))
+            return resultado
+    except FileNotFoundError:
+        pass
+    # Linux sin lsof: ss
+    try:
+        r = subprocess.run(["ss", "-Hltnp", f"sport = :{puerto}"], capture_output=True, text=True)
+        for linea in r.stdout.splitlines():
+            host = "[::1]" if "[" in linea.split()[3] else "127.0.0.1"
+            resultado += [(int(p), host) for p in re.findall(r"pid=(\d+)", linea)]
+    except (FileNotFoundError, IndexError):
+        pass
+    return resultado
 
 
 def matar(pid: int) -> bool:
@@ -73,20 +104,25 @@ def main() -> None:
     guardar_datos()
 
     registrados = json.loads(PIDS.read_text()) if PIDS.exists() else {}
-    for nombre, puerto in PUERTOS.items():
-        objetivos = set(pids_en_puerto(puerto))
-        if nombre in registrados:
+    puertos = {"backend": PUERTO_BACKEND, "frontend": int(registrados.get("puertoFrontend") or 4200)}
+
+    for nombre, puerto in puertos.items():
+        # Lo que lanzó iniciar.py, más lo que escucha en el puerto y es de verdad Sakura Hanami
+        objetivos = {pid for pid, host in escuchando(puerto) if es_nuestro(nombre, host, puerto)}
+        if registrados.get(nombre):
             objetivos.add(int(registrados[nombre]))
         parado = False
         for pid in objetivos:
             parado = matar(pid) or parado
-        estado = "detenido" if parado else "no estaba en marcha"
-        print(f"• {nombre.capitalize()} ({puerto}): {estado}")
+        print(f"• {nombre.capitalize()} ({puerto}): {'detenido' if parado else 'no estaba en marcha'}")
+        ajenos = [pid for pid, host in escuchando(puerto) if not es_nuestro(nombre, host, puerto)]
+        if ajenos:
+            print(f"  (en el puerto {puerto} sigue otra aplicación que no es Sakura Hanami: no se ha tocado)")
 
     PIDS.unlink(missing_ok=True)
-    restantes = [n for n, p in PUERTOS.items() if pids_en_puerto(p)]
+    restantes = [n for n, p in puertos.items() if any(es_nuestro(n, h, p) for _, h in escuchando(p))]
     if restantes:
-        print(f"Aún queda algo escuchando en: {', '.join(restantes)}. Vuelve a ejecutar el script.")
+        print(f"Aún queda algo de Sakura Hanami en marcha: {', '.join(restantes)}. Vuelve a ejecutar el script.")
     else:
         print("Todo parado.")
 
