@@ -16,7 +16,7 @@ public class JsonPlatoRepository extends JsonRepository<Plato> implements PlatoR
 
     @Override
     protected Plato conId(Plato p, String id) {
-        return new Plato(id, p.nombre(), p.categoria(), p.descripcion(), p.precio(), p.estaActivo(), p.imagen());
+        return new Plato(id, p.nombre(), p.categoria(), p.descripcion(), p.precio(), p.estaActivo(), p.imagen(), p.alergenos());
     }
 
     @Override public List<Plato> findByCategoria(Categoria categoria) { return filtrar(p -> p.categoria() == categoria); }

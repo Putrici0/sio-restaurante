@@ -286,6 +286,104 @@ EMOJIS = {nombre: emoji for nombre, _, _, _, emoji, _ in CARTA}
 platos, pesos = [], []
 for f in IMAGENES.glob("plato-*.svg"):  # se regeneran todas las ilustraciones
     f.unlink()
+# Alérgenos declarados en la carta de sakurahanami.com, por número de plato. Los platos que no
+# aparecen no tienen la información publicada: se guardan como null («consulta al personal»).
+ALERGENOS_CARTA = {
+    1: ['gluten', 'pescado', 'soja'],
+    2: ['gluten', 'pescado', 'cacahuetes'],
+    3: ['pescado'],
+    4: ['gluten', 'pescado', 'soja'],
+    5: ['gluten', 'pescado', 'soja'],
+    6: ['gluten', 'pescado', 'soja'],
+    8: ['gluten', 'pescado'],
+    9: ['gluten', 'pescado'],
+    10: ['gluten', 'pescado', 'leche'],
+    11: ['gluten', 'pescado', 'leche'],
+    12: ['gluten', 'pescado', 'soja'],
+    13: ['gluten', 'pescado', 'soja'],
+    14: ['gluten', 'pescado', 'soja'],
+    15: ['gluten', 'pescado', 'soja'],
+    16: ['gluten', 'pescado', 'soja'],
+    17: ['gluten', 'pescado', 'soja'],
+    18: ['pescado'],
+    19: ['leche'],
+    20: ['gluten', 'pescado', 'leche'],
+    21: ['crustaceos', 'pescado', 'moluscos'],
+    22: ['leche'],
+    23: ['gluten', 'pescado', 'soja'],
+    24: ['pescado'],
+    25: ['pescado'],
+    26: ['pescado'],
+    27: ['pescado'],
+    28: ['pescado'],
+    29: ['gluten', 'pescado', 'leche'],
+    30: ['pescado'],
+    31: ['gluten', 'pescado', 'leche'],
+    32: ['gluten', 'pescado'],
+    36: ['pescado'],
+    37: ['pescado'],
+    38: ['pescado'],
+    39: ['pescado'],
+    40: ['pescado'],
+    41: ['pescado'],
+    43: ['pescado'],
+    44: ['pescado'],
+    45: ['gluten', 'pescado'],
+    46: ['gluten', 'soja', 'leche'],
+    48: ['leche'],
+    49: ['pescado', 'sesamo'],
+    50: ['gluten', 'pescado', 'soja'],
+    51: ['gluten', 'pescado'],
+    52: ['pescado', 'leche'],
+    53: ['gluten', 'pescado'],
+    54: ['pescado'],
+    55: ['gluten', 'pescado'],
+    56: ['pescado', 'sesamo'],
+    57: ['gluten', 'pescado', 'sesamo'],
+    59: ['pescado', 'leche'],
+    62: ['soja'],
+    64: ['gluten', 'pescado'],
+    65: ['gluten', 'soja'],
+    66: ['gluten', 'soja'],
+    67: ['sesamo'],
+    69: ['gluten', 'pescado'],
+    70: ['gluten', 'pescado'],
+    71: ['gluten', 'soja'],
+    72: ['gluten'],
+    73: ['gluten', 'pescado'],
+    74: ['gluten', 'crustaceos', 'pescado'],
+    75: ['gluten', 'crustaceos', 'pescado'],
+    76: ['gluten', 'crustaceos', 'pescado'],
+    77: ['gluten'],
+    78: ['gluten'],
+    79: ['gluten'],
+    80: ['gluten'],
+    81: ['gluten', 'pescado', 'soja'],
+    82: ['gluten'],
+    83: ['gluten', 'soja'],
+    84: ['gluten'],
+    85: ['gluten'],
+    86: ['gluten', 'pescado'],
+    88: ['gluten', 'soja'],
+    90: ['gluten', 'pescado'],
+    91: ['sesamo'],
+    93: ['gluten', 'soja'],
+    95: ['gluten', 'soja'],
+    96: ['soja'],
+    102: ['soja'],
+    108: ['crustaceos'],
+    111: ['gluten', 'soja', 'sesamo'],
+    112: ['crustaceos', 'pescado', 'soja'],
+    113: ['pescado', 'soja', 'sesamo'],
+    114: ['pescado', 'soja', 'sesamo'],
+}
+
+
+def alergenos_de(nombre):
+    numero = nombre.split(".", 1)[0]
+    return ALERGENOS_CARTA.get(int(numero)) if numero.isdigit() else None
+
+
 FOTOS = IMAGENES / "fotos"  # fotos reales de Sakura Hanami (con su permiso), por número de plato
 
 
@@ -301,6 +399,7 @@ for i, (nombre, cat, desc, precio, _, peso) in enumerate(CARTA, start=1):
     platos.append({
         "id": f"plato-{i:03d}", "nombre": nombre, "categoria": cat, "descripcion": desc,
         "precio": float(precio), "estaActivo": True, "imagen": imagen_de(i, nombre),
+        "alergenos": alergenos_de(nombre),
     })
     IMAGENES.mkdir(parents=True, exist_ok=True)
     (IMAGENES / f"plato-{i:03d}.svg").write_text(ilustracion(nombre, cat), encoding="utf-8")

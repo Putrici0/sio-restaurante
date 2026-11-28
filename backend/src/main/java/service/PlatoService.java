@@ -27,7 +27,8 @@ public class PlatoService {
                 request.descripcion.trim(),
                 new BigDecimal(request.precio.trim()),
                 request.estaActivo,
-                request.imagen.trim()
+                request.imagen.trim(),
+                alergenosValidos(request.alergenos)
         );
 
         return repository.save(plato);
@@ -61,7 +62,10 @@ public class PlatoService {
                 request.descripcion.trim(),
                 new BigDecimal(request.precio.trim()),
                 request.estaActivo,
-                request.imagen.trim()
+                request.imagen.trim(),
+                request.alergenos != null
+                        ? alergenosValidos(request.alergenos)
+                        : repository.findById(id).map(Plato::alergenos).orElse(null)
         );
 
         return repository.update(id, actualizado);
@@ -69,6 +73,16 @@ public class PlatoService {
 
     public void delete(String id) {
         repository.deleteById(id);
+    }
+
+    private List<String> alergenosValidos(List<String> alergenos) {
+        if (alergenos == null) return null;
+        for (String a : alergenos) {
+            if (!Plato.ALERGENOS.contains(a)) {
+                throw new IllegalArgumentException("Alérgeno desconocido: " + a);
+            }
+        }
+        return alergenos.stream().distinct().toList();
     }
 
     private void validate(PlatoRequest request) {

@@ -8,8 +8,14 @@ import {
   ETIQUETA_CATEGORIA,
   PLATOS_POR_COMENSAL_Y_RONDA,
   PlatoApi,
+  ALERGENOS,
+  aptoPara,
+  coincideBusqueda,
   esComida,
+  porUnidad,
 } from '../../models/plato.model';
+import { Alergenos } from '../alergenos/alergenos';
+import { DetallePlato } from '../detalle-plato/detalle-plato';
 import { PlatosApiService } from '../../services/platos-api.service';
 import { PedidosApiService } from '../../services/pedidos-api.service';
 import { CuentaActivaResponse, CuentaApiService, OrdenCuentaResponse } from '../../services/cuenta-api.service';
@@ -26,7 +32,7 @@ type Filtro = CategoriaPlato | 'MasPedidos';
 @Component({
   selector: 'app-carta-buffet',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, Alergenos, DetallePlato],
   templateUrl: './carta-buffet.html',
   styleUrl: './carta-buffet.css',
 })
@@ -41,6 +47,15 @@ export class CartaBuffet implements OnInit, OnDestroy {
   private readonly refrescar$ = new Subject<void>();
 
   readonly etiquetas = ETIQUETA_CATEGORIA;
+  readonly listaAlergenos = ALERGENOS;
+  readonly porUnidad = porUnidad;
+  /** Búsqueda por nombre o número (busca en toda la carta). */
+  readonly busqueda = signal('');
+  /** Alérgenos que la mesa quiere evitar (se recuerdan durante la visita). */
+  readonly evitar = signal<string[]>(JSON.parse(sessionStorage.getItem('sio-evitar-alergenos') ?? '[]'));
+  readonly panelAlergenos = signal(false);
+  /** Plato abierto en la hoja de detalle. */
+  readonly detalle = signal<PlatoApi | null>(null);
   readonly filtros: Filtro[] = ['MasPedidos', ...CATEGORIAS_CARTA];
   readonly filtro = signal<Filtro>('Entrante');
   readonly platos = signal<PlatoApi[]>([]);
@@ -73,14 +88,18 @@ export class CartaBuffet implements OnInit, OnDestroy {
     return { total: enRonda.length, servidos, pct: Math.round((servidos / enRonda.length) * 100) };
   });
 
-  readonly visibles = computed(() => {
+  /** Platos de la sección (o de toda la carta si se está buscando), sin los que no son aptos. */
+  private readonly candidatos = computed(() => {
     const f = this.filtro();
     const lista = this.platos();
+    if (this.busqueda().trim()) return lista.filter((p) => coincideBusqueda(p, this.busqueda()));
     if (f === 'MasPedidos') {
       return this.masPedidos().map((id) => lista.find((p) => p.id === id)).filter((p): p is PlatoApi => !!p);
     }
     return lista.filter((p) => p.categoria === f);
   });
+  readonly visibles = computed(() => this.candidatos().filter((p) => aptoPara(p, this.evitar())));
+  readonly ocultosPorAlergenos = computed(() => this.candidatos().length - this.visibles().length);
 
   readonly seleccion = computed(() =>
     this.platos()
@@ -153,6 +172,25 @@ export class CartaBuffet implements OnInit, OnDestroy {
     if (!this.cuenta() || this.sesionCerrada()) return false;
     if (!esComida(p.categoria)) return true; // bebidas y postres, siempre
     return !this.rondaEnCamino() && this.platosRonda() < this.maximoRonda();
+  }
+
+  /** Por qué no se puede añadir ahora este plato (para explicarlo en el detalle). */
+  motivoBloqueo(p: PlatoApi): string | null {
+    if (!this.cuenta()) return 'La mesa no tiene una sesión abierta: pide al personal que la abra.';
+    if (this.sesionCerrada()) return 'La sesión de esta mesa está cerrada.';
+    if (!esComida(p.categoria)) return null;
+    if (this.rondaEnCamino()) return 'Podréis pedirlo cuando os sirvan la ronda anterior.';
+    if (this.platosRonda() >= this.maximoRonda()) return 'Ya tenéis el máximo de platos de esta ronda.';
+    return null;
+  }
+
+  abrir(p: PlatoApi): void {
+    this.detalle.set(p);
+  }
+
+  alternarAlergeno(clave: string): void {
+    this.evitar.update((l) => (l.includes(clave) ? l.filter((a) => a !== clave) : [...l, clave]));
+    sessionStorage.setItem('sio-evitar-alergenos', JSON.stringify(this.evitar()));
   }
 
   sumar(p: PlatoApi, delta: number): void {

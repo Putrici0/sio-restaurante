@@ -1,0 +1,54 @@
+<div class="dp-velo" (click)="cerrar.emit()"></div>
+<section class="dp" role="dialog" aria-modal="true" [attr.aria-label]="nombre()">
+  <div class="dp__foto">
+    <img [src]="plato().imagen" [alt]="nombre()" />
+    <button type="button" class="dp__cerrar" (click)="cerrar.emit()" aria-label="Cerrar">✕</button>
+    @if (numero()) {
+      <span class="dp__numero">Nº {{ numero() }}</span>
+    }
+  </div>
+
+  <div class="dp__cuerpo">
+    <p class="dp__categoria">{{ etiquetas[plato().categoria] }}</p>
+    <h2>{{ nombre() }}</h2>
+    @if (descripcion()) {
+      <p class="dp__desc">{{ descripcion() }}</p>
+    }
+
+    <div class="dp__etiquetas">
+      @if (cobraAparte()) {
+        <span class="dp__precio">{{ plato().precio | number:'1.2-2' }} €</span>
+      } @else {
+        <span class="dp__incluido">Incluido en el menú</span>
+      }
+      @if (porUnidad()) {
+        <span class="dp__unidad">Se sirve por unidad</span>
+      } @else if (!cobraAparte()) {
+        <span class="dp__unidad">Para compartir</span>
+      }
+    </div>
+
+    <h3>Alérgenos</h3>
+    <app-alergenos [alergenos]="plato().alergenos" modo="completo" />
+
+    @if (pedir()) {
+      @if (motivoBloqueo() && cantidad() === 0) {
+        <p class="dp__bloqueo">{{ motivoBloqueo() }}</p>
+      }
+      <div class="dp__acciones">
+        @if (cantidad() > 0) {
+          <div class="dp__stepper">
+            <button type="button" (click)="cambiar.emit(-1)" [attr.aria-label]="'Quitar ' + nombre()">−</button>
+            <strong>{{ cantidad() }}</strong>
+            <button type="button" (click)="cambiar.emit(1)" [disabled]="!puedeSumar()" [attr.aria-label]="'Añadir ' + nombre()">+</button>
+          </div>
+          <button type="button" class="sh-btn sh-btn--primario dp__listo" (click)="cerrar.emit()">Listo</button>
+        } @else {
+          <button type="button" class="sh-btn sh-btn--primario dp__anadir" [disabled]="!puedeSumar()" (click)="cambiar.emit(1)">
+            Añadir a la ronda
+          </button>
+        }
+      </div>
+    }
+  </div>
+</section>

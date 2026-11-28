@@ -45,35 +45,80 @@
     }
   </nav>
 
+  <div class="herramientas">
+    <input class="buscar" type="search" placeholder="Buscar por nombre o número…" aria-label="Buscar plato"
+           [value]="busqueda()" (input)="busqueda.set($any($event.target).value)" />
+    <button type="button" class="btn-alergenos" [class.activo]="evitar().length > 0" [attr.aria-expanded]="panelAlergenos()"
+            (click)="panelAlergenos.set(!panelAlergenos())">
+      ⚠ Alérgenos@if (evitar().length > 0) { <span class="contador">{{ evitar().length }}</span> }
+    </button>
+  </div>
+
+  @if (panelAlergenos()) {
+    <div class="panel-alergenos">
+      <p>Marca lo que quieres <strong>evitar</strong>: ocultamos los platos que lo contienen.</p>
+      <div class="panel-alergenos__chips" role="group" aria-label="Alérgenos a evitar">
+        @for (a of listaAlergenos; track a.clave) {
+          <button type="button" [class.activo]="evitar().includes(a.clave)" [attr.aria-pressed]="evitar().includes(a.clave)"
+                  (click)="alternarAlergeno(a.clave)">
+            <span aria-hidden="true">{{ a.icono }}</span> {{ a.nombre }}
+          </button>
+        }
+      </div>
+      <small>Los platos sin información de alérgenos también se ocultan. Ante cualquier duda, pregunta al personal.</small>
+    </div>
+  }
+
+  @if (busqueda().trim()) {
+    <p class="nota-seccion">Resultados de «{{ busqueda() }}» en toda la carta.</p>
+  }
+  @if (ocultosPorAlergenos() > 0) {
+    <p class="nota-seccion">{{ ocultosPorAlergenos() }} {{ ocultosPorAlergenos() === 1 ? 'plato oculto' : 'platos ocultos' }} por los alérgenos que evitas.</p>
+  }
+
   @if (filtro() === 'Bebida' || filtro() === 'Postre') {
     <p class="nota-seccion">Las bebidas y los postres no están incluidos en el buffet y se cobran aparte.</p>
   }
 
-  <ul class="platos">
+  <!-- Cliente: cuadrícula con fotos grandes; camarero: lista compacta. Tocar un plato abre su detalle. -->
+  <ul class="platos" [class.platos--rejilla]="modo === 'cliente'">
     @for (p of visibles(); track p.id; let i = $index) {
       <li class="plato" [class.plato--elegido]="cantidad(p) > 0" [style.--i]="i">
-        <img [src]="p.imagen" alt="" loading="lazy" />
-        <div class="plato__texto">
+        <div class="plato__foto" (click)="abrir(p)">
+          <img [src]="p.imagen" [alt]="p.nombre" loading="lazy" />
+          @if (porUnidad(p)) { <span class="plato__unidad">por unidad</span> }
+          <div class="plato__cantidad" (click)="$event.stopPropagation()">
+            @if (cantidad(p) > 0) {
+              <button type="button" (click)="sumar(p, -1)" [attr.aria-label]="'Quitar ' + p.nombre">−</button>
+              <strong>{{ cantidad(p) }}</strong>
+            }
+            <button type="button" class="mas" [disabled]="!puedeSumar(p)" (click)="sumar(p, 1)" [attr.aria-label]="'Añadir ' + p.nombre">+</button>
+          </div>
+        </div>
+        <button type="button" class="plato__texto" (click)="abrir(p)" [attr.aria-label]="'Ver detalle de ' + p.nombre">
           <h3>{{ p.nombre }}</h3>
           <p>{{ p.descripcion }}</p>
-          @if (p.categoria === 'Bebida' || p.categoria === 'Postre') {
-            <span class="precio">{{ p.precio | number:'1.2-2' }} €</span>
-          } @else {
-            <span class="incluido">Incluido</span>
-          }
-        </div>
-        <div class="plato__cantidad">
-          @if (cantidad(p) > 0) {
-            <button type="button" (click)="sumar(p, -1)" [attr.aria-label]="'Quitar ' + p.nombre">−</button>
-            <strong>{{ cantidad(p) }}</strong>
-          }
-          <button type="button" class="mas" [disabled]="!puedeSumar(p)" (click)="sumar(p, 1)" [attr.aria-label]="'Añadir ' + p.nombre">+</button>
-        </div>
+          <span class="plato__pie">
+            @if (p.categoria === 'Bebida' || p.categoria === 'Postre') {
+              <span class="precio">{{ p.precio | number:'1.2-2' }} €</span>
+            } @else {
+              <span class="incluido">Incluido</span>
+            }
+            <app-alergenos [alergenos]="p.alergenos" />
+          </span>
+        </button>
       </li>
     } @empty {
-      @if (!cargando()) { <li class="aviso">No hay platos en esta sección.</li> }
+      @if (!cargando()) {
+        <li class="aviso">{{ busqueda().trim() ? 'No hay platos que coincidan con la búsqueda.' : 'No hay platos en esta sección.' }}</li>
+      }
     }
   </ul>
+
+  @if (detalle(); as d) {
+    <app-detalle-plato [plato]="d" [cantidad]="cantidad(d)" [puedeSumar]="puedeSumar(d)"
+                       [motivoBloqueo]="motivoBloqueo(d)" (cerrar)="detalle.set(null)" (cambiar)="sumar(d, $event)" />
+  }
 </section>
 
 @if (seleccion().length > 0) {
