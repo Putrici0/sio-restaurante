@@ -100,7 +100,9 @@
             class="bill-item-card"
             *ngFor="let item of itemsAgrupados(); trackBy: trackByItemAgrupado; let i = index"
             [style.--i]="i"
-            [class.bill-item-card--paid]="item.pagado">
+            [class.bill-item-card--paid]="item.pagado"
+            tabindex="0" role="button" [attr.aria-label]="'Ver ' + item.nombre"
+            (click)="verDetalle(item.platoId)" (keydown.enter)="verDetalle(item.platoId)">
               <div class="bill-item-card__image-wrap">
                 <img
                   class="bill-item-card__image"
@@ -340,3 +342,7 @@
     </div>
   }
 </section>
+
+@if (detalle(); as d) {
+  <app-detalle-plato [plato]="d" [pedir]="false" (cerrar)="detalle.set(null)" />
+}

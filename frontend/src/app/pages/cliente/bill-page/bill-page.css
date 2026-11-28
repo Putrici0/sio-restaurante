@@ -916,3 +916,8 @@
 /* Etiqueta de estado legible sobre la cabecera clara */
 .bill-status-chip--warning { background: #fff1d6; border-color: #f3d39a; color: #8a5a00; }
 .bill-status-chip--success { background: #e3f4e8; border-color: #b9e0c4; color: var(--sh-ok); }
+
+/* Tocar un plato de la cuenta abre su detalle */
+.bill-item-card { cursor: pointer; }
+.bill-item-card:focus-visible { outline: 3px solid var(--sh-sakura-400); outline-offset: 2px; }
+.bill-item-card__image-wrap { background: #111; }

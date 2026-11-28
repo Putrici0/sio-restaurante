@@ -5,6 +5,9 @@ import { ActivatedRoute } from '@angular/router';
 import { generarTicketPdf, nombreArchivoTicket, pagosDeCuenta, ticketDePago, DatosTicket } from '../../../services/ticket-pdf';
 import { catchError, forkJoin, of, take } from 'rxjs';
 import { Header } from '../../../shared/header/header';
+import { DetallePlato } from '../../../shared/detalle-plato/detalle-plato';
+import { PlatoApi } from '../../../models/plato.model';
+import { PlatosApiService } from '../../../services/platos-api.service';
 import {
   CuentaActivaResponse,
   CuentaApiService,
@@ -30,13 +33,26 @@ interface ItemCuentaAgrupado {
 @Component({
   selector: 'app-bill-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, Header],
+  imports: [CommonModule, FormsModule, Header, DetallePlato],
   templateUrl: './bill-page.html',
   styleUrls: ['./bill-page.css'],
 })
 export class BillPage implements OnInit, OnDestroy {
   private readonly cuentaApiService = inject(CuentaApiService);
   private readonly ordenesApiService = inject(OrdenesApiService);
+  private readonly platosApi = inject(PlatosApiService);
+  /** Carta completa (para abrir el detalle de un plato de la cuenta: foto grande y alérgenos). */
+  private readonly carta = signal<PlatoApi[]>([]);
+  readonly detalle = signal<PlatoApi | null>(null);
+
+  verDetalle(platoId: string): void {
+    const abrir = () => this.detalle.set(this.carta().find((p) => p.id === platoId) ?? null);
+    if (this.carta().length) return abrir();
+    this.platosApi.obtenerPlatos().pipe(take(1)).subscribe((platos) => {
+      this.carta.set(platos);
+      abrir();
+    });
+  }
   private readonly route = inject(ActivatedRoute);
 
   private intervaloRefresco?: number;
